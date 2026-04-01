@@ -1,6 +1,6 @@
 # Proti-Binimoy
 
-Proti-Binimoy is a MERN-based marketplace project for second-hand trade and barter exchange.
+Proti-Binimoy is a MERN-based marketplace for second-hand trade and barter.
 
 ## Current Scope
 
@@ -50,14 +50,14 @@ VITE_API_URL=http://localhost:5000
 Backend:
 
 ```powershell
-cd "d:\University\CSE 482 project\-Proti-Binimoy"
+cd ""
 npm install
 ```
 
 Frontend:
 
 ```powershell
-cd "d:\University\CSE 482 project\-Proti-Binimoy\web_frontend"
+cd ""
 npm install
 ```
 
@@ -68,18 +68,18 @@ If PowerShell blocks `npm`, use `npm.cmd` instead.
 Start backend:
 
 ```powershell
-cd "d:\University\CSE 482 project\-Proti-Binimoy"
+cd ""
 npm run dev
 ```
 
 Start frontend:
 
 ```powershell
-cd "d:\University\CSE 482 project\-Proti-Binimoy\web_frontend"
+cd ""
 npm run dev
 ```
 
-Open the Vite URL shown in terminal (usually `http://localhost:5173`).
+Open the Vite URL shown in the terminal (usually `http://localhost:5173`).
 
 ## API Endpoints
 
@@ -89,5 +89,5 @@ Open the Vite URL shown in terminal (usually `http://localhost:5173`).
 
 ## Notes
 
-- Password reset page exists in the UI but reset functionality is not implemented yet.
+- The password reset page exists in the UI, but the reset functionality is not implemented yet.
 - Google OAuth, location-based search, and exchange workflow modules are not implemented in the current codebase.

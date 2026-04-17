@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
         const pageSize = Math.min(parsePositiveInt(limit, DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
 
         const listings = await Listing.find(filter)
-            .populate('seller', 'name email phone profilePicture')
+            .populate('seller', 'name profilePicture rating totalReviews isVerified')
             .sort({ createdAt: -1 })
             .skip((pageNumber - 1) * pageSize)
             .limit(pageSize);
@@ -58,7 +58,7 @@ router.get('/:id', async (req, res) => {
         }
 
         const listing = await Listing.findById(req.params.id)
-            .populate('seller', 'name email phone profilePicture location');
+            .populate('seller', 'name profilePicture rating totalReviews isVerified');
 
         if (!listing || listing.status === 'deleted') {
             return res.status(404).json({ msg: 'Listing not found' });

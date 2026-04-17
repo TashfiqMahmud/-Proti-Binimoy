@@ -50,15 +50,15 @@ VITE_API_URL=http://localhost:5000
 Backend:
 
 ```powershell
-cd ""
-npm install
+cd "d:\University\CSE 482 project"
+npm.cmd install
 ```
 
 Frontend:
 
 ```powershell
-cd ""
-npm install
+cd "d:\University\CSE 482 project\web_frontend"
+npm.cmd install
 ```
 
 If PowerShell blocks `npm`, use `npm.cmd` instead.
@@ -68,15 +68,15 @@ If PowerShell blocks `npm`, use `npm.cmd` instead.
 Start backend:
 
 ```powershell
-cd ""
-npm run dev
+cd "d:\University\CSE 482 project"
+npm.cmd run dev
 ```
 
 Start frontend:
 
 ```powershell
-cd ""
-npm run dev
+cd "d:\University\CSE 482 project\web_frontend"
+npm.cmd run dev
 ```
 
 Open the Vite URL shown in the terminal (usually `http://localhost:5173`).
@@ -86,6 +86,15 @@ Open the Vite URL shown in the terminal (usually `http://localhost:5173`).
 - `GET /` - API health message
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `GET /api/listings` (supports `page`, `limit`, `category`, `condition`, `search`)
+- `GET /api/listings/:id`
+- `POST /api/listings` (requires token)
+- `PUT /api/listings/:id` (requires token, seller only)
+- `DELETE /api/listings/:id` (requires token, seller only)
+
+Protected endpoints accept either:
+- `Authorization: Bearer <token>`
+- `x-auth-token: <token>`
 
 ## Notes
 

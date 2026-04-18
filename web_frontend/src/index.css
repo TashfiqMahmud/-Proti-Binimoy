@@ -111,3 +111,107 @@ code {
 }
 */ 
 @import "tailwindcss";
+
+:root {
+  --pb-mouse-x: 0.5;
+  --pb-mouse-y: 0.5;
+  --pb-local-tx: 0px;
+  --pb-local-ty: 0px;
+  --pb-local-rx: 0deg;
+  --pb-local-ry: 0deg;
+  --pb-local-glow: 0;
+  --pb-local-glow-x: 50%;
+  --pb-local-glow-y: 50%;
+}
+
+.pb-parallax-soft {
+  transform: translate3d(
+    calc((var(--pb-mouse-x) - 0.5) * 14px),
+    calc((var(--pb-mouse-y) - 0.5) * 14px),
+    0
+  );
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.pb-parallax-deep {
+  transform: translate3d(
+    calc((var(--pb-mouse-x) - 0.5) * 26px),
+    calc((var(--pb-mouse-y) - 0.5) * 22px),
+    0
+  );
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.pb-tilt-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transform: perspective(1000px)
+    translate3d(var(--pb-local-tx, 0px), var(--pb-local-ty, 0px), 0)
+    rotateX(var(--pb-local-rx, calc((0.5 - var(--pb-mouse-y)) * 2.5deg)))
+    rotateY(var(--pb-local-ry, calc((var(--pb-mouse-x) - 0.5) * 3.8deg)))
+    translate3d(0, 0, 0);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease;
+  will-change: transform;
+}
+
+.pb-tilt-card:hover {
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.24);
+}
+
+.pb-tilt-card::before,
+.pb-reactive::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--pb-local-glow-x, 50%) var(--pb-local-glow-y, 50%),
+    rgba(94, 234, 212, 0.34),
+    rgba(46, 201, 126, 0.2) 18%,
+    transparent 58%
+  );
+  opacity: calc(var(--pb-local-glow, 0) * 0.95);
+  transition: opacity 180ms ease;
+  z-index: 0;
+}
+
+.pb-reactive {
+  position: relative;
+  isolation: isolate;
+  transform: translate3d(var(--pb-local-tx, 0px), var(--pb-local-ty, 0px), 0);
+  transition: transform 170ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 170ms ease;
+  will-change: transform;
+}
+
+.pb-reactive > * {
+  position: relative;
+  z-index: 1;
+}
+
+.pb-tilt-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.pb-reactive:hover {
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.22);
+}
+
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .pb-parallax-soft,
+  .pb-parallax-deep,
+  .pb-tilt-card,
+  .pb-reactive {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .pb-tilt-card::before,
+  .pb-reactive::before {
+    opacity: 0 !important;
+  }
+}

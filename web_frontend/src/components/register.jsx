@@ -74,10 +74,11 @@ const RegisterPage = () => {
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(2,6,23,0.9)_0%,rgba(2,6,23,0.76)_42%,rgba(15,118,110,0.2)_100%)]" />
+        <div className="absolute inset-0 pb-parallax-soft bg-[linear-gradient(115deg,rgba(2,6,23,0.9)_0%,rgba(2,6,23,0.76)_42%,rgba(15,118,110,0.2)_100%)]" />
+        <div className="absolute right-[-110px] top-24 h-72 w-72 rounded-full bg-emerald-400/15 blur-3xl pb-parallax-deep" />
 
         <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl items-center justify-center px-6 py-12">
-          <div className="w-full max-w-xl rounded-[1.8rem] border border-white/15 bg-white/10 p-3 shadow-[0_30px_90px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+          <div className="w-full max-w-xl rounded-[1.8rem] border border-white/15 bg-white/10 p-3 shadow-[0_30px_90px_rgba(0,0,0,0.35)] backdrop-blur-2xl pb-tilt-card">
             <div className="rounded-[1.5rem] bg-white p-8 text-slate-900 md:p-10">
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-600">
                 Create Account
@@ -145,7 +146,8 @@ const RegisterPage = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-700"
+                  className="w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-700 pb-reactive"
+                  data-reactive-depth="0.85"
                 >
                   {isSubmitting ? "Creating..." : "Create Account"}
                 </button>
@@ -153,7 +155,7 @@ const RegisterPage = () => {
 
               <p className="mt-6 text-center text-sm text-slate-500">
                 Already have an account?{" "}
-                <Link to="/signin" className="font-semibold text-emerald-600 hover:text-emerald-500">
+                <Link to="/signin" className="font-semibold text-emerald-600 hover:text-emerald-500 pb-reactive" data-reactive-depth="0.7">
                   Sign in
                 </Link>
               </p>

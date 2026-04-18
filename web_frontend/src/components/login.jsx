@@ -73,8 +73,8 @@ const LoginPage = () => {
         }}
       >
         <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(2,6,23,0.88)_0%,rgba(2,6,23,0.74)_38%,rgba(15,23,42,0.38)_64%,rgba(15,118,110,0.18)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(45,212,191,0.16),transparent_24%)]" />
-        <div className="absolute -left-20 top-24 h-64 w-64 rounded-full bg-emerald-400/15 blur-3xl" />
+        <div className="absolute inset-0 pb-parallax-soft bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(45,212,191,0.16),transparent_24%)]" />
+        <div className="absolute -left-20 top-24 h-64 w-64 rounded-full bg-emerald-400/15 blur-3xl pb-parallax-deep" />
 
         <header className="relative z-10">
           <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-10">
@@ -93,13 +93,13 @@ const LoginPage = () => {
             </div>
 
             <div className="hidden items-center gap-8 rounded-full border border-white/15 bg-white/10 px-6 py-3 text-sm font-medium text-white shadow-lg backdrop-blur md:flex">
-              <Link to="/" className="transition hover:text-emerald-300">
+              <Link to="/" className="transition hover:text-emerald-300 pb-reactive">
                 Home
               </Link>
-              <Link to="/about" className="transition hover:text-emerald-300">
+              <Link to="/about" className="transition hover:text-emerald-300 pb-reactive">
                 About
               </Link>
-              <Link to="/signin" className="text-emerald-300">
+              <Link to="/signin" className="text-emerald-300 pb-reactive">
                 Sign In
               </Link>
             </div>
@@ -108,7 +108,7 @@ const LoginPage = () => {
 
         <div className="relative z-10 mx-auto grid min-h-[calc(100vh-92px)] max-w-7xl items-center gap-12 px-6 pb-16 pt-8 lg:grid-cols-[1.05fr_0.95fr] lg:px-10">
           <div className="max-w-2xl">
-            <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur">
+            <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur pb-reactive" data-reactive-depth="0.55">
               Welcome back to a smarter exchange experience
             </div>
 
@@ -126,7 +126,7 @@ const LoginPage = () => {
               {trustPoints.map((point) => (
                 <div
                   key={point}
-                  className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/10 px-5 py-4 backdrop-blur"
+                  className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/10 px-5 py-4 backdrop-blur pb-tilt-card"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-300 to-teal-400 text-slate-950">
                     <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
@@ -146,7 +146,7 @@ const LoginPage = () => {
           </div>
 
           <div className="lg:justify-self-end">
-            <div className="rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-[0_30px_90px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+            <div className="rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-[0_30px_90px_rgba(0,0,0,0.35)] backdrop-blur-2xl pb-tilt-card">
               <div className="w-full max-w-xl rounded-[1.6rem] bg-white p-8 text-slate-900 md:p-10">
                 <div className="mb-8">
                   <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-600">
@@ -191,7 +191,8 @@ const LoginPage = () => {
                       </label>
                       <Link
                         to="/forgot-password"
-                        className="text-sm font-medium text-emerald-600 transition hover:text-emerald-500"
+                        className="text-sm font-medium text-emerald-600 transition hover:text-emerald-500 pb-reactive"
+                        data-reactive-depth="0.7"
                       >
                         Forgot password?
                       </Link>
@@ -217,7 +218,8 @@ const LoginPage = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-700"
+                    className="w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-700 pb-reactive"
+                    data-reactive-depth="0.85"
                   >
                     {isSubmitting ? "Signing In..." : "Sign In"}
                   </button>
@@ -236,7 +238,8 @@ const LoginPage = () => {
                     Don&apos;t have an account?{" "}
                     <Link
                       to="/register"
-                      className="font-semibold text-emerald-600 transition hover:text-emerald-500"
+                      className="font-semibold text-emerald-600 transition hover:text-emerald-500 pb-reactive"
+                      data-reactive-depth="0.7"
                     >
                       Create now
                     </Link>

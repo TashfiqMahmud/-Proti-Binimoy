@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
+import { API_BASE_URL } from "../config/api";
 
 const trustPoints = [
   "Verified profiles for more confident exchanges",
@@ -9,19 +10,56 @@ const trustPoints = [
 ];
 
 const LoginPage = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (email === "user@example.com" && password === "password123") {
-      setError("");
-      console.log("Login Successful");
+
+    if (!email.trim() || !password) {
+      setError("Email and password are required.");
       return;
     }
 
-    setError("Invalid email or password.");
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setError(data.msg || "Invalid email or password.");
+        return;
+      }
+
+      if (data.token) {
+        localStorage.setItem("authToken", data.token);
+      }
+
+      if (data.user) {
+        localStorage.setItem("authUser", JSON.stringify(data.user));
+      }
+
+      navigate("/", { replace: true });
+    } catch {
+      setError("Unable to sign in right now. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -134,6 +172,8 @@ const LoginPage = () => {
                     <input
                       id="email"
                       type="email"
+                      required
+                      autoComplete="email"
                       placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -159,6 +199,8 @@ const LoginPage = () => {
                     <input
                       id="password"
                       type="password"
+                      required
+                      autoComplete="current-password"
                       placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -174,9 +216,10 @@ const LoginPage = () => {
 
                   <button
                     type="submit"
-                    className="w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-bold text-white transition hover:bg-emerald-600"
+                    disabled={isSubmitting}
+                    className="w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-700"
                   >
-                    Sign In
+                    {isSubmitting ? "Signing In..." : "Sign In"}
                   </button>
                 </form>
 

@@ -422,6 +422,7 @@ const HomePage = () => {
         </div>
       </section>
 
+<<<<<<< HEAD
       {/* MARQUEE */}
       <div style={{ background: "#2ec97e", padding: "16px 0", overflow: "hidden" }}>
         <div style={{ display: "flex", whiteSpace: "nowrap", animation: "pb-marquee 24s linear infinite", width: "max-content" }}>

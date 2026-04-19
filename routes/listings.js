@@ -26,6 +26,25 @@ router.get('/', async (req, res) => {
     }
 });
 
+// @route   GET /api/listings/mine
+// @desc    Get current user's non-deleted listings
+// @access  Private
+router.get('/mine', auth, async (req, res) => {
+    try {
+        const listings = await Listing.find({
+            seller: req.user.id,
+            status: { $ne: 'deleted' }
+        })
+            .populate('seller', 'name email')
+            .sort({ createdAt: -1 });
+
+        res.json(listings);
+    } catch (err) {
+        console.error('GET_MY_LISTINGS_ERROR:', err);
+        res.status(500).json({ msg: 'Server error' });
+    }
+});
+
 // @route   GET /api/listings/:id
 // @desc    Get single listing by ID
 // @access  Public

@@ -8,10 +8,13 @@ import ForgotPasswordPage from "./components/forgot-password";
 import ResetPasswordPage from "./components/reset-password";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MouseEffects from "./components/mouse-effects";
+import ListingsPage from "./pages/ListingsPage";
+import ListingDetailPage from "./pages/ListingDetailPage";
+import PostListingPage from "./pages/PostListingPage";
+import EditListingPage from "./pages/EditListingPage";
+import DashboardPage from "./pages/DashboardPage";
 
 const App = () => {
-  void ProtectedRoute;
-
   return (
     <>
       <MouseEffects />
@@ -22,7 +25,13 @@ const App = () => {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        {/* TODO Phase 2: wrap listing-management routes with ProtectedRoute */}
+        <Route path="/listings" element={<ListingsPage />} />
+        <Route path="/listings/:id" element={<ListingDetailPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/listings/new" element={<PostListingPage />} />
+          <Route path="/listings/:id/edit" element={<EditListingPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

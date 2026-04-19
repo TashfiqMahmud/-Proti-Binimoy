@@ -315,7 +315,7 @@ const HomePage = () => {
         {/* Desktop Links */}
         <div className="pb-nav-links">
           <Link to="/"        className="pb-nav-link">Home</Link>
-          <Link to="/browse"  className="pb-nav-link">Browse</Link>
+          <Link to="/listings"  className="pb-nav-link">Listings</Link>
           <Link to="/about"   className="pb-nav-link">About</Link>
           <Link to="/signin"  className="pb-nav-cta">Sign In →</Link>
         </div>
@@ -331,7 +331,7 @@ const HomePage = () => {
       {/* Mobile Menu */}
       <div className={`pb-mobile-menu ${menuOpen ? "open" : ""}`}>
         <Link to="/"        className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
-        <Link to="/browse"  className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Browse</Link>
+        <Link to="/listings"  className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Listings</Link>
         <Link to="/about"   className="pb-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
         <Link to="/signin"  className="pb-mobile-cta"  onClick={() => setMenuOpen(false)}>Sign In →</Link>
       </div>

@@ -6,9 +6,10 @@ Proti-Binimoy is a MERN-based marketplace for second-hand trade and barter.
 
 - Backend API with MongoDB connection and JWT-based authentication
 - User registration/login, forgot-password, reset-password, and refresh-token endpoints
-- React frontend with pages for home, about, sign in, register, forgot password, and reset password
+- Listings API with protected seller-only create/update/delete and private "my listings" retrieval
+- React frontend with public marketplace browsing and listing detail pages
+- Protected frontend pages for posting/editing listings and a personal dashboard
 - Frontend auth context (`token`, `user`, `login`, `logout`) with automatic token refresh scheduling
-- Listings API routes with JWT middleware protection for create/update/delete operations
 
 ## Tech Stack
 
@@ -19,8 +20,11 @@ Proti-Binimoy is a MERN-based marketplace for second-hand trade and barter.
 
 - `server.js` - Express app startup and MongoDB connection
 - `routes/auth.js` - Auth API routes
+- `routes/listings.js` - Listings API routes (public + protected)
 - `models/User.js` - User schema
+- `models/Listing.js` - Listing schema
 - `web_frontend/` - React client app
+- `web_frontend/src/pages/` - Marketplace pages (browse/detail/post/edit/dashboard)
 
 ## Prerequisites
 
@@ -96,10 +100,30 @@ Open the Vite URL shown in the terminal (usually `http://localhost:5173`).
 - `POST /api/auth/reset-password`
 - `POST /api/auth/refresh-token`
 - `GET /api/listings`
+- `GET /api/listings/mine` (auth required)
 - `GET /api/listings/:id`
 - `POST /api/listings` (auth required)
 - `PUT /api/listings/:id` (auth required)
 - `DELETE /api/listings/:id` (auth required)
+
+## Frontend Routes
+
+Public:
+
+- `/`
+- `/about`
+- `/signin`
+- `/register`
+- `/forgot-password`
+- `/reset-password`
+- `/listings`
+- `/listings/:id`
+
+Protected:
+
+- `/listings/new`
+- `/listings/:id/edit`
+- `/dashboard`
 
 ## Notes
 

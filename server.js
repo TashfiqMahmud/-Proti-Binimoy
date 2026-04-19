@@ -1,11 +1,23 @@
-﻿const express = require('express');
+﻿// Required environment variables:
+// MONGO_URI       - MongoDB connection string
+// JWT_SECRET      - Strong random secret for JWT signing
+// PORT            - Server port (default 5000)
+// EMAIL_HOST      - SMTP host (e.g. smtp.gmail.com)
+// EMAIL_PORT      - SMTP port (e.g. 587)
+// EMAIL_USER      - SMTP username / sender address
+// EMAIL_PASS      - SMTP password or app password
+// FRONTEND_URL    - Frontend origin (e.g. http://localhost:5173)
+
+const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const mongoSanitize = require('express-mongo-sanitize');
 require('dotenv').config();
 
 const app = express();
 
 app.use(express.json());
+app.use(mongoSanitize());
 app.use(cors());
 
 // Routes

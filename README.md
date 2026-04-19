@@ -5,13 +5,14 @@ Proti-Binimoy is a MERN-based marketplace for second-hand trade and barter.
 ## Current Scope
 
 - Backend API with MongoDB connection and JWT-based authentication
-- User registration and login endpoints (`/api/auth/register`, `/api/auth/login`)
-- React frontend with pages for home, about, sign in, register, and forgot password
-- Frontend login/register wired to backend auth API
+- User registration/login, forgot-password, reset-password, and refresh-token endpoints
+- React frontend with pages for home, about, sign in, register, forgot password, and reset password
+- Frontend auth context (`token`, `user`, `login`, `logout`) with automatic token refresh scheduling
+- Listings API routes with JWT middleware protection for create/update/delete operations
 
 ## Tech Stack
 
-- Backend: Node.js, Express, MongoDB (Mongoose), JWT, bcrypt
+- Backend: Node.js, Express, MongoDB (Mongoose), JWT, bcrypt, Nodemailer
 - Frontend: React (Vite), React Router, Tailwind CSS
 
 ## Project Structure
@@ -35,6 +36,11 @@ Create a `.env` file in the project root:
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_strong_random_secret
 PORT=5000
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your_email@example.com
+EMAIL_PASS=your_email_app_password
+FRONTEND_URL=http://localhost:5173
 ```
 
 ## Environment Variables (Frontend)
@@ -50,14 +56,14 @@ VITE_API_URL=http://localhost:5000
 Backend:
 
 ```powershell
-cd ""
+cd "D:\University\CSE 482 project"
 npm install
 ```
 
 Frontend:
 
 ```powershell
-cd ""
+cd "D:\University\CSE 482 project\web_frontend"
 npm install
 ```
 
@@ -68,14 +74,14 @@ If PowerShell blocks `npm`, use `npm.cmd` instead.
 Start backend:
 
 ```powershell
-cd ""
+cd "D:\University\CSE 482 project"
 npm run dev
 ```
 
 Start frontend:
 
 ```powershell
-cd ""
+cd "D:\University\CSE 482 project\web_frontend"
 npm run dev
 ```
 
@@ -86,8 +92,16 @@ Open the Vite URL shown in the terminal (usually `http://localhost:5173`).
 - `GET /` - API health message
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
+- `POST /api/auth/refresh-token`
+- `GET /api/listings`
+- `GET /api/listings/:id`
+- `POST /api/listings` (auth required)
+- `PUT /api/listings/:id` (auth required)
+- `DELETE /api/listings/:id` (auth required)
 
 ## Notes
 
-- The password reset page exists in the UI, but the reset functionality is not implemented yet.
+- Forgot/reset password emails require valid SMTP credentials in backend `.env`.
 - Google OAuth, location-based search, and exchange workflow modules are not implemented in the current codebase.

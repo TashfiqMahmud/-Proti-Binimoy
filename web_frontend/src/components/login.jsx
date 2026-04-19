@@ -2,6 +2,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
 import { API_BASE_URL } from "../config/api";
+import { useAuth } from "../context/AuthContext";
 
 /* ─── Global Styles ─── */
 const GlobalStyles = () => (
@@ -243,6 +244,7 @@ const ResendTimer = ({ onResend }) => {
 ══════════════════════════════════════ */
 const LoginPage = () => {
   const navigate    = useNavigate();
+  const { login } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [method, setMethod]     = useState("phone"); // "phone" | "email"
   const [step, setStep]         = useState(0);       // 0 → 1 → 2
@@ -304,8 +306,7 @@ const LoginPage = () => {
         setError(data.msg || "Incorrect OTP. Please try again.");
         return;
       }
-      if (data.token) localStorage.setItem("authToken", data.token);
-      if (data.user)  localStorage.setItem("authUser", JSON.stringify(data.user));
+      login(data.token, data.user);
       setStep(2);
       setTimeout(() => navigate("/", { replace: true }), 1600);
     } catch {
@@ -369,8 +370,7 @@ const LoginPage = () => {
         setError(data.msg || "Invalid email or password.");
         return;
       }
-      if (data.token) localStorage.setItem("authToken", data.token);
-      if (data.user)  localStorage.setItem("authUser", JSON.stringify(data.user));
+      login(data.token, data.user);
       setStep(2);
       setTimeout(() => navigate("/", { replace: true }), 1600);
     } catch {

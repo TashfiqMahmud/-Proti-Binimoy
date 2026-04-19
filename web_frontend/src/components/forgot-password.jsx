@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
+import { API_BASE_URL } from "../config/api";
 
 /* ─── Global Styles ─── */
 const GlobalStyles = () => (
@@ -110,13 +111,32 @@ const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim()) return;
+    setError("");
     setLoading(true);
-    setTimeout(() => { setLoading(false); setSent(true); }, 1400);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setLoading(false);
+        setSent(true);
+        return;
+      }
+      setLoading(false);
+      setError(data.msg || "Something went wrong. Please try again.");
+    } catch {
+      setLoading(false);
+      setError("Unable to connect. Please check your connection.");
+    }
   };
 
   return (
@@ -224,6 +244,11 @@ const ForgotPasswordPage = () => {
                         <>Send Reset Link <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}><path d="M5 12h14M12 5l7 7-7 7"/></svg></>
                       )}
                     </button>
+                    {error && (
+                      <div style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, padding: "12px 16px", fontSize: 14, color: "#b91c1c", fontWeight: 400 }}>
+                        {error}
+                      </div>
+                    )}
                   </form>
 
                   {/* Info box */}

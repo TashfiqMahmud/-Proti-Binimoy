@@ -60,14 +60,14 @@ VITE_API_URL=http://localhost:5000
 Backend:
 
 ```powershell
-cd "D:\University\CSE 482 project"
+cd ""
 npm install
 ```
 
 Frontend:
 
 ```powershell
-cd "D:\University\CSE 482 project\web_frontend"
+cd ""
 npm install
 ```
 
@@ -78,14 +78,14 @@ If PowerShell blocks `npm`, use `npm.cmd` instead.
 Start backend:
 
 ```powershell
-cd "D:\University\CSE 482 project"
+cd ""
 npm run dev
 ```
 
 Start frontend:
 
 ```powershell
-cd "D:\University\CSE 482 project\web_frontend"
+cd ""
 npm run dev
 ```
 

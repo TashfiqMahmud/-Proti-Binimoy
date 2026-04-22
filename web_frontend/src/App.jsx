@@ -13,6 +13,9 @@ import ListingDetailPage from "./pages/ListingDetailPage";
 import PostListingPage from "./pages/PostListingPage";
 import EditListingPage from "./pages/EditListingPage";
 import DashboardPage from "./pages/DashboardPage";
+import OffersPage from "./pages/OffersPage";
+import MessageThreadPage from "./pages/MessageThreadPage";
+import SavedListingsPage from "./pages/SavedListingsPage";
 
 const App = () => {
   return (
@@ -31,6 +34,9 @@ const App = () => {
           <Route path="/listings/new" element={<PostListingPage />} />
           <Route path="/listings/:id/edit" element={<EditListingPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/offers" element={<OffersPage />} />
+          <Route path="/messages/:offerId" element={<MessageThreadPage />} />
+          <Route path="/saved" element={<SavedListingsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

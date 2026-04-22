@@ -1,6 +1,8 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Listing = require('../models/Listing');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 
 // @route   GET /api/listings
@@ -42,6 +44,68 @@ router.get('/mine', auth, async (req, res) => {
     } catch (err) {
         console.error('GET_MY_LISTINGS_ERROR:', err);
         res.status(500).json({ msg: 'Server error' });
+    }
+});
+
+// @route   GET /api/listings/saved
+// @desc    Get saved active listings for current user
+// @access  Private
+router.get('/saved', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).populate('savedListings');
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found.' });
+        }
+
+        const activeSavedListings = (user.savedListings || []).filter(
+            (listing) => listing && listing.status === 'active'
+        );
+
+        return res.json(activeSavedListings);
+    } catch (err) {
+        console.error('GET_SAVED_LISTINGS_ERROR:', err);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+});
+
+// @route   POST /api/listings/:id/save
+// @desc    Toggle save/unsave listing
+// @access  Private
+router.post('/:id/save', auth, async (req, res) => {
+    try {
+        const listingId = req.params.id;
+        if (!mongoose.Types.ObjectId.isValid(listingId)) {
+            return res.status(404).json({ msg: 'Listing not found' });
+        }
+
+        const listing = await Listing.findById(listingId);
+        if (!listing || listing.status === 'deleted') {
+            return res.status(404).json({ msg: 'Listing not found' });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found.' });
+        }
+
+        const alreadySaved = user.savedListings.some(
+            (savedListingId) => savedListingId.toString() === listingId
+        );
+
+        if (alreadySaved) {
+            user.savedListings = user.savedListings.filter(
+                (savedListingId) => savedListingId.toString() !== listingId
+            );
+            await user.save();
+            return res.status(200).json({ saved: false, msg: 'Listing unsaved.' });
+        }
+
+        user.savedListings.push(listing._id);
+        await user.save();
+        return res.status(200).json({ saved: true, msg: 'Listing saved.' });
+    } catch (err) {
+        console.error('TOGGLE_SAVE_LISTING_ERROR:', err);
+        return res.status(500).json({ msg: 'Server error' });
     }
 });
 

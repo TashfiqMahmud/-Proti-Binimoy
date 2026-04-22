@@ -27,12 +27,15 @@ const generalLimiter = rateLimit({
 const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
 const normalizeEmail = (email) => email.trim().toLowerCase();
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const normalizePhone = (phone) => String(phone || '').replace(/\D/g, '');
+const isValidPhone = (phone) => /^\d{11}$/.test(phone);
+const isValidOtp = (otp) => /^\d{6}$/.test(String(otp || '').trim());
 const FORGOT_PASSWORD_RESPONSE = { msg: 'If that email is registered, a reset link has been sent.' };
 
 // @route   POST api/auth/register
 router.post('/register', generalLimiter, async (req, res) => {
     try {
-        const { name, email, password, phone } = req.body || {};
+        const { name, email, password, phone, nid, dateOfBirth, passportNumber } = req.body || {};
 
         if (!isNonEmptyString(name) || !isNonEmptyString(email) || !isNonEmptyString(password)) {
             return res.status(400).json({ msg: 'Name, email, and password are required.' });
@@ -60,7 +63,10 @@ router.post('/register', generalLimiter, async (req, res) => {
             name: trimmedName,
             email: normalizedEmail,
             password: hashedPassword,
-            phone: isNonEmptyString(phone) ? phone.trim() : ''
+            phone: isNonEmptyString(phone) ? normalizePhone(phone) : '',
+            nid: nid ? xss(String(nid).replace(/\D/g, '')) : undefined,
+            dateOfBirth: dateOfBirth || undefined,
+            passportNumber: passportNumber ? xss(String(passportNumber).trim()) : undefined
         });
 
         await user.save();
@@ -109,6 +115,97 @@ router.post('/login', loginLimiter, async (req, res) => {
         });
     } catch (err) {
         console.error('LOGIN_ERROR:', err);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+});
+
+// @route   POST api/auth/email/check
+router.post('/email/check', generalLimiter, async (req, res) => {
+    try {
+        const { email } = req.body || {};
+
+        if (!isNonEmptyString(email)) {
+            return res.status(400).json({ msg: 'Email is required.' });
+        }
+
+        const normalizedEmail = normalizeEmail(email);
+        if (!isValidEmail(normalizedEmail)) {
+            return res.status(400).json({ msg: 'Please provide a valid email address.' });
+        }
+
+        const user = await User.findOne({ email: normalizedEmail });
+        if (!user) {
+            return res.status(404).json({ msg: 'This email is not registered. Please create an account first.' });
+        }
+
+        return res.status(200).json({ msg: 'Email found.' });
+    } catch (err) {
+        console.error('EMAIL_CHECK_ERROR:', err);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+});
+
+// @route   POST api/auth/phone/check
+router.post('/phone/check', generalLimiter, async (req, res) => {
+    try {
+        const { phone } = req.body || {};
+        const normalizedPhone = normalizePhone(phone);
+
+        if (!isValidPhone(normalizedPhone)) {
+            return res.status(400).json({ msg: 'Enter a valid 11-digit phone number.' });
+        }
+
+        const user = await User.findOne({ phone: normalizedPhone });
+        if (!user) {
+            return res.status(404).json({ msg: 'This number is not registered. Please create an account first.' });
+        }
+
+        console.log(`OTP requested for: ${normalizedPhone}`);
+        return res.status(200).json({ msg: 'OTP sent.' });
+    } catch (err) {
+        console.error('PHONE_CHECK_ERROR:', err);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+});
+
+// @route   POST api/auth/phone/verify
+router.post('/phone/verify', generalLimiter, async (req, res) => {
+    try {
+        const { phone, otp } = req.body || {};
+        const normalizedPhone = normalizePhone(phone);
+        const otpValue = String(otp || '').trim();
+
+        if (!isValidPhone(normalizedPhone) || !isNonEmptyString(otpValue)) {
+            return res.status(400).json({ msg: 'Phone and OTP are required.' });
+        }
+
+        if (!isValidOtp(otpValue)) {
+            return res.status(400).json({ msg: 'Invalid OTP format.' });
+        }
+
+        const user = await User.findOne({ phone: normalizedPhone });
+        if (!user) {
+            return res.status(401).json({ msg: 'Invalid credentials.' });
+        }
+
+        if (!process.env.JWT_SECRET) {
+            return res.status(500).json({ msg: 'Server configuration error' });
+        }
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        return res.status(200).json({
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                location: user.location
+            }
+        });
+    } catch (err) {
+        console.error('PHONE_VERIFY_ERROR:', err);
         return res.status(500).json({ msg: 'Server error' });
     }
 });

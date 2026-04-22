@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
 import { API_BASE_URL } from "../config/api";
 import { useAuth } from "../context/AuthContext";
+import MakeOfferModal from "../components/MakeOfferModal";
 
 const GlobalStyles = () => (
   <style>{`
@@ -23,7 +24,7 @@ const GlobalStyles = () => (
       background: rgba(8,35,26,0.7); backdrop-filter: blur(20px);
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
-    .dt-nav-links { display: flex; align-items: center; gap: 28px; }
+    .dt-nav-links { display: flex; align-items: center; gap: 24px; }
     .dt-nav-link {
       text-decoration: none; color: rgba(255,255,255,0.7);
       font-size: 14px; font-weight: 500; transition: color 0.2s;
@@ -119,6 +120,9 @@ const ListingDetailPage = () => {
   const [error, setError] = useState("");
   const [selectedImage, setSelectedImage] = useState(0);
   const [deleting, setDeleting] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
 
   useEffect(() => {
     const fetchListing = async () => {
@@ -146,6 +150,29 @@ const ListingDetailPage = () => {
 
     fetchListing();
   }, [id]);
+
+  useEffect(() => {
+    const fetchSavedListings = async () => {
+      if (!token) {
+        setIsSaved(false);
+        return;
+      }
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/listings/saved`, {
+          headers: { "x-auth-token": token },
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok || !Array.isArray(data)) {
+          return;
+        }
+        setIsSaved(data.some((savedListing) => savedListing?._id === id));
+      } catch {
+        // ignore saved state fetch failure
+      }
+    };
+
+    fetchSavedListings();
+  }, [id, token]);
 
   const isSeller = Boolean(
     user?.id &&
@@ -180,12 +207,37 @@ const ListingDetailPage = () => {
     }
   };
 
-  const handleOffer = () => {
+  const handleToggleSave = async () => {
+    if (!listing?._id) return;
     if (!token) {
       navigate("/signin");
       return;
     }
-    window.alert("Offer system coming soon.");
+    setSaveLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/listings/${listing._id}/save`, {
+        method: "POST",
+        headers: { "x-auth-token": token },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        window.alert(data.msg || "Unable to update saved state.");
+        return;
+      }
+      setIsSaved(Boolean(data.saved));
+    } catch {
+      window.alert("Unable to connect. Please check your connection.");
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleOpenOffer = () => {
+    if (!token) {
+      navigate("/signin");
+      return;
+    }
+    setShowOfferModal(true);
   };
 
   return (
@@ -233,8 +285,10 @@ const ListingDetailPage = () => {
         <div className="dt-nav-links">
           <Link to="/" className="dt-nav-link">Home</Link>
           <Link to="/listings" className="dt-nav-link active">Listings</Link>
+          <Link to="/offers" className="dt-nav-link">Offers</Link>
+          <Link to="/saved" className="dt-nav-link">Saved</Link>
           <Link to="/signin" className="dt-nav-link">Sign In</Link>
-          <Link to="/register" className="dt-nav-cta">Register →</Link>
+          <Link to="/register" className="dt-nav-cta">Register</Link>
         </div>
 
         <button className="dt-hamburger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
@@ -246,8 +300,10 @@ const ListingDetailPage = () => {
       <div className={`dt-mobile-menu ${menuOpen ? "open" : ""}`}>
         <Link to="/" className="dt-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
         <Link to="/listings" className="dt-mobile-link" onClick={() => setMenuOpen(false)}>Listings</Link>
+        <Link to="/offers" className="dt-mobile-link" onClick={() => setMenuOpen(false)}>Offers</Link>
+        <Link to="/saved" className="dt-mobile-link" onClick={() => setMenuOpen(false)}>Saved</Link>
         <Link to="/signin" className="dt-mobile-link" onClick={() => setMenuOpen(false)}>Sign In</Link>
-        <Link to="/register" className="dt-mobile-cta" onClick={() => setMenuOpen(false)}>Create Account →</Link>
+        <Link to="/register" className="dt-mobile-cta" onClick={() => setMenuOpen(false)}>Create Account</Link>
       </div>
 
       <section
@@ -456,23 +512,43 @@ const ListingDetailPage = () => {
                       </button>
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={handleOffer}
-                      style={{
-                        border: "none",
-                        background: "linear-gradient(135deg,#0d3322,#1b7d52)",
-                        color: "#fff",
-                        borderRadius: 13,
-                        padding: "13px 16px",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        marginBottom: 12,
-                      }}
-                    >
-                      Make an Offer
-                    </button>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                      <button
+                        type="button"
+                        onClick={handleOpenOffer}
+                        style={{
+                          border: "none",
+                          background: "linear-gradient(135deg,#0d3322,#1b7d52)",
+                          color: "#fff",
+                          borderRadius: 13,
+                          padding: "13px 16px",
+                          fontSize: 14,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Make an Offer
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={saveLoading}
+                        onClick={handleToggleSave}
+                        style={{
+                          border: "1px solid rgba(220,38,38,0.3)",
+                          background: isSaved ? "rgba(220,38,38,0.08)" : "#fff",
+                          color: isSaved ? "#b91c1c" : "#374151",
+                          borderRadius: 13,
+                          padding: "12px 14px",
+                          fontSize: 14,
+                          fontWeight: 600,
+                          cursor: saveLoading ? "not-allowed" : "pointer",
+                          opacity: saveLoading ? 0.7 : 1,
+                        }}
+                      >
+                        {isSaved ? "♥ Saved" : "♡ Save"}
+                      </button>
+                    </div>
                   )}
 
                   <div>
@@ -486,6 +562,14 @@ const ListingDetailPage = () => {
           )}
         </div>
       </section>
+
+      {showOfferModal && listing && (
+        <MakeOfferModal
+          listing={listing}
+          onClose={() => setShowOfferModal(false)}
+          onSuccess={() => setShowOfferModal(false)}
+        />
+      )}
     </div>
   );
 };

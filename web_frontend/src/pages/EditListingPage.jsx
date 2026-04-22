@@ -256,6 +256,8 @@ const EditListingPage = () => {
         <div className="el-nav-links">
           <Link to="/" className="el-nav-link">Home</Link>
           <Link to="/listings" className="el-nav-link">Listings</Link>
+          <Link to="/offers" className="el-nav-link">Offers</Link>
+          <Link to="/saved" className="el-nav-link">Saved</Link>
           <Link to="/dashboard" className="el-nav-link active">Dashboard</Link>
           <Link to="/listings/new" className="el-nav-cta">Post Listing</Link>
         </div>
@@ -269,6 +271,8 @@ const EditListingPage = () => {
       <div className={`el-mobile-menu ${menuOpen ? "open" : ""}`}>
         <Link to="/" className="el-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
         <Link to="/listings" className="el-mobile-link" onClick={() => setMenuOpen(false)}>Listings</Link>
+        <Link to="/offers" className="el-mobile-link" onClick={() => setMenuOpen(false)}>Offers</Link>
+        <Link to="/saved" className="el-mobile-link" onClick={() => setMenuOpen(false)}>Saved</Link>
         <Link to="/dashboard" className="el-mobile-link" onClick={() => setMenuOpen(false)}>Dashboard</Link>
         <Link to="/listings/new" className="el-mobile-cta" onClick={() => setMenuOpen(false)}>Post Listing</Link>
       </div>

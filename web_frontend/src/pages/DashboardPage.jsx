@@ -182,6 +182,8 @@ const DashboardPage = () => {
         <div className="db-nav-links">
           <Link to="/" className="db-nav-link">Home</Link>
           <Link to="/listings" className="db-nav-link">Listings</Link>
+          <Link to="/offers" className="db-nav-link">Offers</Link>
+          <Link to="/saved" className="db-nav-link">Saved</Link>
           <Link to="/dashboard" className="db-nav-link active">Dashboard</Link>
           <Link to="/listings/new" className="db-nav-cta">Post a New Listing</Link>
         </div>
@@ -195,6 +197,8 @@ const DashboardPage = () => {
       <div className={`db-mobile-menu ${menuOpen ? "open" : ""}`}>
         <Link to="/" className="db-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
         <Link to="/listings" className="db-mobile-link" onClick={() => setMenuOpen(false)}>Listings</Link>
+        <Link to="/offers" className="db-mobile-link" onClick={() => setMenuOpen(false)}>Offers</Link>
+        <Link to="/saved" className="db-mobile-link" onClick={() => setMenuOpen(false)}>Saved</Link>
         <Link to="/dashboard" className="db-mobile-link" onClick={() => setMenuOpen(false)}>Dashboard</Link>
         <Link to="/listings/new" className="db-mobile-cta" onClick={() => setMenuOpen(false)}>Post a New Listing</Link>
       </div>
@@ -380,4 +384,3 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
-

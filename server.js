@@ -23,6 +23,8 @@ app.use(cors());
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/listings', require('./routes/listings')); // NEW
+app.use('/api/offers', require('./routes/offers'));
+app.use('/api/messages', require('./routes/messages'));
 
 app.get('/', (req, res) => {
     res.send('Proti-Binimoy API is active.');

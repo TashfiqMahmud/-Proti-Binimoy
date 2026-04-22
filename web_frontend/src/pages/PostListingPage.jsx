@@ -213,6 +213,8 @@ const PostListingPage = () => {
         <div className="pl-nav-links">
           <Link to="/" className="pl-nav-link">Home</Link>
           <Link to="/listings" className="pl-nav-link">Listings</Link>
+          <Link to="/offers" className="pl-nav-link">Offers</Link>
+          <Link to="/saved" className="pl-nav-link">Saved</Link>
           <Link to="/dashboard" className="pl-nav-link">Dashboard</Link>
           <Link to="/listings/new" className="pl-nav-cta">Post Listing</Link>
         </div>
@@ -226,6 +228,8 @@ const PostListingPage = () => {
       <div className={`pl-mobile-menu ${menuOpen ? "open" : ""}`}>
         <Link to="/" className="pl-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
         <Link to="/listings" className="pl-mobile-link" onClick={() => setMenuOpen(false)}>Listings</Link>
+        <Link to="/offers" className="pl-mobile-link" onClick={() => setMenuOpen(false)}>Offers</Link>
+        <Link to="/saved" className="pl-mobile-link" onClick={() => setMenuOpen(false)}>Saved</Link>
         <Link to="/dashboard" className="pl-mobile-link" onClick={() => setMenuOpen(false)}>Dashboard</Link>
         <Link to="/listings/new" className="pl-mobile-cta" onClick={() => setMenuOpen(false)}>Post Listing</Link>
       </div>
@@ -536,4 +540,3 @@ const PostListingPage = () => {
 };
 
 export default PostListingPage;
-

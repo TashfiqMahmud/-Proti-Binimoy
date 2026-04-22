@@ -210,8 +210,10 @@ const ListingsPage = () => {
         <div className="ls-nav-links">
           <Link to="/" className="ls-nav-link">Home</Link>
           <Link to="/listings" className="ls-nav-link active">Listings</Link>
+          <Link to="/offers" className="ls-nav-link">Offers</Link>
+          <Link to="/saved" className="ls-nav-link">Saved</Link>
           <Link to="/signin" className="ls-nav-link">Sign In</Link>
-          <Link to="/register" className="ls-nav-cta">Register →</Link>
+          <Link to="/register" className="ls-nav-cta">Register</Link>
         </div>
 
         <button className="ls-hamburger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
@@ -223,8 +225,10 @@ const ListingsPage = () => {
       <div className={`ls-mobile-menu ${menuOpen ? "open" : ""}`}>
         <Link to="/" className="ls-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
         <Link to="/listings" className="ls-mobile-link" onClick={() => setMenuOpen(false)}>Listings</Link>
+        <Link to="/offers" className="ls-mobile-link" onClick={() => setMenuOpen(false)}>Offers</Link>
+        <Link to="/saved" className="ls-mobile-link" onClick={() => setMenuOpen(false)}>Saved</Link>
         <Link to="/signin" className="ls-mobile-link" onClick={() => setMenuOpen(false)}>Sign In</Link>
-        <Link to="/register" className="ls-mobile-cta" onClick={() => setMenuOpen(false)}>Create Account →</Link>
+        <Link to="/register" className="ls-mobile-cta" onClick={() => setMenuOpen(false)}>Create Account</Link>
       </div>
 
       <section
@@ -494,4 +498,5 @@ const ListingsPage = () => {
 };
 
 export default ListingsPage;
+
 

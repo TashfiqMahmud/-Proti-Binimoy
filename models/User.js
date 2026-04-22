@@ -7,6 +7,9 @@ const userSchema = new mongoose.Schema({
   resetPasswordToken: { type: String },
   resetPasswordExpires: { type: Date },
   phone: { type: String, trim: true },
+  nid: { type: String, trim: true },
+  dateOfBirth: { type: Date },
+  passportNumber: { type: String, trim: true },
   bio: { type: String, default: "" },
   location: {
     address: { type: String },

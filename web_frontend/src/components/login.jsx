@@ -1,8 +1,48 @@
 ﻿import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
-import { API_BASE_URL } from "../config/api";
-import { useAuth } from "../context/AuthContext";
+
+/* ══════════════════════════════════════
+   MOCK AUTH STORE  (localStorage-backed)
+══════════════════════════════════════ */
+const MOCK_USERS_KEY = "pb_mock_users";
+const MOCK_SESSION_KEY = "pb_mock_session";
+
+const getMockUsers = () => {
+  try { return JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || "{}"); }
+  catch { return {}; }
+};
+const saveMockUsers = (users) => localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(users));
+const saveSession   = (user)  => localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(user));
+
+/* Seed demo user on first load */
+const seedDemoUsers = () => {
+  const users = getMockUsers();
+  if (!users["demo@protibi.com"]) {
+    users["demo@protibi.com"] = {
+      id: "u_demo",
+      email: "demo@protibi.com",
+      password: "Demo@1234",
+      name: "Rafiul Hasan",
+      phone: "01712345678",
+      joinDate: "2024-09-01",
+      location: "Dhanmondi, Dhaka",
+      bio: "Passionate about sustainable commerce and zero-waste living.",
+      idType: "nid",
+      idValue: "1234567890",
+      avatar: null,
+      rating: 4.8,
+      reviews: 12,
+      totalListings: 7,
+      soldItems: 4,
+      savedItems: 19,
+      verified: true,
+      memberTier: "Gold",
+    };
+    saveMockUsers(users);
+  }
+};
+seedDemoUsers();
 
 /* ─── Global Styles ─── */
 const GlobalStyles = () => (
@@ -52,6 +92,10 @@ const GlobalStyles = () => (
     /* CARD */
     .lp-card-outer { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.13); border-radius:28px; padding:6px; box-shadow:0 32px 96px rgba(0,0,0,0.4); backdrop-filter:blur(24px); }
     .lp-card { background:#fff; border-radius:22px; padding:34px 38px; color:#0d1f16; }
+
+    /* DEMO HINT */
+    .lp-demo-box { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#15803d; line-height:1.6; }
+    .lp-demo-box strong { display:block; margin-bottom:3px; font-size:13px; }
 
     /* METHOD TOGGLE */
     .lp-toggle { display:grid; grid-template-columns:1fr 1fr; gap:4px; background:#f3f4f6; border-radius:14px; padding:4px; margin-bottom:26px; }
@@ -148,11 +192,6 @@ const ErrIcon = () => (
     <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
   </svg>
 );
-const InfoDot = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}>
-    <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-  </svg>
-);
 const Check = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="#1b7d52" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}>
     <path d="M7 12.5l3.2 3.2L17.5 8.5" />
@@ -185,7 +224,6 @@ const PBar = ({ steps, cur }) => (
 const OtpInput = ({ value, onChange }) => {
   const refs = Array.from({ length: 6 }, () => useRef(null));
   const cells = value.split("");
-
   const handleKey = (i, e) => {
     if (e.key === "Backspace") {
       if (cells[i]) { const n = [...cells]; n[i] = ""; onChange(n.join("")); }
@@ -207,7 +245,6 @@ const OtpInput = ({ value, onChange }) => {
     onChange(p.padEnd(6, "").slice(0, 6));
     refs[Math.min(p.length, 5)].current?.focus();
   };
-
   return (
     <div className="lp-otp-row">
       {Array.from({ length: 6 }).map((_, i) => (
@@ -244,140 +281,100 @@ const ResendTimer = ({ onResend }) => {
 ══════════════════════════════════════ */
 const LoginPage = () => {
   const navigate    = useNavigate();
-  const { login } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [method, setMethod]     = useState("phone"); // "phone" | "email"
-  const [step, setStep]         = useState(0);       // 0 → 1 → 2
+  const [method, setMethod]     = useState("phone");
+  const [step, setStep]         = useState(0);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
 
   // phone flow
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp]     = useState("");
+  const [phone, setPhone]   = useState("");
+  const [otp, setOtp]       = useState("");
+  const [mockOtp, setMockOtp] = useState(""); // displayed hint OTP
 
   // email flow
-  const [email, setEmail]     = useState("");
-  const [password, setPw]     = useState("");
-  const [showPw, setShowPw]   = useState(false);
+  const [email, setEmail]   = useState("");
+  const [password, setPw]   = useState("");
+  const [showPw, setShowPw] = useState(false);
 
   const switchMethod = (m) => {
     setMethod(m); setStep(0); setError("");
-    setPhone(""); setOtp(""); setEmail(""); setPw(""); setShowPw(false);
+    setPhone(""); setOtp(""); setEmail(""); setPw(""); setShowPw(false); setMockOtp("");
   };
 
-  /* Phone: step 0 → check registration → step 1 */
-  const handlePhoneCheck = async (e) => {
+  /* ── MOCK: Phone step 0 ── */
+  const handlePhoneCheck = (e) => {
     e.preventDefault(); setError("");
     const d = phone.replace(/\D/g, "");
     if (d.length < 11) { setError("Enter a valid 11-digit Bangladeshi number."); return; }
     setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/phone/check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: d }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setError(data.msg || "This number is not registered. Please create an account first.");
-        return;
-      }
+    setTimeout(() => {
+      const users = getMockUsers();
+      const found = Object.values(users).find(u => u.phone === d);
+      if (!found) { setError("This number is not registered. Please create an account first."); setLoading(false); return; }
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setMockOtp(generatedOtp);
       setStep(1);
-    } catch {
-      setError("Unable to reach the server. Please try again.");
-    } finally {
       setLoading(false);
-    }
+    }, 700);
   };
 
-  /* Phone: step 1 → verify OTP → step 2 */
-  const handleOtpVerify = async (e) => {
+  /* ── MOCK: Phone step 1 ── */
+  const handleOtpVerify = (e) => {
     e?.preventDefault(); setError("");
     if (otp.length < 6) { setError("Enter the full 6-digit OTP."); return; }
     setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/phone/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.replace(/\D/g, ""), otp }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setError(data.msg || "Incorrect OTP. Please try again.");
-        return;
-      }
-      login(data.token, data.user);
+    setTimeout(() => {
+      if (otp !== mockOtp) { setError("Incorrect OTP. Please try again."); setLoading(false); return; }
+      const users = getMockUsers();
+      const user  = Object.values(users).find(u => u.phone === phone.replace(/\D/g, ""));
+      if (user) saveSession(user);
       setStep(2);
-      setTimeout(() => navigate("/", { replace: true }), 1600);
-    } catch {
-      setError("Unable to verify OTP. Please try again.");
-    } finally {
       setLoading(false);
-    }
+      setTimeout(() => navigate("/profile", { replace: true }), 1600);
+    }, 800);
   };
 
-  /* Phone OTP resend */
-  const handleOtpResend = async () => {
+  const handleOtpResend = () => {
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setMockOtp(generatedOtp);
+    setOtp("");
     setError("");
-    try {
-      await fetch(`${API_BASE_URL}/api/auth/phone/check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.replace(/\D/g, "") }),
-      });
-    } catch {
-      setError("Unable to resend OTP. Please try again.");
-    }
   };
 
-  /* Email: step 0 → check registration → step 1 */
-  const handleEmailCheck = async (e) => {
+  /* ── MOCK: Email step 0 ── */
+  const handleEmailCheck = (e) => {
     e.preventDefault(); setError("");
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError("Enter a valid email address."); return; }
     setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/email/check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setError(data.msg || "This email is not registered. Please create an account first.");
-        return;
+    setTimeout(() => {
+      const users = getMockUsers();
+      if (!users[email.trim().toLowerCase()]) {
+        setError("This email is not registered. Please create an account first.");
+        setLoading(false); return;
       }
       setStep(1);
-    } catch {
-      setError("Unable to reach the server. Please try again.");
-    } finally {
       setLoading(false);
-    }
+    }, 600);
   };
 
-  /* Email: step 1 → login → step 2 */
-  const handlePasswordCheck = async (e) => {
+  /* ── MOCK: Email step 1 ── */
+  const handlePasswordCheck = (e) => {
     e.preventDefault(); setError("");
     if (!password) { setError("Enter your password."); return; }
     setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setError(data.msg || "Invalid email or password.");
-        return;
+    setTimeout(() => {
+      const users = getMockUsers();
+      const user  = users[email.trim().toLowerCase()];
+      if (!user || user.password !== password) {
+        setError("Invalid email or password.");
+        setLoading(false); return;
       }
-      login(data.token, data.user);
+      saveSession(user);
       setStep(2);
-      setTimeout(() => navigate("/", { replace: true }), 1600);
-    } catch {
-      setError("Unable to sign in right now. Please try again.");
-    } finally {
       setLoading(false);
-    }
+      setTimeout(() => navigate("/profile", { replace: true }), 1600);
+    }, 800);
   };
 
   const trustPoints = [
@@ -397,7 +394,7 @@ const LoginPage = () => {
           </svg>
         </div>
         <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 700, color: "#0d1f16", marginBottom: 10 }}>You're in!</h3>
-        <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>Redirecting to your marketplace…</p>
+        <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>Redirecting to your profile…</p>
         <div style={{ height: 4, borderRadius: 100, background: "#f3f4f6", overflow: "hidden" }}>
           <div style={{ height: "100%", background: "linear-gradient(to right,#2ec97e,#1b7d52)", borderRadius: 100, animation: "lp-bar 1.5s linear forwards" }} />
         </div>
@@ -409,6 +406,11 @@ const LoginPage = () => {
       if (step === 0) return (
         <div className="lp-slide" key="ph0">
           <PBar steps={["Phone", "OTP", "Done"]} cur={0} />
+          {/* Demo hint */}
+          <div className="lp-demo-box">
+            <strong>🧪 Demo Account</strong>
+            Phone: <code>01712345678</code> — Use any 6-digit OTP shown after submitting.
+          </div>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 1 of 2</p>
           <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,28px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter your phone</h2>
           <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 16, fontWeight: 300 }}>We'll send a one-time code to verify your number.</p>
@@ -421,7 +423,6 @@ const LoginPage = () => {
                   onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                   className="lp-input lp-phl" autoFocus />
               </div>
-              <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 5 }}>OTP is sent only to registered numbers.</p>
             </div>
             {error && <div className="lp-err"><ErrIcon />{error}</div>}
             <button type="submit" disabled={loading} className="lp-btn-submit">
@@ -434,6 +435,12 @@ const LoginPage = () => {
       if (step === 1) return (
         <div className="lp-slide" key="ph1">
           <PBar steps={["Phone", "OTP", "Done"]} cur={1} />
+          {mockOtp && (
+            <div className="lp-demo-box">
+              <strong>🔑 Your mock OTP</strong>
+              Enter this code: <code style={{ fontSize: 16, fontWeight: 800, letterSpacing: 2 }}>{mockOtp}</code>
+            </div>
+          )}
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 2 of 2</p>
           <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,28px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Verify OTP</h2>
           <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 16, fontWeight: 300 }}>
@@ -444,8 +451,8 @@ const LoginPage = () => {
           <button onClick={handleOtpVerify} disabled={loading || otp.length < 6} className="lp-btn-submit" style={{ marginTop: 16 }}>
             {loading ? <><Sp /> Verifying…</> : <>Verify & Sign In <Arr /></>}
           </button>
-          <ResendTimer onResend={() => { setOtp(""); setError(""); handleOtpResend(); }} />
-          <button className="lp-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(0); setOtp(""); setError(""); }}>
+          <ResendTimer onResend={handleOtpResend} />
+          <button className="lp-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(0); setOtp(""); setError(""); setMockOtp(""); }}>
             <ArrL /> Change number
           </button>
         </div>
@@ -457,6 +464,10 @@ const LoginPage = () => {
       if (step === 0) return (
         <div className="lp-slide" key="em0">
           <PBar steps={["Email", "Password", "Done"]} cur={0} />
+          <div className="lp-demo-box">
+            <strong>🧪 Demo Account</strong>
+            Email: <code>demo@protibi.com</code> &nbsp;/&nbsp; Password: <code>Demo@1234</code>
+          </div>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 1 of 2</p>
           <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,28px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter your email</h2>
           <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 16, fontWeight: 300 }}>We'll check if it's registered before showing your password field.</p>
@@ -490,7 +501,6 @@ const LoginPage = () => {
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
                 <label className="lp-label" style={{ margin: 0 }}>Password</label>
-                <Link to="/forgot-password" style={{ fontSize: 12, fontWeight: 700, color: "#1b7d52", textDecoration: "none" }}>Forgot?</Link>
               </div>
               <div className="lp-input-wrap">
                 <div className="lp-icon-left">
@@ -553,13 +563,11 @@ const LoginPage = () => {
         <div style={{ position: "absolute", top: -80, left: -80, width: 400, height: 400, background: "radial-gradient(circle,rgba(46,201,126,0.18) 0%,transparent 65%)", borderRadius: "50%" }} />
         <div style={{ position: "absolute", bottom: -60, right: -60, width: 340, height: 340, background: "radial-gradient(circle,rgba(27,125,82,0.15) 0%,transparent 65%)", borderRadius: "50%" }} />
 
-        {/* Deco bubbles */}
         <div className="lp-deco" style={{ width: 88, height: 88, top: "18%", left: "3%", animation: "lp-float 5s ease-in-out infinite" }}><span style={{ fontSize: 34 }}>📷</span></div>
         <div className="lp-deco" style={{ width: 68, height: 68, top: "62%", left: "6%", animation: "lp-float 7s ease-in-out infinite 1s" }}><span style={{ fontSize: 26 }}>👟</span></div>
         <div className="lp-deco" style={{ width: 56, height: 56, top: "38%", left: "1%", animation: "lp-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize: 21 }}>🎧</span></div>
 
         <div className="lp-grid" style={{ position: "relative", zIndex: 10 }}>
-
           {/* LEFT: copy */}
           <div>
             <div className="lp-fade lp-d1" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(46,201,126,0.12)", border: "1px solid rgba(46,201,126,0.3)", borderRadius: 100, padding: "7px 16px", marginBottom: 26 }}>
@@ -594,8 +602,6 @@ const LoginPage = () => {
           <div className="lp-fade lp-d3" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
             <div className="lp-card-outer" style={{ width: "100%", maxWidth: 468 }}>
               <div className="lp-card">
-
-                {/* Method toggle — only step 0 */}
                 {step === 0 && (
                   <div className="lp-toggle">
                     <button className={`lp-toggle-btn ${method === "phone" ? "active" : ""}`} onClick={() => switchMethod("phone")}>
@@ -613,10 +619,12 @@ const LoginPage = () => {
 
                 {step === 0 && (
                   <>
-                    <div className="lp-divider" style={{ marginTop: 18 }}>
-                      <div className="lp-div-line" /><span className="lp-div-txt">New here</span><div className="lp-div-line" />
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18 }}>
+                      <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#9ca3af" }}>New here</span>
+                      <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
                     </div>
-                    <p style={{ textAlign: "center", fontSize: 13, color: "#6b7280" }}>
+                    <p style={{ textAlign: "center", fontSize: 13, color: "#6b7280", marginTop: 12 }}>
                       Don't have an account?{" "}
                       <Link to="/register" style={{ fontWeight: 700, color: "#1b7d52", textDecoration: "none" }}>Create one now</Link>
                     </p>

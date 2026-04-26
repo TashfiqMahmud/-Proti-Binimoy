@@ -1,0 +1,1889 @@
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
+
+/* ══════════════════════════════════════
+   MOCK AUTH STORE  (localStorage-backed)
+══════════════════════════════════════ */
+const MOCK_USERS_KEY = "pb_mock_users";
+const MOCK_SESSION_KEY = "pb_mock_session";
+
+const getMockUsers = () => {
+  try { return JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || "{}"); }
+  catch { return {}; }
+};
+const saveMockUsers = (users) => localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(users));
+
+const getSession = () => {
+  try { return JSON.parse(localStorage.getItem(MOCK_SESSION_KEY) || "null"); }
+  catch { return null; }
+};
+const saveSession = (user) => localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(user));
+const clearSession = () => localStorage.removeItem(MOCK_SESSION_KEY);
+
+/* Seed two demo users on first load */
+const seedDemoUsers = () => {
+  const users = getMockUsers();
+  if (!users["demo@protibi.com"]) {
+    users["demo@protibi.com"] = {
+      id: "u_demo",
+      email: "demo@protibi.com",
+      password: "Demo@1234",
+      name: "Rafiul Hasan",
+      phone: "01712345678",
+      joinDate: "2024-09-01",
+      location: "Dhanmondi, Dhaka",
+      bio: "Passionate about sustainable commerce and zero-waste living.",
+      idType: "nid",
+      idValue: "1234567890",
+      avatar: null,
+      rating: 4.8,
+      reviews: 12,
+      totalListings: 7,
+      soldItems: 4,
+      savedItems: 19,
+      verified: true,
+      memberTier: "Gold",
+    };
+    saveMockUsers(users);
+  }
+};
+seedDemoUsers();
+
+/* ══════════════════════════════════════
+   GLOBAL STYLES
+══════════════════════════════════════ */
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-x: hidden; scroll-behavior: smooth; }
+
+    @keyframes up-fadeUp    { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes up-shimmer   { 0%,100%{opacity:0.5} 50%{opacity:1} }
+    @keyframes up-spin      { to{transform:rotate(360deg)} }
+    @keyframes up-pop       { 0%{transform:scale(0.82);opacity:0} 65%{transform:scale(1.07)} 100%{transform:scale(1);opacity:1} }
+    @keyframes up-slideIn   { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes up-slideDown { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes up-pulse     { 0%,100%{box-shadow:0 0 0 0 rgba(46,201,126,0.4)} 50%{box-shadow:0 0 0 12px rgba(46,201,126,0)} }
+    @keyframes up-bar       { from{width:0%} to{width:100%} }
+    @keyframes up-ping      { 0%{transform:scale(1);opacity:0.8} 100%{transform:scale(1.9);opacity:0} }
+
+    /* Auth full-page overlay animations */
+    @keyframes auth-fadeUp  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes auth-float   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    @keyframes auth-shimmer { 0%,100%{opacity:0.5} 50%{opacity:1} }
+    @keyframes auth-spin    { to{transform:rotate(360deg)} }
+    @keyframes auth-slideIn { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes auth-pop     { 0%{transform:scale(0.82);opacity:0} 65%{transform:scale(1.07)} 100%{transform:scale(1);opacity:1} }
+    @keyframes auth-bar     { from{width:0%} to{width:100%} }
+    @keyframes auth-pulse2  { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+    @keyframes auth-checkPop { 0%{transform:scale(0)} 70%{transform:scale(1.25)} 100%{transform:scale(1)} }
+
+    .auth-fade  { opacity:0; animation:auth-fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) forwards; }
+    .auth-d1{animation-delay:0.08s} .auth-d2{animation-delay:0.18s} .auth-d3{animation-delay:0.28s}
+    .auth-d4{animation-delay:0.38s} .auth-d5{animation-delay:0.48s}
+    .auth-slide { opacity:0; animation:auth-slideIn 0.32s cubic-bezier(0.22,1,0.36,1) forwards; }
+    .auth-pop   { animation:auth-pop 0.42s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+    /* Full-page auth overlay */
+    .auth-overlay {
+      position:fixed; inset:0; z-index:600;
+      overflow-y:auto; overflow-x:hidden;
+    }
+    .auth-close-btn {
+      position:fixed; top:18px; right:20px; z-index:700;
+      width:42px; height:42px; border-radius:50%;
+      background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+      color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      backdrop-filter:blur(12px); transition:background 0.2s;
+    }
+    .auth-close-btn:hover { background:rgba(255,255,255,0.2); }
+
+    /* NAV inside overlay */
+    .auth-nav {
+      position:sticky; top:0; z-index:200;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 48px;
+      background:rgba(8,35,26,0.7); backdrop-filter:blur(20px);
+      border-bottom:1px solid rgba(255,255,255,0.08);
+    }
+    .auth-nav-links { display:flex; align-items:center; gap:28px; }
+    .auth-nav-link  { text-decoration:none; color:rgba(255,255,255,0.7); font-size:14px; font-weight:500; transition:color 0.2s; }
+    .auth-nav-link:hover { color:#2ec97e; }
+    .auth-nav-cta   { text-decoration:none; color:#fff; font-size:14px; font-weight:600; background:rgba(46,201,126,0.18); border:1px solid rgba(46,201,126,0.45); padding:8px 20px; border-radius:100px; transition:background 0.2s; }
+    .auth-nav-cta:hover { background:rgba(46,201,126,0.3); }
+
+    /* LAYOUT GRIDS */
+    .auth-login-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:64px;
+      align-items:center; max-width:1280px; margin:0 auto;
+      padding:80px 48px 80px; min-height:calc(100vh - 61px); width:100%;
+    }
+    .auth-register-center {
+      position:relative; zIndex:10; max-width:640px;
+      margin:0 auto; padding:60px 24px 60px; width:100%;
+    }
+
+    /* TRUST ITEMS */
+    .auth-trust-item { display:flex; align-items:center; gap:14px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:14px 18px; backdrop-filter:blur(8px); transition:border-color 0.2s, background 0.2s; }
+    .auth-trust-item:hover { border-color:rgba(46,201,126,0.3); background:rgba(46,201,126,0.06); }
+    .auth-trust-icon { width:36px; height:36px; flex-shrink:0; border-radius:10px; background:linear-gradient(135deg,#2ec97e,#1b7d52); display:flex; align-items:center; justify-content:center; }
+    .auth-trust-row  { display:flex; gap:10px; flex-wrap:wrap; margin-top:24px; }
+    .auth-trust-item-sm { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); border-radius:14px; padding:11px 14px; backdrop-filter:blur(8px); flex:1; min-width:160px; }
+    .auth-trust-icon-sm  { width:32px; height:32px; flex-shrink:0; border-radius:9px; background:linear-gradient(135deg,#2ec97e,#1b7d52); display:flex; align-items:center; justify-content:center; }
+
+    /* CARD */
+    .auth-card-outer { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.13); border-radius:28px; padding:6px; box-shadow:0 32px 96px rgba(0,0,0,0.4); backdrop-filter:blur(24px); }
+    .auth-card { background:#fff; border-radius:22px; padding:34px 38px; color:#0d1f16; }
+
+    /* METHOD TOGGLE */
+    .auth-toggle { display:grid; grid-template-columns:1fr 1fr; gap:4px; background:#f3f4f6; border-radius:14px; padding:4px; margin-bottom:26px; }
+    .auth-toggle-btn { padding:10px 8px; border-radius:10px; border:none; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; transition:all 0.22s; background:none; color:#6b7280; display:flex; align-items:center; justify-content:center; gap:6px; }
+    .auth-toggle-btn.active { background:#fff; color:#0d1f16; box-shadow:0 2px 8px rgba(0,0,0,0.09); }
+
+    /* INPUTS */
+    .auth-label { display:block; font-size:12px; font-weight:700; color:#374151; margin-bottom:7px; letter-spacing:0.02em; text-transform:uppercase; }
+    .auth-input { width:100%; border:1.5px solid #e5e7eb; background:#f9fafb; border-radius:13px; padding:13px 16px; font-size:15px; font-family:inherit; outline:none; transition:border-color 0.2s, box-shadow 0.2s, background 0.2s; color:#111827; }
+    .auth-input::placeholder { color:#9ca3af; }
+    .auth-input:focus { border-color:#2ec97e; background:#fff; box-shadow:0 0 0 4px rgba(46,201,126,0.11); }
+    .auth-input.error { border-color:#ef4444; box-shadow:0 0 0 4px rgba(239,68,68,0.09); }
+    .auth-input.valid { border-color:#1b7d52; background:#f0fdf4; }
+    .auth-input-wrap { position:relative; }
+    .auth-icon-left  { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#9ca3af; pointer-events:none; }
+    .auth-pl { padding-left:44px; }
+    .auth-pr { padding-right:44px; }
+    .auth-eye { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#9ca3af; padding:4px; display:flex; }
+    .auth-eye:hover { color:#374151; }
+    .auth-phone-pre { position:absolute; left:0; top:0; bottom:0; display:flex; align-items:center; padding:0 11px 0 13px; border-right:1.5px solid #e5e7eb; font-size:13px; font-weight:700; color:#374151; gap:4px; pointer-events:none; white-space:nowrap; }
+    .auth-phl { padding-left:76px; }
+    .auth-field-note { font-size:11px; color:#9ca3af; margin-top:5px; line-height:1.5; }
+
+    /* OTP */
+    .auth-otp-row { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; }
+    .auth-otp-box { width:100%; aspect-ratio:1; border:1.5px solid #e5e7eb; background:#f9fafb; border-radius:11px; text-align:center; font-size:19px; font-weight:700; font-family:inherit; outline:none; color:#0d1f16; transition:all 0.2s; }
+    .auth-otp-box:focus { border-color:#2ec97e; background:#fff; box-shadow:0 0 0 4px rgba(46,201,126,0.11); }
+    .auth-otp-box.filled { border-color:#1b7d52; background:#f0fdf4; }
+
+    /* ID TABS */
+    .auth-id-tabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+    .auth-id-tab { flex:1; min-width:80px; padding:9px 6px; border-radius:11px; border:1.5px solid #e5e7eb; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; background:#f9fafb; color:#6b7280; transition:all 0.22s; text-align:center; white-space:nowrap; }
+    .auth-id-tab.active { border-color:#2ec97e; background:#f0fdf4; color:#1b7d52; box-shadow:0 0 0 3px rgba(46,201,126,0.1); }
+    .auth-id-tab:hover:not(.active) { border-color:#9ca3af; color:#374151; }
+
+    /* PASSWORD STRENGTH */
+    .auth-pw-bars { display:flex; gap:4px; margin-top:8px; }
+    .auth-pw-bar  { flex:1; height:3px; border-radius:100px; transition:background 0.3s; }
+    .auth-pw-hints { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .auth-pw-hint { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; padding:3px 8px; border-radius:100px; transition:all 0.2s; }
+    .auth-pw-hint.met   { background:#f0fdf4; color:#1b7d52; }
+    .auth-pw-hint.unmet { background:#f3f4f6; color:#9ca3af; }
+
+    /* PROGRESS */
+    .auth-prog { display:flex; gap:5px; margin-bottom:22px; }
+    .auth-prog-step { flex:1; }
+    .auth-prog-bar { height:3px; border-radius:100px; margin-bottom:4px; transition:background 0.4s; }
+    .auth-prog-lbl { font-size:9px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; transition:color 0.3s; }
+
+    /* TERMS */
+    .auth-terms-box { border:1.5px solid #e5e7eb; border-radius:13px; overflow:hidden; }
+    .auth-terms-scroll { max-height:140px; overflow-y:auto; padding:14px 16px; font-size:12px; color:#374151; line-height:1.7; background:#f9fafb; scrollbar-width:thin; scrollbar-color:#d1d5db #f9fafb; }
+    .auth-terms-scroll::-webkit-scrollbar { width:4px; }
+    .auth-terms-scroll::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:2px; }
+    .auth-terms-footer { padding:12px 16px; border-top:1.5px solid #e5e7eb; background:#fff; display:flex; align-items:center; gap:10px; cursor:pointer; }
+    .auth-checkbox { width:18px; height:18px; border-radius:5px; border:2px solid #d1d5db; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.2s; }
+    .auth-checkbox.checked { background:linear-gradient(135deg,#2ec97e,#1b7d52); border-color:#1b7d52; }
+    .auth-checkbox.checked svg { animation:auth-checkPop 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+    /* BUTTONS */
+    .auth-btn-submit { width:100%; padding:14px; border-radius:13px; border:none; cursor:pointer; background:linear-gradient(135deg,#0d3322,#1b7d52); color:#fff; font-size:15px; font-weight:600; font-family:inherit; transition:opacity 0.2s, transform 0.15s, box-shadow 0.2s; box-shadow:0 5px 20px rgba(13,51,34,0.3); display:flex; align-items:center; justify-content:center; gap:8px; }
+    .auth-btn-submit:hover:not(:disabled) { opacity:0.88; transform:translateY(-1px); box-shadow:0 9px 28px rgba(13,51,34,0.4); }
+    .auth-btn-submit:disabled { opacity:0.52; cursor:not-allowed; transform:none; }
+    .auth-btn-back { background:none; border:1.5px solid #e5e7eb; border-radius:100px; padding:9px 18px; font-family:inherit; font-size:12px; font-weight:600; color:#6b7280; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s; }
+    .auth-btn-back:hover { border-color:#9ca3af; color:#374151; }
+    .auth-btn-link { background:none; border:none; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; color:#1b7d52; padding:0; }
+    .auth-btn-link:hover { color:#0d3322; }
+
+    /* ALERTS */
+    .auth-err  { background:#fef2f2; border:1px solid #fecaca; border-radius:11px; padding:10px 14px; font-size:12px; font-weight:500; color:#dc2626; display:flex; align-items:center; gap:7px; }
+    .auth-info { background:rgba(46,201,126,0.07); border:1px solid rgba(46,201,126,0.22); border-radius:11px; padding:10px 14px; font-size:12px; color:#374151; display:flex; align-items:flex-start; gap:7px; }
+    .auth-hint { background:#fffbeb; border:1px solid #fde68a; border-radius:11px; padding:10px 13px; font-size:11px; color:#92400e; display:flex; align-items:flex-start; gap:7px; line-height:1.55; }
+    .auth-success { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:11px; padding:10px 14px; font-size:12px; font-weight:500; color:#15803d; display:flex; align-items:center; gap:7px; }
+    .auth-info-box { background:rgba(46,201,126,0.07); border:1px solid rgba(46,201,126,0.2); border-radius:11px; padding:10px 14px; display:flex; gap:9px; align-items:flex-start; }
+
+    /* DIVIDER */
+    .auth-divider { display:flex; align-items:center; gap:12px; margin:20px 0; }
+    .auth-div-line { flex:1; height:1px; background:#e5e7eb; }
+    .auth-div-txt  { font-size:10px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:#9ca3af; }
+
+    /* RESEND */
+    .auth-resend { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:13px; font-size:12px; color:#6b7280; }
+
+    /* SPINNER */
+    .auth-spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:auth-spin 0.7s linear infinite; }
+
+    /* DECO BUBBLES */
+    .auth-deco { position:absolute; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); }
+
+    @keyframes up-toastIn { from{opacity:0;transform:translateX(-50%) translateY(16px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    .up-login-toast {
+      position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+      z-index:900; display:flex; align-items:center; gap:12px;
+      background:#08231a; border:1px solid rgba(46,201,126,0.4);
+      border-radius:100px; padding:12px 20px 12px 14px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.5);
+      animation:up-toastIn 0.32s cubic-bezier(0.22,1,0.36,1) forwards;
+      white-space:nowrap;
+    }
+
+    /* ── PROFILE NAV ── */
+    .up-nav {
+      position:fixed; top:0; left:0; right:0; z-index:300;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 48px;
+      background:rgba(8,35,26,0.72); backdrop-filter:blur(22px);
+      border-bottom:1px solid rgba(255,255,255,0.08);
+    }
+    .up-nav-links { display:flex; align-items:center; gap:28px; }
+    .up-nav-link  { text-decoration:none; color:rgba(255,255,255,0.7); font-size:14px; font-weight:500; transition:color 0.2s; }
+    .up-nav-link:hover { color:#2ec97e; }
+    .up-hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; background:none; border:none; padding:6px; }
+    .up-hamburger span { display:block; width:24px; height:2px; background:#fff; border-radius:2px; transition:all 0.25s; }
+    .up-mobile-menu { display:none; position:fixed; top:61px; left:0; right:0; z-index:299; background:rgba(8,35,26,0.98); backdrop-filter:blur(24px); border-bottom:1px solid rgba(255,255,255,0.08); padding:24px 24px 32px; flex-direction:column; }
+    .up-mobile-menu.open { display:flex; }
+    .up-mobile-link { text-decoration:none; color:rgba(255,255,255,0.8); font-size:17px; font-weight:500; padding:14px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
+
+    /* ── PROFILE LAYOUT ── */
+    .up-page {
+      min-height:100vh; padding-top:61px;
+      background:linear-gradient(180deg,#08231a 0%,#0d2e1f 40%,#f0f4f1 40%);
+    }
+    .up-cover {
+      height:220px; position:relative; overflow:hidden;
+      background:linear-gradient(135deg,#08231a 0%,#0f3d28 40%,#1b7d52 100%);
+    }
+    .up-cover-pattern {
+      position:absolute; inset:0;
+      background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);
+      background-size:40px 40px;
+    }
+    .up-main { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+    .up-header-row {
+      display:flex; align-items:flex-end; justify-content:space-between;
+      gap:20px; margin-bottom:28px; flex-wrap:wrap;
+    }
+
+    /* ── AVATAR ── */
+    .up-avatar-wrap { position:relative; margin-top:-56px; }
+    .up-avatar {
+      width:112px; height:112px; border-radius:50%;
+      border:4px solid #fff;
+      background:linear-gradient(135deg,#2ec97e,#0d3322);
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Playfair Display',serif; font-size:38px; font-weight:700; color:#fff;
+      box-shadow:0 8px 32px rgba(0,0,0,0.2);
+      overflow:hidden; cursor:pointer; transition:opacity 0.2s;
+    }
+    .up-avatar:hover { opacity:0.88; }
+    .up-avatar-badge {
+      position:absolute; bottom:4px; right:4px;
+      width:26px; height:26px; border-radius:50%;
+      background:linear-gradient(135deg,#2ec97e,#1b7d52);
+      border:3px solid #fff;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .up-verify-ring {
+      position:absolute; inset:-3px; border-radius:50%;
+      border:2px solid rgba(46,201,126,0.6);
+      animation:up-ping 2.5s ease-out infinite;
+    }
+
+    /* ── BODY GRID ── */
+    .up-grid { display:grid; grid-template-columns:320px 1fr; gap:28px; align-items:start; }
+
+    /* ── CARD ── */
+    .up-card { background:#fff; border-radius:20px; padding:28px; box-shadow:0 2px 20px rgba(0,0,0,0.07); border:1px solid rgba(0,0,0,0.05); }
+    .up-card-sm { background:#fff; border-radius:16px; padding:20px 24px; box-shadow:0 2px 16px rgba(0,0,0,0.06); border:1px solid rgba(0,0,0,0.05); }
+
+    /* ── TABS ── */
+    .up-tabs { display:flex; gap:4px; background:#f1f5f2; border-radius:14px; padding:4px; margin-bottom:24px; overflow-x:auto; }
+    .up-tab { flex:1; min-width:max-content; padding:10px 16px; border-radius:10px; border:none; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; transition:all 0.22s; background:none; color:#6b7280; white-space:nowrap; display:flex; align-items:center; justify-content:center; gap:6px; }
+    .up-tab.active { background:#fff; color:#0d3322; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+    .up-tab:hover:not(.active) { color:#374151; }
+
+    /* ── INPUTS ── */
+    .up-label { display:block; font-size:11px; font-weight:700; color:#6b7280; margin-bottom:6px; letter-spacing:0.05em; text-transform:uppercase; }
+    .up-input { width:100%; border:1.5px solid #e5e7eb; background:#f9fafb; border-radius:12px; padding:12px 16px; font-size:14px; font-family:inherit; outline:none; transition:border-color 0.2s, box-shadow 0.2s, background 0.2s; color:#111827; }
+    .up-input::placeholder { color:#9ca3af; }
+    .up-input:focus { border-color:#2ec97e; background:#fff; box-shadow:0 0 0 4px rgba(46,201,126,0.1); }
+    .up-input:disabled { background:#f3f4f6; color:#9ca3af; cursor:not-allowed; }
+    .up-textarea { resize:vertical; min-height:90px; line-height:1.6; }
+    .up-input-wrap { position:relative; }
+    .up-input-icon { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:#9ca3af; pointer-events:none; }
+    .up-pl { padding-left:40px; }
+    .up-select { width:100%; border:1.5px solid #e5e7eb; background:#f9fafb; border-radius:12px; padding:12px 16px; font-size:14px; font-family:inherit; outline:none; color:#111827; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; background-size:16px; }
+    .up-select:focus { border-color:#2ec97e; box-shadow:0 0 0 4px rgba(46,201,126,0.1); }
+
+    /* ── BUTTONS ── */
+    .up-btn-primary { display:inline-flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(135deg,#0d3322,#1b7d52); color:#fff; border:none; border-radius:12px; padding:12px 22px; font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; transition:opacity 0.2s, transform 0.15s, box-shadow 0.2s; box-shadow:0 4px 16px rgba(13,51,34,0.28); }
+    .up-btn-primary:hover:not(:disabled) { opacity:0.88; transform:translateY(-1px); box-shadow:0 7px 24px rgba(13,51,34,0.38); }
+    .up-btn-primary:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+    .up-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:none; border:1.5px solid #e5e7eb; border-radius:12px; padding:11px 18px; font-size:14px; font-weight:600; font-family:inherit; color:#374151; cursor:pointer; transition:all 0.2s; }
+    .up-btn-ghost:hover { border-color:#9ca3af; background:#f9fafb; }
+    .up-btn-danger { display:inline-flex; align-items:center; gap:6px; background:none; border:1.5px solid #fecaca; border-radius:12px; padding:11px 18px; font-size:14px; font-weight:600; font-family:inherit; color:#dc2626; cursor:pointer; transition:all 0.2s; }
+    .up-btn-danger:hover { background:#fef2f2; border-color:#ef4444; }
+    .up-btn-sm { display:inline-flex; align-items:center; gap:5px; background:rgba(46,201,126,0.1); border:1px solid rgba(46,201,126,0.25); border-radius:100px; padding:6px 14px; font-size:12px; font-weight:600; font-family:inherit; color:#1b7d52; cursor:pointer; transition:all 0.2s; }
+    .up-btn-sm:hover { background:rgba(46,201,126,0.2); }
+
+    /* ── ALERTS ── */
+    .up-err  { background:#fef2f2; border:1px solid #fecaca; border-radius:11px; padding:10px 14px; font-size:12px; font-weight:500; color:#dc2626; display:flex; align-items:center; gap:7px; }
+    .up-ok   { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:11px; padding:10px 14px; font-size:12px; font-weight:500; color:#15803d; display:flex; align-items:center; gap:7px; }
+    .up-warn { background:#fffbeb; border:1px solid #fde68a; border-radius:11px; padding:10px 14px; font-size:12px; color:#92400e; display:flex; align-items:flex-start; gap:7px; }
+
+    /* ── STAT CHIP ── */
+    .up-stat-chip { display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg,rgba(46,201,126,0.08),rgba(27,125,82,0.04)); border:1px solid rgba(46,201,126,0.18); border-radius:16px; padding:16px 12px; flex:1; min-width:80px; }
+
+    /* ── ACTIVITY ITEM ── */
+    .up-activity-item { display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid #f0f0f0; }
+    .up-activity-item:last-child { border-bottom:none; }
+    .up-activity-icon { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:18px; }
+
+    /* ── LISTING CARD ── */
+    .up-listing-card { display:flex; gap:14px; padding:14px; border-radius:14px; border:1.5px solid #f0f0f0; transition:border-color 0.2s, box-shadow 0.2s; margin-bottom:12px; align-items:center; }
+    .up-listing-card:hover { border-color:rgba(46,201,126,0.3); box-shadow:0 4px 16px rgba(0,0,0,0.06); }
+    .up-listing-img { width:56px; height:56px; border-radius:10px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0; }
+
+    /* ── TIER BADGE ── */
+    .up-tier { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:100px; font-size:11px; font-weight:700; letter-spacing:0.05em; }
+
+    /* ── PROGRESS ── */
+    .up-progress-bar { height:6px; background:#e5e7eb; border-radius:100px; overflow:hidden; }
+    .up-progress-fill { height:100%; border-radius:100px; background:linear-gradient(to right,#2ec97e,#1b7d52); transition:width 0.8s cubic-bezier(0.22,1,0.36,1); }
+
+    /* ── SPINNER ── */
+    .up-spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:up-spin 0.7s linear infinite; }
+    .up-spinner-dark { border-color:rgba(13,51,34,0.2); border-top-color:#0d3322; }
+
+    /* ── SECTION TITLE ── */
+    .up-section-title { font-size:12px; font-weight:700; color:#9ca3af; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+    .up-section-title::after { content:''; flex:1; height:1px; background:#f0f0f0; }
+
+    /* ── SLIDE ANIMATION ── */
+    .up-fade  { opacity:0; animation:up-fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) forwards; }
+    .up-d1{animation-delay:0.06s} .up-d2{animation-delay:0.14s} .up-d3{animation-delay:0.22s}
+    .up-d4{animation-delay:0.30s} .up-d5{animation-delay:0.38s} .up-d6{animation-delay:0.46s}
+    .up-slide { opacity:0; animation:up-slideIn 0.32s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:900px) {
+      .up-grid { grid-template-columns:1fr; }
+      .up-nav { padding:14px 24px; }
+      .up-cover { height:160px; }
+      .up-avatar { width:90px; height:90px; font-size:30px; margin-top:-45px; }
+      .auth-login-grid { grid-template-columns:1fr; padding:60px 24px 60px; gap:32px; }
+      .auth-nav { padding:14px 28px; }
+    }
+    @media(max-width:640px) {
+      .up-nav { padding:14px 16px; }
+      .up-nav-links { display:none; }
+      .up-hamburger { display:flex; }
+      .up-main { padding:0 16px 60px; }
+      .up-card { padding:20px 18px; }
+      .up-header-row { flex-direction:column; align-items:flex-start; }
+      .up-tabs { gap:2px; }
+      .up-tab { padding:9px 12px; font-size:12px; }
+      .auth-nav { padding:14px 20px; }
+      .auth-nav-links { display:none; }
+      .auth-card { padding:20px 16px; border-radius:16px; }
+      .auth-card-outer { border-radius:20px; padding:4px; }
+      .auth-deco { display:none; }
+      .auth-otp-box { font-size:16px; border-radius:9px; }
+    }
+  `}</style>
+);
+
+/* ══════════════════════════════════════
+   AUTH ATOMS
+══════════════════════════════════════ */
+const AuthSpinner = () => <div className="auth-spinner" />;
+const AuthArr = ({ size = 15 }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size }}>
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </svg>
+);
+const AuthArrL = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+    <path d="M19 12H5M12 5l-7 7 7 7" />
+  </svg>
+);
+const AuthErrIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0 }}>
+    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+);
+const AuthOkIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0 }}>
+    <path d="M7 12.5l3.2 3.2L17.5 8.5" />
+  </svg>
+);
+const AuthInfoSvg = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="#1b7d52" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 1 }}>
+    <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+  </svg>
+);
+const AuthEyeOn = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 17, height: 17 }}>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+  </svg>
+);
+const AuthEyeOff = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 17, height: 17 }}>
+    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" />
+  </svg>
+);
+
+/* ── Progress Bar ── */
+const AuthPBar = ({ steps, cur }) => (
+  <div className="auth-prog">
+    {steps.map((s, i) => (
+      <div key={s} className="auth-prog-step">
+        <div className="auth-prog-bar" style={{ background: i <= cur ? "linear-gradient(to right,#2ec97e,#1b7d52)" : "#e5e7eb" }} />
+        <span className="auth-prog-lbl" style={{ color: i <= cur ? "#1b7d52" : "#9ca3af" }}>{s}</span>
+      </div>
+    ))}
+  </div>
+);
+
+/* ── Password Strength ── */
+const pwChecks = [
+  { key: "len",   label: "8+ chars",  test: p => p.length >= 8 },
+  { key: "upper", label: "Uppercase", test: p => /[A-Z]/.test(p) },
+  { key: "digit", label: "Number",    test: p => /\d/.test(p) },
+  { key: "spcl",  label: "Symbol",    test: p => /[^A-Za-z0-9]/.test(p) },
+];
+const getPwStrength = p => !p ? 0 : pwChecks.filter(c => c.test(p)).length;
+const strengthColors = ["#e5e7eb", "#ef4444", "#f59e0b", "#3b82f6", "#1b7d52"];
+const strengthLabels = ["", "Weak", "Fair", "Good", "Strong"];
+
+const AuthPwStrength = ({ password }) => {
+  const s = getPwStrength(password);
+  if (!password) return null;
+  return (
+    <div>
+      <div className="auth-pw-bars">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="auth-pw-bar" style={{ background: i <= s ? strengthColors[s] : "#e5e7eb" }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+        <div className="auth-pw-hints">
+          {pwChecks.map(c => (
+            <span key={c.key} className={`auth-pw-hint ${c.test(password) ? "met" : "unmet"}`}>
+              {c.test(password) ? "✓" : "·"} {c.label}
+            </span>
+          ))}
+        </div>
+        {s > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: strengthColors[s], flexShrink: 0, marginLeft: 8 }}>{strengthLabels[s]}</span>}
+      </div>
+    </div>
+  );
+};
+
+/* ── OTP Input ── */
+const AuthOtpInput = ({ value, onChange }) => {
+  const refs = Array.from({ length: 6 }, () => useRef(null));
+  const cells = value.split("");
+  const handleKey = (i, e) => {
+    if (e.key === "Backspace") {
+      if (cells[i]) { const n = [...cells]; n[i] = ""; onChange(n.join("")); }
+      else if (i > 0) { refs[i - 1].current?.focus(); const n = [...cells]; n[i - 1] = ""; onChange(n.join("")); }
+      return;
+    }
+    if (e.key === "ArrowLeft" && i > 0) refs[i - 1].current?.focus();
+    if (e.key === "ArrowRight" && i < 5) refs[i + 1].current?.focus();
+  };
+  const handleChange = (i, e) => {
+    const d = e.target.value.replace(/\D/, "").slice(-1);
+    if (!d) return;
+    const n = [...cells]; n[i] = d; onChange(n.join(""));
+    if (i < 5) refs[i + 1].current?.focus();
+  };
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const p = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    onChange(p.padEnd(6, "").slice(0, 6));
+    refs[Math.min(p.length, 5)].current?.focus();
+  };
+  return (
+    <div className="auth-otp-row">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <input key={i} ref={refs[i]} type="text" inputMode="numeric" maxLength={1}
+          value={cells[i] || ""} className={`auth-otp-box ${cells[i] ? "filled" : ""}`}
+          onChange={e => handleChange(i, e)} onKeyDown={e => handleKey(i, e)}
+          onPaste={handlePaste} autoFocus={i === 0}
+        />
+      ))}
+    </div>
+  );
+};
+
+/* ── Terms Text ── */
+const TermsText = () => (
+  <>
+    <p style={{ fontWeight: 700, marginBottom: 8, color: "#0d1f16" }}>Terms & Conditions — Proti-Binimoy</p>
+    <p style={{ marginBottom: 8 }}><strong>1. Eligibility.</strong> You must be 18+ years old and a resident of Bangladesh.</p>
+    <p style={{ marginBottom: 8 }}><strong>2. Account Responsibility.</strong> You are solely responsible for your credentials and all activity under your account.</p>
+    <p style={{ marginBottom: 8 }}><strong>3. Verified Listings.</strong> All listings must be accurate. Fraudulent or misleading listings will result in immediate suspension.</p>
+    <p style={{ marginBottom: 8 }}><strong>4. Sustainable Commerce.</strong> Users agree not to list prohibited, counterfeit, or environmentally harmful items.</p>
+    <p style={{ marginBottom: 8 }}><strong>5. Privacy.</strong> Personal information is collected for verification only and will never be sold to third parties.</p>
+    <p style={{ marginBottom: 8 }}><strong>6. Identity Verification.</strong> NID / DOB / Passport details are end-to-end encrypted.</p>
+    <p style={{ marginBottom: 8 }}><strong>7. Conduct.</strong> Harassment, discrimination, or abuse will result in a permanent ban.</p>
+    <p><strong>8. Dispute Resolution.</strong> Proti-Binimoy assists in disputes but bears no liability for transaction outcomes.</p>
+  </>
+);
+
+/* ══════════════════════════════════════
+   FULL-PAGE LOGIN OVERLAY
+══════════════════════════════════════ */
+const LoginOverlay = ({ onClose, onSuccess, onSwitchToRegister }) => {
+  const [method, setMethod] = useState("phone");
+  const [step, setStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // phone flow
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+
+  // email flow
+  const [email, setEmail] = useState("");
+  const [password, setPw] = useState("");
+  const [showPw, setShowPw] = useState(false);
+
+  const sim = ms => new Promise(r => setTimeout(r, ms));
+
+  const switchMethod = (m) => {
+    setMethod(m); setStep(0); setError("");
+    setPhone(""); setOtp(""); setEmail(""); setPw(""); setShowPw(false);
+  };
+
+  /* Phone mock: check → OTP → success */
+  const handlePhoneCheck = async (e) => {
+    e.preventDefault(); setError("");
+    const d = phone.replace(/\D/g, "");
+    if (d.length < 11) { setError("Enter a valid 11-digit Bangladeshi number."); return; }
+    setLoading(true);
+    await sim(600);
+    const users = getMockUsers();
+    const found = Object.values(users).find(u => u.phone === d);
+    if (!found) { setError("This number is not registered. Please create an account first."); setLoading(false); return; }
+    setLoading(false); setStep(1);
+  };
+
+  const handleOtpVerify = async (e) => {
+    e?.preventDefault(); setError("");
+    if (otp.length < 6) { setError("Enter the full 6-digit OTP."); return; }
+    setLoading(true);
+    await sim(700);
+    // Mock: accept any 6-digit OTP
+    const users = getMockUsers();
+    const d = phone.replace(/\D/g, "");
+    const user = Object.values(users).find(u => u.phone === d);
+    if (!user) { setError("Could not find user. Please try again."); setLoading(false); return; }
+    const session = { ...user }; delete session.password;
+    saveSession(session);
+    setLoading(false); setStep(2);
+    setTimeout(() => onSuccess(session), 1600);
+  };
+
+  /* Email mock: check → password → success */
+  const handleEmailCheck = async (e) => {
+    e.preventDefault(); setError("");
+    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError("Enter a valid email address."); return; }
+    setLoading(true);
+    await sim(500);
+    const users = getMockUsers();
+    if (!users[email.trim().toLowerCase()]) { setError("This email is not registered. Please create an account first."); setLoading(false); return; }
+    setLoading(false); setStep(1);
+  };
+
+  const handlePasswordCheck = async (e) => {
+    e.preventDefault(); setError("");
+    if (!password) { setError("Enter your password."); return; }
+    setLoading(true);
+    await sim(600);
+    const users = getMockUsers();
+    const user = users[email.trim().toLowerCase()];
+    if (!user || user.password !== password) { setError("Invalid email or password."); setLoading(false); return; }
+    const session = { ...user }; delete session.password;
+    saveSession(session);
+    setLoading(false); setStep(2);
+    setTimeout(() => onSuccess(session), 1600);
+  };
+
+  const trustPoints = [
+    "Verified profiles for more confident exchanges",
+    "Cleaner listings and simpler communication",
+    "Built for sustainable buying, selling, and barter",
+  ];
+
+  const renderCard = () => {
+    if (step === 2) return (
+      <div className="auth-pop" style={{ textAlign: "center", padding: "12px 0" }}>
+        <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg,#2ec97e,#1b7d52)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 18, boxShadow: "0 8px 28px rgba(46,201,126,0.4)", animation: "auth-pulse2 1.6s ease-in-out infinite" }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 30, height: 30 }}>
+            <path d="M7 12.5l3.2 3.2L17.5 8.5" />
+          </svg>
+        </div>
+        <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 700, color: "#0d1f16", marginBottom: 10 }}>You're in!</h3>
+        <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>Loading your profile…</p>
+        <div style={{ height: 4, borderRadius: 100, background: "#f3f4f6", overflow: "hidden" }}>
+          <div style={{ height: "100%", background: "linear-gradient(to right,#2ec97e,#1b7d52)", borderRadius: 100, animation: "auth-bar 1.5s linear forwards" }} />
+        </div>
+      </div>
+    );
+
+    if (method === "phone") {
+      if (step === 0) return (
+        <div className="auth-slide" key="ph0">
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Phone Login</p>
+          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2vw,24px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter your number</h2>
+          <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 18, fontWeight: 300 }}>We'll send a one-time code to verify your identity.</p>
+          <form onSubmit={handlePhoneCheck} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label className="auth-label">Phone Number</label>
+              <div className="auth-input-wrap">
+                <div className="auth-phone-pre">🇧🇩 +88</div>
+                <input type="tel" inputMode="numeric" placeholder="01XXXXXXXXX" value={phone}
+                  onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                  className={`auth-input auth-phl ${phone.replace(/\D/g, "").length === 11 ? "valid" : ""}`} autoFocus />
+              </div>
+            </div>
+            <div className="auth-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+              Demo phone: <strong>01712345678</strong> — any 6-digit OTP works
+            </div>
+            {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
+            <button type="submit" disabled={loading} className="auth-btn-submit">
+              {loading ? <><AuthSpinner /> Checking…</> : <>Send OTP <AuthArr /></>}
+            </button>
+          </form>
+        </div>
+      );
+      if (step === 1) return (
+        <div className="auth-slide" key="ph1">
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Verify OTP</p>
+          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2vw,24px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter the code</h2>
+          <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 18, fontWeight: 300 }}>
+            Sent to <strong style={{ color: "#0d1f16" }}>+88 {phone}</strong>
+          </p>
+          <form onSubmit={handleOtpVerify} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <AuthOtpInput value={otp} onChange={setOtp} />
+            <div className="auth-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+              Enter any 6-digit code to simulate OTP verification
+            </div>
+            {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
+            <button type="submit" disabled={loading || otp.length < 6} className="auth-btn-submit">
+              {loading ? <><AuthSpinner /> Verifying…</> : <>Verify & Sign In <AuthArr /></>}
+            </button>
+          </form>
+          <div className="auth-resend">
+            <span>Didn't receive it?</span>
+            <button className="auth-btn-link" onClick={() => setStep(0)}>Change number</button>
+          </div>
+          <button className="auth-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(0); setError(""); }}>
+            <AuthArrL /> Back
+          </button>
+        </div>
+      );
+    }
+
+    if (method === "email") {
+      if (step === 0) return (
+        <div className="auth-slide" key="em0">
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Email Login</p>
+          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2vw,24px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter your email</h2>
+          <form onSubmit={handleEmailCheck} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label className="auth-label">Email Address</label>
+              <div className="auth-input-wrap">
+                <div className="auth-icon-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+                </div>
+                <input type="email" placeholder="you@example.com" value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className={`auth-input auth-pl ${email && /\S+@\S+\.\S+/.test(email) ? "valid" : ""}`} autoFocus />
+              </div>
+            </div>
+            <div className="auth-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+              Demo: <strong>demo@protibi.com</strong>
+            </div>
+            {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
+            <button type="submit" disabled={loading} className="auth-btn-submit">
+              {loading ? <><AuthSpinner /> Checking…</> : <>Continue <AuthArr /></>}
+            </button>
+          </form>
+        </div>
+      );
+      if (step === 1) return (
+        <div className="auth-slide" key="em1">
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Enter Password</p>
+          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2vw,24px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Welcome back</h2>
+          <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 18, fontWeight: 300 }}>
+            Signing in as <strong style={{ color: "#0d1f16" }}>{email}</strong>
+          </p>
+          <form onSubmit={handlePasswordCheck} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label className="auth-label">Password</label>
+              <div className="auth-input-wrap">
+                <div className="auth-icon-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
+                </div>
+                <input type={showPw ? "text" : "password"} placeholder="Enter your password" value={password}
+                  onChange={e => setPw(e.target.value)}
+                  className="auth-input auth-pl auth-pr" autoFocus />
+                <button type="button" className="auth-eye" onClick={() => setShowPw(!showPw)}>
+                  {showPw ? <AuthEyeOn /> : <AuthEyeOff />}
+                </button>
+              </div>
+            </div>
+            <div className="auth-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+              Demo password: <strong>Demo@1234</strong>
+            </div>
+            {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
+            <button type="submit" disabled={loading} className="auth-btn-submit">
+              {loading ? <><AuthSpinner /> Signing in…</> : <>Sign In <AuthArr /></>}
+            </button>
+          </form>
+          <button className="auth-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(0); setError(""); }}>
+            <AuthArrL /> Back
+          </button>
+        </div>
+      );
+    }
+  };
+
+  return (
+    <div className="auth-overlay">
+      {/* Close button */}
+      <button className="auth-close-btn" onClick={onClose} title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+
+      {/* Hero section with exact login.jsx layout */}
+      <section style={{ position: "relative", minHeight: "100vh", background: "linear-gradient(135deg,#08231a 0%,#0f3d28 60%,#1b7d52 100%)" }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)", backgroundSize: "56px 56px" }} />
+        <div style={{ position: "absolute", top: -80, left: -80, width: 400, height: 400, background: "radial-gradient(circle,rgba(46,201,126,0.18) 0%,transparent 65%)", borderRadius: "50%" }} />
+        <div style={{ position: "absolute", bottom: -60, right: -60, width: 340, height: 340, background: "radial-gradient(circle,rgba(27,125,82,0.15) 0%,transparent 65%)", borderRadius: "50%" }} />
+
+        {/* Nav */}
+        <nav className="auth-nav">
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, flexShrink: 0, background: "linear-gradient(135deg,#2ec97e,#1b7d52)", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display',serif", fontWeight: 900, fontSize: 19, color: "#fff" }}>P</div>
+            <div>
+              <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 19, fontWeight: 700, color: "#fff", lineHeight: 1 }}>Proti-Binimoy</p>
+              <p style={{ fontSize: 9, letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", marginTop: 3 }}>Sustainable Marketplace</p>
+            </div>
+          </div>
+          <div className="auth-nav-links">
+            <span className="auth-nav-link" style={{ cursor: "pointer" }} onClick={onClose}>Home</span>
+            <span className="auth-nav-link" style={{ cursor: "pointer" }}>About</span>
+            <span className="auth-nav-cta" style={{ cursor: "pointer" }} onClick={onSwitchToRegister}>Create Account →</span>
+          </div>
+        </nav>
+
+        {/* Deco bubbles */}
+        <div className="auth-deco" style={{ width: 88, height: 88, top: "18%", left: "3%", animation: "auth-float 5s ease-in-out infinite" }}><span style={{ fontSize: 34 }}>📷</span></div>
+        <div className="auth-deco" style={{ width: 68, height: 68, top: "62%", left: "6%", animation: "auth-float 7s ease-in-out infinite 1s" }}><span style={{ fontSize: 26 }}>👟</span></div>
+        <div className="auth-deco" style={{ width: 56, height: 56, top: "38%", left: "1%", animation: "auth-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize: 21 }}>🎧</span></div>
+
+        {/* Grid */}
+        <div className="auth-login-grid" style={{ position: "relative", zIndex: 10 }}>
+          {/* LEFT: copy */}
+          <div>
+            <div className="auth-fade auth-d1" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(46,201,126,0.12)", border: "1px solid rgba(46,201,126,0.3)", borderRadius: 100, padding: "7px 16px", marginBottom: 26 }}>
+              <div style={{ width: 7, height: 7, background: "#2ec97e", borderRadius: "50%", animation: "auth-shimmer 2s infinite" }} />
+              <span style={{ fontSize: 12, fontWeight: 500, color: "#2ec97e", letterSpacing: "0.05em" }}>Welcome back to Proti-Binimoy</span>
+            </div>
+            <h1 className="auth-fade auth-d2" style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(36px,4.5vw,64px)", fontWeight: 900, lineHeight: 1.06, color: "#fff", marginBottom: 18 }}>
+              Sign in to your<br />
+              <em style={{ fontStyle: "italic", color: "#2ec97e" }}>trusted marketplace</em><br />
+              <span style={{ color: "#f3edd8", fontSize: "clamp(28px,3.5vw,50px)" }}>journey.</span>
+            </h1>
+            <p className="auth-fade auth-d3" style={{ fontSize: "clamp(13px,1.5vw,15px)", lineHeight: 1.75, color: "rgba(255,255,255,0.6)", maxWidth: 420, marginBottom: 0, fontWeight: 300 }}>
+              Use your phone for instant OTP access, or sign in with your email and password.
+            </p>
+            <div className="auth-fade auth-d4" style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 28 }}>
+              {trustPoints.map((p, i) => (
+                <div key={i} className="auth-trust-item">
+                  <div className="auth-trust-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}><path d="M7 12.5l3.2 3.2L17.5 8.5" /></svg>
+                  </div>
+                  <p style={{ fontSize: "clamp(12px,1.3vw,14px)", color: "rgba(255,255,255,0.82)", fontWeight: 400 }}>{p}</p>
+                </div>
+              ))}
+            </div>
+            <p className="auth-fade auth-d5" style={{ marginTop: 26, fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+              No account?{" "}
+              <span style={{ color: "#2ec97e", fontWeight: 600, textDecoration: "none", cursor: "pointer" }} onClick={onSwitchToRegister}>Create one for free →</span>
+            </p>
+          </div>
+
+          {/* RIGHT: form card */}
+          <div className="auth-fade auth-d3" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div className="auth-card-outer" style={{ width: "100%", maxWidth: 468 }}>
+              <div className="auth-card">
+                {step === 0 && (
+                  <div className="auth-toggle">
+                    <button className={`auth-toggle-btn ${method === "phone" ? "active" : ""}`} onClick={() => switchMethod("phone")}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10 19.79 19.79 0 01.22 1.37 2 2 0 012.2 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14.92z" /></svg>
+                      Phone & OTP
+                    </button>
+                    <button className={`auth-toggle-btn ${method === "email" ? "active" : ""}`} onClick={() => switchMethod("email")}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+                      Email
+                    </button>
+                  </div>
+                )}
+                {renderCard()}
+                {step === 0 && (
+                  <>
+                    <div className="auth-divider" style={{ marginTop: 18 }}>
+                      <div className="auth-div-line" /><span className="auth-div-txt">New here</span><div className="auth-div-line" />
+                    </div>
+                    <p style={{ textAlign: "center", fontSize: 13, color: "#6b7280" }}>
+                      Don't have an account?{" "}
+                      <span style={{ fontWeight: 700, color: "#1b7d52", cursor: "pointer" }} onClick={onSwitchToRegister}>Create one now</span>
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════
+   FULL-PAGE REGISTER OVERLAY
+══════════════════════════════════════ */
+const RegisterOverlay = ({ onClose, onSuccess, onSwitchToLogin }) => {
+  const [step, setStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // Step 0
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+
+  // Step 1
+  const [idType, setIdType] = useState("nid");
+  const [nid, setNid] = useState("");
+  const [dob, setDob] = useState("");
+  const [passport, setPassport] = useState("");
+
+  // Step 2
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [showCf, setShowCf] = useState(false);
+  const [termsRead, setTermsRead] = useState(false);
+  const [termsAgree, setTermsAgree] = useState(false);
+
+  const sim = ms => new Promise(r => setTimeout(r, ms));
+
+  const handleTermsScroll = (e) => {
+    const el = e.target;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) setTermsRead(true);
+  };
+
+  const handlePersonal = (e) => {
+    e.preventDefault(); setError("");
+    if (!name.trim() || name.trim().length < 3) { setError("Enter your full name (at least 3 characters)."); return; }
+    const d = phone.replace(/\D/g, "");
+    if (d.length < 11) { setError("Enter a valid 11-digit Bangladeshi phone number."); return; }
+    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError("Enter a valid email address."); return; }
+    setStep(1);
+  };
+
+  const handleIdentity = (e) => {
+    e.preventDefault(); setError("");
+    if (idType === "nid") {
+      const n = nid.replace(/\D/g, "");
+      if (![10, 13, 17].includes(n.length)) { setError("NID must be 10, 13, or 17 digits."); return; }
+    } else if (idType === "dob") {
+      if (!dob) { setError("Please select your date of birth."); return; }
+      const age = (new Date() - new Date(dob)) / (1000 * 60 * 60 * 24 * 365.25);
+      if (age < 18) { setError("You must be at least 18 years old to register."); return; }
+    } else {
+      if (!passport.trim() || passport.trim().length < 6) { setError("Enter a valid passport number (minimum 6 characters)."); return; }
+    }
+    setStep(2);
+  };
+
+  const handleSecurity = async (e) => {
+    e.preventDefault(); setError("");
+    if (getPwStrength(password) < 4) { setError("Password must have 8+ characters, an uppercase letter, a number, and a symbol."); return; }
+    if (password !== confirm) { setError("Passwords do not match."); return; }
+    if (!termsAgree) { setError("You must agree to the Terms & Conditions to continue."); return; }
+    setLoading(true);
+    await sim(700);
+    const users = getMockUsers();
+    const emailKey = email.trim().toLowerCase();
+    if (users[emailKey]) { setError("This email is already registered."); setLoading(false); return; }
+    const identityPayload =
+      idType === "nid" ? { idType: "nid", idValue: nid.replace(/\D/g, "") } :
+      idType === "dob" ? { idType: "dob", idValue: dob } :
+      { idType: "passport", idValue: passport.trim() };
+    const newUser = {
+      id: `u_${Date.now()}`,
+      email: emailKey,
+      password,
+      name: name.trim(),
+      phone: phone.replace(/\D/g, ""),
+      joinDate: new Date().toISOString().split("T")[0],
+      location: "",
+      bio: "",
+      ...identityPayload,
+      avatar: null,
+      rating: 0, reviews: 0, totalListings: 0, soldItems: 0, savedItems: 0,
+      verified: false,
+      memberTier: "Bronze",
+    };
+    users[emailKey] = newUser;
+    saveMockUsers(users);
+    const session = { ...newUser }; delete session.password;
+    saveSession(session);
+    setSuccess("Account created successfully!");
+    setStep(3);
+    setLoading(false);
+    setTimeout(() => onSuccess(session), 2000);
+  };
+
+  const STEPS = ["Personal", "Identity", "Security", "Done"];
+
+  const renderCard = () => {
+    if (step === 3) return (
+      <div className="auth-pop" style={{ textAlign: "center", padding: "12px 0" }}>
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#2ec97e,#1b7d52)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 18, boxShadow: "0 8px 28px rgba(46,201,126,0.4)", animation: "auth-pulse2 1.6s ease-in-out infinite" }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 30, height: 30 }}><path d="M7 12.5l3.2 3.2L17.5 8.5" /></svg>
+        </div>
+        <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, fontWeight: 700, color: "#0d1f16", marginBottom: 10 }}>Welcome aboard!</h3>
+        <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.65, marginBottom: 20 }}>Your account has been created.<br />Loading your profile…</p>
+        <div style={{ height: 4, borderRadius: 100, background: "#f3f4f6", overflow: "hidden" }}>
+          <div style={{ height: "100%", background: "linear-gradient(to right,#2ec97e,#1b7d52)", borderRadius: 100, animation: "auth-bar 2s linear forwards" }} />
+        </div>
+      </div>
+    );
+
+    if (step === 0) return (
+      <div className="auth-slide" key="s0">
+        <AuthPBar steps={STEPS} cur={0} />
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 1 of 3</p>
+        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,27px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Personal Information</h2>
+        <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 20, fontWeight: 300 }}>Let's start with your basic details. All fields are required.</p>
+        <form onSubmit={handlePersonal} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label className="auth-label">Full Name</label>
+            <div className="auth-input-wrap">
+              <div className="auth-icon-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+              </div>
+              <input type="text" placeholder="e.g. Rafi Ahmed" value={name}
+                onChange={e => setName(e.target.value)} autoComplete="name"
+                className={`auth-input auth-pl ${name.trim().length >= 3 ? "valid" : ""}`} autoFocus />
+            </div>
+          </div>
+          <div>
+            <label className="auth-label">Phone Number</label>
+            <div className="auth-input-wrap">
+              <div className="auth-phone-pre">🇧🇩 +88</div>
+              <input type="tel" inputMode="numeric" placeholder="01XXXXXXXXX" value={phone}
+                onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                className={`auth-input auth-phl ${phone.replace(/\D/g, "").length === 11 ? "valid" : ""}`} />
+            </div>
+            <p className="auth-field-note">Used for OTP verification at login.</p>
+          </div>
+          <div>
+            <label className="auth-label">Email Address</label>
+            <div className="auth-input-wrap">
+              <div className="auth-icon-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+              </div>
+              <input type="email" placeholder="you@example.com" value={email}
+                onChange={e => setEmail(e.target.value)}
+                className={`auth-input auth-pl ${email && /\S+@\S+\.\S+/.test(email) ? "valid" : ""}`} />
+            </div>
+          </div>
+          {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
+          <button type="submit" className="auth-btn-submit">Continue <AuthArr /></button>
+        </form>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0 0" }}>
+          <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#9ca3af" }}>Have an account</span>
+          <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+        </div>
+        <p style={{ textAlign: "center", fontSize: 13, color: "#6b7280", marginTop: 14 }}>
+          Already registered?{" "}
+          <span style={{ fontWeight: 700, color: "#1b7d52", cursor: "pointer" }} onClick={onSwitchToLogin}>Sign in here</span>
+        </p>
+      </div>
+    );
+
+    if (step === 1) return (
+      <div className="auth-slide" key="s1">
+        <AuthPBar steps={STEPS} cur={1} />
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 2 of 3</p>
+        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,27px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Identity Verification</h2>
+        <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 16, fontWeight: 300 }}>Choose one identity document to verify your account.</p>
+        <div className="auth-id-tabs">
+          {[
+            { key: "nid", icon: "🪪", label: "NID Number" },
+            { key: "dob", icon: "📅", label: "Date of Birth" },
+            { key: "passport", icon: "🛂", label: "Passport" },
+          ].map(t => (
+            <button key={t.key} type="button"
+              className={`auth-id-tab ${idType === t.key ? "active" : ""}`}
+              onClick={() => { setIdType(t.key); setError(""); }}>
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+        <form onSubmit={handleIdentity} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {idType === "nid" && (
+            <div>
+              <label className="auth-label">National ID Number</label>
+              <div className="auth-input-wrap">
+                <div className="auth-icon-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+                </div>
+                <input type="text" inputMode="numeric" placeholder="10, 13, or 17 digit NID"
+                  value={nid} onChange={e => setNid(e.target.value.replace(/\D/g, "").slice(0, 17))}
+                  className={`auth-input auth-pl ${[10, 13, 17].includes(nid.replace(/\D/g, "").length) ? "valid" : ""}`} autoFocus />
+              </div>
+              <p className="auth-field-note">Encrypted and used for identity verification only.</p>
+            </div>
+          )}
+          {idType === "dob" && (
+            <div>
+              <label className="auth-label">Date of Birth</label>
+              <div className="auth-input-wrap">
+                <div className="auth-icon-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                </div>
+                <input type="date" value={dob} onChange={e => setDob(e.target.value)}
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
+                  className={`auth-input auth-pl ${dob ? "valid" : ""}`} autoFocus />
+              </div>
+              <p className="auth-field-note">You must be at least 18 years old to register.</p>
+            </div>
+          )}
+          {idType === "passport" && (
+            <div>
+              <label className="auth-label">Passport Number</label>
+              <div className="auth-input-wrap">
+                <div className="auth-icon-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14,2 14,8 20,8" /></svg>
+                </div>
+                <input type="text" placeholder="e.g. AB1234567" value={passport}
+                  onChange={e => setPassport(e.target.value.toUpperCase().slice(0, 12))}
+                  className={`auth-input auth-pl ${passport.trim().length >= 6 ? "valid" : ""}`} autoFocus />
+              </div>
+              <p className="auth-field-note">Enter exactly as it appears on your passport.</p>
+            </div>
+          )}
+          <div className="auth-info-box">
+            <AuthInfoSvg />
+            <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, fontWeight: 300 }}>
+              This data is <strong style={{ fontWeight: 700, color: "#1b7d52" }}>end-to-end encrypted</strong> and used solely for identity verification. We never share it.
+            </p>
+          </div>
+          {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
+          <button type="submit" className="auth-btn-submit">Continue <AuthArr /></button>
+        </form>
+        <button className="auth-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(0); setError(""); }}>
+          <AuthArrL /> Back
+        </button>
+      </div>
+    );
+
+    if (step === 2) return (
+      <div className="auth-slide" key="s2">
+        <AuthPBar steps={STEPS} cur={2} />
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 3 of 3</p>
+        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,27px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Create Password</h2>
+        <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 18, fontWeight: 300 }}>Choose a strong password and agree to our terms.</p>
+        <form onSubmit={handleSecurity} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="auth-label">Password</label>
+            <div className="auth-input-wrap">
+              <div className="auth-icon-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
+              </div>
+              <input type={showPw ? "text" : "password"} placeholder="Create a strong password"
+                value={password} onChange={e => setPassword(e.target.value)}
+                className={`auth-input auth-pl auth-pr ${getPwStrength(password) === 4 ? "valid" : password ? "error" : ""}`} autoFocus />
+              <button type="button" className="auth-eye" onClick={() => setShowPw(!showPw)}>
+                {showPw ? <AuthEyeOn /> : <AuthEyeOff />}
+              </button>
+            </div>
+            <AuthPwStrength password={password} />
+          </div>
+          {password.length > 0 && (
+            <div>
+              <label className="auth-label">Confirm Password</label>
+              <div className="auth-input-wrap">
+                <div className="auth-icon-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M7 12.5l3.2 3.2L17.5 8.5" /></svg>
+                </div>
+                <input type={showCf ? "text" : "password"} placeholder="Re-enter your password"
+                  value={confirm} onChange={e => setConfirm(e.target.value)}
+                  className={`auth-input auth-pl auth-pr ${confirm && confirm === password ? "valid" : confirm ? "error" : ""}`} />
+                <button type="button" className="auth-eye" onClick={() => setShowCf(!showCf)}>
+                  {showCf ? <AuthEyeOn /> : <AuthEyeOff />}
+                </button>
+              </div>
+              {confirm && confirm !== password && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 5, fontWeight: 600 }}>Passwords don't match.</p>}
+              {confirm && confirm === password && <p style={{ fontSize: 11, color: "#1b7d52", marginTop: 5, fontWeight: 600 }}>✓ Passwords match!</p>}
+            </div>
+          )}
+          <div>
+            <label className="auth-label" style={{ marginBottom: 10 }}>Terms & Conditions <span style={{ color: "#ef4444" }}>*</span></label>
+            <div className="auth-terms-box">
+              <div className="auth-terms-scroll" onScroll={handleTermsScroll}><TermsText /></div>
+              <div className="auth-terms-footer" onClick={() => setTermsAgree(v => !v)} role="button" tabIndex={0}
+                onKeyDown={e => e.key === " " && setTermsAgree(v => !v)}>
+                <div className={`auth-checkbox ${termsAgree ? "checked" : ""}`}>
+                  {termsAgree && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 11, height: 11 }}>
+                      <path d="M7 12.5l3.2 3.2L17.5 8.5" />
+                    </svg>
+                  )}
+                </div>
+                <span style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, flex: 1, userSelect: "none" }}>
+                  I have read and agree to the <strong style={{ color: "#1b7d52" }}>Terms & Conditions</strong> and <strong style={{ color: "#1b7d52" }}>Privacy Policy</strong>
+                </span>
+              </div>
+            </div>
+            {!termsRead && <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 5 }}>↑ Scroll through the terms above before agreeing.</p>}
+          </div>
+          {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
+          {success && <div className="auth-success"><AuthOkIcon />{success}</div>}
+          <button type="submit" disabled={loading || !termsAgree} className="auth-btn-submit">
+            {loading ? <><AuthSpinner /> Creating Account…</> : <>Create Account <AuthArr /></>}
+          </button>
+        </form>
+        <button className="auth-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(1); setError(""); }}>
+          <AuthArrL /> Back to Identity
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="auth-overlay">
+      {/* Close button */}
+      <button className="auth-close-btn" onClick={onClose} title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+
+      {/* Full-page register layout */}
+      <section style={{ position: "relative", minHeight: "100vh", background: "linear-gradient(115deg,rgba(2,6,23,0.97) 0%,rgba(2,6,23,0.88) 42%,rgba(8,35,26,0.85) 100%)", backgroundColor: "#020617" }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)", backgroundSize: "56px 56px" }} />
+        <div style={{ position: "absolute", top: -80, right: -60, width: 420, height: 420, background: "radial-gradient(circle,rgba(46,201,126,0.15) 0%,transparent 65%)", borderRadius: "50%" }} />
+        <div style={{ position: "absolute", bottom: -80, left: -60, width: 360, height: 360, background: "radial-gradient(circle,rgba(27,125,82,0.12) 0%,transparent 65%)", borderRadius: "50%" }} />
+
+        {/* Nav */}
+        <nav className="auth-nav">
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, flexShrink: 0, background: "linear-gradient(135deg,#2ec97e,#1b7d52)", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display',serif", fontWeight: 900, fontSize: 19, color: "#fff" }}>P</div>
+            <div>
+              <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 19, fontWeight: 700, color: "#fff", lineHeight: 1 }}>Proti-Binimoy</p>
+              <p style={{ fontSize: 9, letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", marginTop: 3 }}>Sustainable Marketplace</p>
+            </div>
+          </div>
+          <div className="auth-nav-links">
+            <span className="auth-nav-link" style={{ cursor: "pointer" }} onClick={onClose}>Home</span>
+            <span className="auth-nav-link" style={{ cursor: "pointer" }} onClick={onSwitchToLogin}>Sign In</span>
+            <span className="auth-nav-cta" style={{ cursor: "pointer", background: "rgba(46,201,126,0.28)", borderColor: "rgba(46,201,126,0.7)" }}>Register →</span>
+          </div>
+        </nav>
+
+        {/* Deco bubbles */}
+        <div className="auth-deco" style={{ width: 82, height: 82, top: "18%", left: "4%", animation: "auth-float 5.5s ease-in-out infinite" }}><span style={{ fontSize: 30 }}>🌱</span></div>
+        <div className="auth-deco" style={{ width: 66, height: 66, top: "65%", left: "6%", animation: "auth-float 7s ease-in-out infinite 1.2s" }}><span style={{ fontSize: 24 }}>📦</span></div>
+        <div className="auth-deco" style={{ width: 58, height: 58, top: "38%", right: "4%", animation: "auth-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize: 22 }}>🤝</span></div>
+        <div className="auth-deco" style={{ width: 50, height: 50, top: "74%", right: "7%", animation: "auth-float 8s ease-in-out infinite 2s" }}><span style={{ fontSize: 18 }}>♻️</span></div>
+
+        <div className="auth-register-center" style={{ position: "relative", zIndex: 10 }}>
+          <div className="auth-fade auth-d1" style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(46,201,126,0.12)", border: "1px solid rgba(46,201,126,0.3)", borderRadius: 100, padding: "7px 16px" }}>
+              <div style={{ width: 7, height: 7, background: "#2ec97e", borderRadius: "50%", animation: "auth-shimmer 2s infinite" }} />
+              <span style={{ fontSize: 12, fontWeight: 500, color: "#2ec97e", letterSpacing: "0.05em" }}>Join the Proti-Binimoy community</span>
+            </div>
+          </div>
+          <h1 className="auth-fade auth-d2" style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(30px,4vw,52px)", fontWeight: 900, lineHeight: 1.08, color: "#fff", textAlign: "center", marginBottom: 12 }}>
+            Create your<br /><em style={{ fontStyle: "italic", color: "#2ec97e" }}>free account.</em>
+          </h1>
+          <p className="auth-fade auth-d3" style={{ fontSize: "clamp(13px,1.4vw,15px)", lineHeight: 1.75, color: "rgba(255,255,255,0.58)", textAlign: "center", maxWidth: 380, margin: "0 auto 30px", fontWeight: 300 }}>
+            Buy, sell, and barter sustainably with verified members across Bangladesh.
+          </p>
+          <div className="auth-fade auth-d4">
+            <div className="auth-card-outer">
+              <div className="auth-card">{renderCard()}</div>
+            </div>
+          </div>
+          {step < 3 && (
+            <div className="auth-fade auth-d5 auth-trust-row">
+              {[
+                { icon: "🔒", title: "Secure & Private", text: "End-to-end encryption" },
+                { icon: "✅", title: "Verified Community", text: "Safe marketplace" },
+                { icon: "♻️", title: "Sustainable", text: "Eco-friendly exchanges" },
+              ].map((t, i) => (
+                <div key={i} className="auth-trust-item-sm">
+                  <div className="auth-trust-icon-sm"><span style={{ fontSize: 15 }}>{t.icon}</span></div>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: "#fff", lineHeight: 1 }}>{t.title}</p>
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 3 }}>{t.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════
+   PROFILE ATOMS
+══════════════════════════════════════ */
+const Spinner = ({ dark }) => <div className={`up-spinner${dark ? " up-spinner-dark" : ""}`} />;
+const ErrIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0 }}>
+    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+);
+const OkIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0 }}>
+    <path d="M7 12.5l3.2 3.2L17.5 8.5" />
+  </svg>
+);
+const EditIcon = ({ size = 14 }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size }}>
+    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
+const SaveIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+  </svg>
+);
+const LogoutIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+);
+const StarIcon = ({ filled }) => (
+  <svg viewBox="0 0 24 24" fill={filled ? "#f59e0b" : "none"} stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+  </svg>
+);
+const ShieldIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+    <path d="M12 3l6 2.5v5.8c0 4.1-2.5 7.9-6 9.7-3.5-1.8-6-5.6-6-9.7V5.5L12 3z" />
+    <path d="M9.5 12.2l1.7 1.7 3.6-3.9" />
+  </svg>
+);
+const CameraIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" /><circle cx="12" cy="13" r="4" />
+  </svg>
+);
+
+const Stars = ({ rating }) => (
+  <div style={{ display: "flex", gap: 2 }}>
+    {[1, 2, 3, 4, 5].map(i => <StarIcon key={i} filled={i <= Math.round(rating)} />)}
+  </div>
+);
+
+const TierBadge = ({ tier }) => {
+  const map = {
+    Bronze:  { bg: "rgba(205,127,50,0.12)",  text: "#b8762a", border: "rgba(205,127,50,0.3)",  icon: "🥉" },
+    Silver:  { bg: "rgba(160,160,160,0.12)", text: "#707070", border: "rgba(160,160,160,0.3)", icon: "🥈" },
+    Gold:    { bg: "rgba(245,158,11,0.12)",  text: "#b45309", border: "rgba(245,158,11,0.3)",  icon: "🥇" },
+    Platinum:{ bg: "rgba(46,201,126,0.12)",  text: "#1b7d52", border: "rgba(46,201,126,0.3)",  icon: "💎" },
+  };
+  const c = map[tier] || map.Bronze;
+  return (
+    <span className="up-tier" style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>
+      {c.icon} {tier}
+    </span>
+  );
+};
+
+/* ══════════════════════════════════════
+   PROFILE SIDEBAR
+══════════════════════════════════════ */
+const calcCompletion = (u) => {
+  const fields = [u.name, u.email, u.phone, u.location, u.bio, u.idValue, u.avatar];
+  return Math.round((fields.filter(Boolean).length / fields.length) * 100);
+};
+
+const ProfileSidebar = ({ user }) => (
+  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="up-card up-fade up-d2">
+      <p className="up-section-title">Activity Overview</p>
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        {[
+          { label: "Listings", value: user.totalListings, icon: "📦" },
+          { label: "Sold",     value: user.soldItems,     icon: "✅" },
+          { label: "Saved",    value: user.savedItems,    icon: "❤️" },
+        ].map(s => (
+          <div key={s.label} className="up-stat-chip">
+            <span style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</span>
+            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 700, color: "#0d1f16", lineHeight: 1 }}>{s.value}</span>
+            <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginTop: 2 }}>{s.label}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderTop: "1px solid #f0f0f0", borderBottom: "1px solid #f0f0f0", marginBottom: 14 }}>
+        <div>
+          <p style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginBottom: 4 }}>SELLER RATING</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Stars rating={user.rating || 0} />
+            <span style={{ fontSize: 16, fontWeight: 700, color: "#0d1f16" }}>{user.rating > 0 ? user.rating.toFixed(1) : "—"}</span>
+            <span style={{ fontSize: 12, color: "#9ca3af" }}>({user.reviews} reviews)</span>
+          </div>
+        </div>
+        <TierBadge tier={user.memberTier} />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 12, color: "#6b7280" }}>Member since</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#0d1f16" }}>
+            {new Date(user.joinDate).toLocaleDateString("en-US", { year: "numeric", month: "short" })}
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 100, background: user.verified ? "rgba(46,201,126,0.1)" : "rgba(245,158,11,0.1)", border: `1px solid ${user.verified ? "rgba(46,201,126,0.25)" : "rgba(245,158,11,0.25)"}` }}>
+            <ShieldIcon />
+            <span style={{ fontSize: 11, fontWeight: 700, color: user.verified ? "#1b7d52" : "#92400e" }}>
+              {user.verified ? "Verified" : "Not Verified"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div className="up-card-sm up-fade up-d3">
+      <p className="up-section-title">Trust Score</p>
+      {[
+        { label: "Profile Complete", val: calcCompletion(user), color: "#2ec97e" },
+        { label: "Response Rate",    val: user.reviews > 0 ? 88 : 0, color: "#3b82f6" },
+        { label: "Transaction Score",val: user.soldItems > 0 ? Math.min(100, user.soldItems * 14) : 0, color: "#f59e0b" },
+      ].map(s => (
+        <div key={s.label} style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+            <span style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>{s.label}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#0d1f16" }}>{s.val}%</span>
+          </div>
+          <div className="up-progress-bar">
+            <div className="up-progress-fill" style={{ width: `${s.val}%`, background: `linear-gradient(to right,${s.color}99,${s.color})` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+    <div className="up-card-sm up-fade up-d4">
+      <p className="up-section-title">Contact</p>
+      {[
+        { icon: "📧", label: user.email },
+        { icon: "📱", label: user.phone ? `+88 ${user.phone}` : "—" },
+        { icon: "📍", label: user.location || "Location not set" },
+      ].map((c, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < 2 ? "1px solid #f5f5f5" : "none" }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>{c.icon}</span>
+          <span style={{ fontSize: 13, color: "#374151", wordBreak: "break-all" }}>{c.label}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/* ══════════════════════════════════════
+   EDIT PROFILE TAB
+══════════════════════════════════════ */
+const EditProfileTab = ({ user, onSave }) => {
+  const [form, setForm] = useState({
+    name: user.name || "",
+    phone: user.phone || "",
+    location: user.location || "",
+    bio: user.bio || "",
+    email: user.email || "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setMsg(null);
+    if (!form.name.trim()) { setMsg({ type: "err", text: "Name is required." }); return; }
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 500));
+    const users = getMockUsers();
+    if (users[user.email]) {
+      users[user.email] = { ...users[user.email], ...form };
+      saveMockUsers(users);
+      const updated = { ...users[user.email] }; delete updated.password;
+      saveSession(updated);
+      onSave(updated);
+    }
+    setLoading(false);
+    setMsg({ type: "ok", text: "Profile updated successfully!" });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <p className="up-section-title">Basic Information</p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div>
+          <label className="up-label">Full Name</label>
+          <div className="up-input-wrap">
+            <div className="up-input-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            </div>
+            <input type="text" className="up-input up-pl" value={form.name} onChange={e => set("name", e.target.value)} placeholder="Your full name" />
+          </div>
+        </div>
+        <div>
+          <label className="up-label">Phone</label>
+          <input type="tel" className="up-input" value={form.phone} onChange={e => set("phone", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="01XXXXXXXXX" />
+        </div>
+      </div>
+      <div>
+        <label className="up-label">Email</label>
+        <input type="email" className="up-input" value={form.email} disabled style={{ cursor: "not-allowed" }} />
+        <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>Email cannot be changed.</p>
+      </div>
+      <div>
+        <label className="up-label">Location</label>
+        <div className="up-input-wrap">
+          <div className="up-input-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+          </div>
+          <input type="text" className="up-input up-pl" value={form.location} onChange={e => set("location", e.target.value)} placeholder="e.g. Dhanmondi, Dhaka" />
+        </div>
+      </div>
+      <div>
+        <label className="up-label">Bio</label>
+        <textarea className="up-input up-textarea" value={form.bio} onChange={e => set("bio", e.target.value)} placeholder="Tell others about yourself…" rows={3} />
+      </div>
+      {msg && (msg.type === "ok"
+        ? <div className="up-ok"><OkIcon />{msg.text}</div>
+        : <div className="up-err"><ErrIcon />{msg.text}</div>
+      )}
+      <button type="submit" disabled={loading} className="up-btn-primary" style={{ alignSelf: "flex-start" }}>
+        {loading ? <><Spinner /> Saving…</> : <><SaveIcon /> Save Changes</>}
+      </button>
+    </form>
+  );
+};
+
+/* ══════════════════════════════════════
+   SECURITY TAB
+══════════════════════════════════════ */
+const SecurityTab = ({ user }) => {
+  const [form, setForm] = useState({ cur: "", next: "", conf: "" });
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [showCur, setShowCur] = useState(false);
+  const [showNext, setShowNext] = useState(false);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleChange = async (e) => {
+    e.preventDefault(); setMsg(null);
+    if (!form.cur || !form.next || !form.conf) { setMsg({ type: "err", text: "All fields are required." }); return; }
+    if (form.next.length < 8) { setMsg({ type: "err", text: "New password must be at least 8 characters." }); return; }
+    if (form.next !== form.conf) { setMsg({ type: "err", text: "New passwords don't match." }); return; }
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 600));
+    const users = getMockUsers();
+    if (!users[user.email] || users[user.email].password !== form.cur) {
+      setMsg({ type: "err", text: "Current password is incorrect." });
+      setLoading(false); return;
+    }
+    users[user.email].password = form.next;
+    saveMockUsers(users);
+    setLoading(false);
+    setMsg({ type: "ok", text: "Password updated successfully!" });
+    setForm({ cur: "", next: "", conf: "" });
+  };
+
+  const eye = (show, toggle, val, onChange, ph) => (
+    <div className="up-input-wrap">
+      <input type={show ? "text" : "password"} className="up-input" value={val} onChange={onChange} placeholder={ph} style={{ paddingRight: 40 }} />
+      <button type="button" onClick={() => toggle(!show)}
+        style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 4 }}>
+        {show
+          ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 17, height: 17 }}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+          : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 17, height: 17 }}><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" /></svg>
+        }
+      </button>
+    </div>
+  );
+
+  return (
+    <div>
+      <p className="up-section-title">Change Password</p>
+      <form onSubmit={handleChange} style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 480 }}>
+        <div>
+          <label className="up-label">Current Password</label>
+          {eye(showCur, setShowCur, form.cur, e => set("cur", e.target.value), "Current password")}
+        </div>
+        <div>
+          <label className="up-label">New Password</label>
+          {eye(showNext, setShowNext, form.next, e => set("next", e.target.value), "New password (min 8 chars)")}
+        </div>
+        <div>
+          <label className="up-label">Confirm New Password</label>
+          <input type="password" className="up-input" value={form.conf} onChange={e => set("conf", e.target.value)} placeholder="Re-enter new password" />
+        </div>
+        {msg && (msg.type === "ok"
+          ? <div className="up-ok"><OkIcon />{msg.text}</div>
+          : <div className="up-err"><ErrIcon />{msg.text}</div>
+        )}
+        <button type="submit" disabled={loading} className="up-btn-primary" style={{ alignSelf: "flex-start" }}>
+          {loading ? <><Spinner /> Updating…</> : "Update Password"}
+        </button>
+      </form>
+      <div style={{ marginTop: 32 }}>
+        <p className="up-section-title">Identity Verification</p>
+        <div className="up-card-sm" style={{ display: "flex", alignItems: "center", gap: 14, background: user.idValue ? "rgba(46,201,126,0.05)" : "rgba(245,158,11,0.05)" }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: user.idValue ? "rgba(46,201,126,0.15)" : "rgba(245,158,11,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+            {user.idValue ? "🔐" : "🔓"}
+          </div>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#0d1f16", marginBottom: 3 }}>{user.idValue ? "Identity Verified" : "Identity Not Verified"}</p>
+            <p style={{ fontSize: 12, color: "#6b7280" }}>
+              {user.idValue ? `${user.idType?.toUpperCase() || "ID"} verified — encrypted & secure.` : "Add a NID, DOB, or Passport to verify your identity."}
+            </p>
+          </div>
+          {user.idValue && (
+            <div style={{ marginLeft: "auto", flexShrink: 0 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 100, background: "rgba(46,201,126,0.15)", color: "#1b7d52", fontSize: 12, fontWeight: 700 }}>
+                <ShieldIcon /> Verified
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════
+   LISTINGS TAB
+══════════════════════════════════════ */
+const MOCK_LISTINGS = [
+  { id: 1, emoji: "💻", title: "Dell Laptop Core i5", price: "৳32,000", status: "active",  cat: "Electronics", views: 521, saves: 97 },
+  { id: 2, emoji: "🪑", title: "Wooden Study Table",  price: "৳3,200",  status: "active",  cat: "Furniture",   views: 88,  saves: 14 },
+  { id: 3, emoji: "📚", title: "Engineering Textbooks Bundle", price: "৳1,800", status: "sold", cat: "Books", views: 64, saves: 9 },
+  { id: 4, emoji: "👟", title: "Nike Air Max (Size 42)", price: "৳4,500", status: "paused", cat: "Clothing", views: 31, saves: 5 },
+];
+
+const ListingsTab = ({ user }) => (
+  <div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <p className="up-section-title" style={{ margin: 0 }}>My Listings</p>
+      <Link to="/post-item" style={{ textDecoration: "none" }}>
+        <button className="up-btn-sm">+ New Listing</button>
+      </Link>
+    </div>
+    {MOCK_LISTINGS.map(l => (
+      <div key={l.id} className="up-listing-card">
+        <div className="up-listing-img">{l.emoji}</div>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#0d1f16", marginBottom: 2 }}>{l.title}</p>
+          <p style={{ fontSize: 12, color: "#9ca3af" }}>{l.cat} · {l.views} views · {l.saves} saves</p>
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: "#0d1f16", marginBottom: 4 }}>{l.price}</p>
+          <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700,
+            background: l.status === "active" ? "rgba(46,201,126,0.12)" : l.status === "sold" ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)",
+            color: l.status === "active" ? "#1b7d52" : l.status === "sold" ? "#dc2626" : "#92400e" }}>
+            {l.status.charAt(0).toUpperCase() + l.status.slice(1)}
+          </span>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+/* ══════════════════════════════════════
+   ACTIVITY TAB
+══════════════════════════════════════ */
+const MOCK_ACTIVITY = [
+  { icon: "💬", label: "Message sent to Tariq Hasan about Mountain Bike", time: "2 hours ago", color: "rgba(59,130,246,0.12)" },
+  { icon: "❤️", label: "Saved: Samsung 43\" LED Smart TV", time: "Yesterday", color: "rgba(239,68,68,0.1)" },
+  { icon: "📦", label: "Listed: Dell Laptop Core i5", time: "Apr 18", color: "rgba(46,201,126,0.1)" },
+  { icon: "✅", label: "Sold: Engineering Textbooks Bundle", time: "Apr 12", color: "rgba(46,201,126,0.1)" },
+  { icon: "🔍", label: "Browsed Electronics category", time: "Apr 11", color: "rgba(245,158,11,0.1)" },
+];
+
+const ActivityTab = () => (
+  <div>
+    <p className="up-section-title">Recent Activity</p>
+    {MOCK_ACTIVITY.map((a, i) => (
+      <div key={i} className="up-activity-item">
+        <div className="up-activity-icon" style={{ background: a.color }}>
+          <span>{a.icon}</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: 13, color: "#374151", fontWeight: 500, lineHeight: 1.4 }}>{a.label}</p>
+          <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 3 }}>{a.time}</p>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+/* ══════════════════════════════════════
+   MAIN PROFILE PAGE
+══════════════════════════════════════ */
+const UserProfilePage = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(getSession());
+  // "none" | "login" | "register"
+  const [authMode, setAuthMode] = useState(!getSession() ? "login" : "none");
+  const [activeTab, setActiveTab] = useState("edit");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [loginToast, setLoginToast] = useState(false);
+  const fileRef = useRef(null);
+
+  const handleAuth = (u) => { setUser(u); setAuthMode("none"); };
+  const handleLogout = () => { clearSession(); setUser(null); setAuthMode("login"); };
+
+  const showLoginToast = () => {
+    setLoginToast(true);
+    setTimeout(() => setLoginToast(false), 3000);
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const users = getMockUsers();
+      if (!users[user.email]) return;
+      users[user.email].avatar = ev.target.result;
+      saveMockUsers(users);
+      const updated = { ...users[user.email] }; delete updated.password;
+      saveSession(updated);
+      setUser(updated);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const tabs = [
+    { key: "edit",     label: "Edit Profile", icon: "✏️" },
+    { key: "listings", label: "Listings",     icon: "📦" },
+    { key: "activity", label: "Activity",     icon: "⚡" },
+    { key: "security", label: "Security",     icon: "🔐" },
+  ];
+
+  return (
+    <div style={{ fontFamily: "'DM Sans',sans-serif" }}>
+      <GlobalStyles />
+
+      {/* FULL-PAGE AUTH OVERLAYS */}
+      {authMode === "login" && (
+        <LoginOverlay
+          onClose={() => { if (user) setAuthMode("none"); }}
+          onSuccess={handleAuth}
+          onSwitchToRegister={() => setAuthMode("register")}
+        />
+      )}
+      {authMode === "register" && (
+        <RegisterOverlay
+          onClose={() => { if (user) setAuthMode("none"); }}
+          onSuccess={handleAuth}
+          onSwitchToLogin={() => setAuthMode("login")}
+        />
+      )}
+
+      {/* LOGIN-FIRST TOAST */}
+      {loginToast && (
+        <div className="up-login-toast">
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg,#2ec97e,#1b7d52)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>Please log in first to access your profile</span>
+          <button
+            onClick={() => { setLoginToast(false); setAuthMode("login"); }}
+            style={{ background: "rgba(46,201,126,0.2)", border: "1px solid rgba(46,201,126,0.45)", borderRadius: 100, padding: "5px 16px", fontSize: 12, fontWeight: 700, color: "#2ec97e", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+          >
+            Sign In →
+          </button>
+        </div>
+      )}
+
+      {/* NAV */}
+      <nav className="up-nav">
+        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#2ec97e,#1b7d52)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 16, color: "#fff" }}>P</div>
+          <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, color: "#fff" }}>Proti-Binimoy</span>
+        </Link>
+        <div className="up-nav-links">
+          <Link to="/"            className="up-nav-link">Home</Link>
+          <Link to="/marketplace" className="up-nav-link">Browse</Link>
+          <Link to="/post-item"   className="up-nav-link">Sell</Link>
+          {user ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* Avatar is display-only when logged in — user is already on their profile */}
+              <div
+                title={user.name}
+                style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#2ec97e,#1b7d52)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", overflow: "hidden", border: "2px solid rgba(255,255,255,0.3)", flexShrink: 0 }}>
+                {user.avatar ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : user.name?.[0]?.toUpperCase()}
+              </div>
+              <button onClick={handleLogout} className="up-btn-danger" style={{ padding: "7px 14px", fontSize: 13, borderRadius: 100 }}>
+                <LogoutIcon /> Sign Out
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* Ghost avatar — tapping shows "please login first" toast */}
+              <div
+                onClick={showLoginToast}
+                title="Tap to see login prompt"
+                style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "2px dashed rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.16)"}
+                onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}>
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <button onClick={() => setAuthMode("login")} className="up-btn-primary" style={{ padding: "8px 18px", fontSize: 13, borderRadius: 100 }}>
+                Sign In
+              </button>
+            </div>
+          )}
+        </div>
+        <button className="up-hamburger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
+          <span style={menuOpen ? { transform: "rotate(45deg) translate(5px,5px)" } : {}} />
+          <span style={menuOpen ? { opacity: 0 } : {}} />
+          <span style={menuOpen ? { transform: "rotate(-45deg) translate(5px,-5px)" } : {}} />
+        </button>
+      </nav>
+      <div className={`up-mobile-menu ${menuOpen ? "open" : ""}`}>
+        <Link to="/"            className="up-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
+        <Link to="/marketplace" className="up-mobile-link" onClick={() => setMenuOpen(false)}>Browse</Link>
+        <Link to="/post-item"   className="up-mobile-link" onClick={() => setMenuOpen(false)}>Sell</Link>
+        {user && <button onClick={handleLogout} className="up-mobile-link" style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: "#ef4444", fontWeight: 600, fontSize: 17 }}>Sign Out</button>}
+      </div>
+
+      {user && (
+        <div className="up-page">
+          {/* COVER */}
+          <div className="up-cover">
+            <div className="up-cover-pattern" />
+            <div style={{ position: "absolute", top: -80, right: -80, width: 380, height: 380, background: "radial-gradient(circle,rgba(46,201,126,0.22),transparent 65%)", borderRadius: "50%" }} />
+            <div style={{ position: "absolute", bottom: -60, left: "30%", width: 260, height: 260, background: "radial-gradient(circle,rgba(196,154,60,0.14),transparent 65%)", borderRadius: "50%" }} />
+          </div>
+
+          <div className="up-main">
+            <div className="up-header-row">
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 18 }}>
+                {/* Avatar — click to open login overlay */}
+                <div className="up-avatar-wrap">
+                  {user.verified && <div className="up-verify-ring" />}
+                  <div className="up-avatar" onClick={() => fileRef.current?.click()} title="Change photo">
+                    {user.avatar
+                      ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : <span>{user.name?.[0]?.toUpperCase() || "?"}</span>
+                    }
+                  </div>
+                  <div className="up-avatar-badge" title="Change photo" onClick={() => fileRef.current?.click()} style={{ cursor: "pointer" }}>
+                    <CameraIcon />
+                  </div>
+                  <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: "none" }} />
+                </div>
+                <div style={{ paddingBottom: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.5vw,28px)", fontWeight: 700, color: "#0d1f16" }}>{user.name}</h1>
+                    {user.verified && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 100, background: "rgba(46,201,126,0.12)", border: "1px solid rgba(46,201,126,0.3)", fontSize: 11, fontWeight: 700, color: "#1b7d52" }}>
+                        <ShieldIcon /> Verified
+                      </span>
+                    )}
+                    <TierBadge tier={user.memberTier} />
+                  </div>
+                  <p style={{ fontSize: 13, color: "#6b7280", marginTop: 3 }}>
+                    {user.location || "No location set"} · Member since {new Date(user.joinDate).toLocaleDateString("en-US", { year: "numeric", month: "long" })}
+                  </p>
+                  {user.bio && <p style={{ fontSize: 13, color: "#374151", marginTop: 5, maxWidth: 480, lineHeight: 1.5 }}>{user.bio}</p>}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, paddingBottom: 4 }}>
+                <Link to="/marketplace" style={{ textDecoration: "none" }}>
+                  <button className="up-btn-ghost" style={{ fontSize: 13 }}>Browse Marketplace</button>
+                </Link>
+                <Link to="/post-item" style={{ textDecoration: "none" }}>
+                  <button className="up-btn-primary" style={{ fontSize: 13 }}>+ List an Item</button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="up-grid">
+              <ProfileSidebar user={user} />
+              <div className="up-card up-fade up-d2" style={{ minHeight: 400 }}>
+                <div className="up-tabs">
+                  {tabs.map(t => (
+                    <button key={t.key} className={`up-tab ${activeTab === t.key ? "active" : ""}`} onClick={() => setActiveTab(t.key)}>
+                      <span style={{ fontSize: 14 }}>{t.icon}</span> {t.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="up-slide" key={activeTab}>
+                  {activeTab === "edit"     && <EditProfileTab user={user} onSave={setUser} />}
+                  {activeTab === "listings" && <ListingsTab    user={user} />}
+                  {activeTab === "activity" && <ActivityTab />}
+                  {activeTab === "security" && <SecurityTab    user={user} />}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <footer style={{ background: "#08231a", padding: "28px 48px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>© 2025 Proti-Binimoy. All rights reserved.</p>
+          <div style={{ display: "flex", gap: 24 }}>
+            {["Privacy", "Terms", "Contact"].map(l => (
+              <a key={l} href="#" style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>{l}</a>
+            ))}
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default UserProfilePage;

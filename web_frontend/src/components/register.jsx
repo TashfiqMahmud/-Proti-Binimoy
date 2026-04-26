@@ -1,7 +1,33 @@
 import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
-import { API_BASE_URL } from "../config/api";
+
+/* ══════════════════════════════════════
+   MOCK AUTH STORE  (localStorage-backed)
+══════════════════════════════════════ */
+const MOCK_USERS_KEY    = "pb_mock_users";
+const MOCK_SESSION_KEY  = "pb_mock_session";
+
+const getMockUsers  = () => { try { return JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || "{}"); } catch { return {}; } };
+const saveMockUsers = (u) => localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(u));
+const saveSession   = (u) => localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(u));
+
+/* Seed demo user */
+const seedDemoUsers = () => {
+  const users = getMockUsers();
+  if (!users["demo@protibi.com"]) {
+    users["demo@protibi.com"] = {
+      id: "u_demo", email: "demo@protibi.com", password: "Demo@1234",
+      name: "Rafiul Hasan", phone: "01712345678", joinDate: "2024-09-01",
+      location: "Dhanmondi, Dhaka", bio: "Passionate about sustainable commerce and zero-waste living.",
+      idType: "nid", idValue: "1234567890", avatar: null,
+      rating: 4.8, reviews: 12, totalListings: 7, soldItems: 4, savedItems: 19,
+      verified: true, memberTier: "Gold",
+    };
+    saveMockUsers(users);
+  }
+};
+seedDemoUsers();
 
 /* ─── Global Styles ─── */
 const GlobalStyles = () => (
@@ -42,6 +68,10 @@ const GlobalStyles = () => (
     /* CARD */
     .rp-card-outer { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.13); border-radius:28px; padding:6px; box-shadow:0 32px 96px rgba(0,0,0,0.4); backdrop-filter:blur(24px); }
     .rp-card { background:#fff; border-radius:22px; padding:34px 38px; color:#0d1f16; }
+
+    /* DEMO HINT */
+    .rp-demo-box { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#15803d; line-height:1.6; }
+    .rp-demo-box strong { display:block; margin-bottom:3px; font-size:13px; }
 
     /* PROGRESS */
     .rp-prog { display:flex; gap:5px; margin-bottom:22px; }
@@ -213,7 +243,7 @@ const PwStrength = ({ password }) => {
 const TermsText = () => (
   <>
     <p style={{ fontWeight:700, marginBottom:8, color:"#0d1f16" }}>Terms & Conditions — Proti-Binimoy</p>
-    <p style={{ marginBottom:8 }}><strong>1. Eligibility.</strong> You must be 18+ years old and a resident of Bangladesh. By registering, you confirm you meet these requirements.</p>
+    <p style={{ marginBottom:8 }}><strong>1. Eligibility.</strong> You must be 18+ years old and a resident of Bangladesh.</p>
     <p style={{ marginBottom:8 }}><strong>2. Account Responsibility.</strong> You are solely responsible for your credentials and all activity under your account.</p>
     <p style={{ marginBottom:8 }}><strong>3. Verified Listings.</strong> All listings must be accurate. Fraudulent or misleading listings will result in immediate suspension.</p>
     <p style={{ marginBottom:8 }}><strong>4. Sustainable Commerce.</strong> Users agree not to list prohibited, counterfeit, or environmentally harmful items.</p>
@@ -260,17 +290,24 @@ const RegisterPage = () => {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) setTermsRead(true);
   };
 
-  /* Step 0 */
+  /* Step 0 — Personal (client-side validation only, no API) */
   const handlePersonal = (e) => {
     e.preventDefault(); setError("");
     if (!name.trim() || name.trim().length < 3) { setError("Enter your full name (at least 3 characters)."); return; }
     const d = phone.replace(/\D/g,"");
     if (d.length < 11) { setError("Enter a valid 11-digit Bangladeshi phone number."); return; }
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError("Enter a valid email address."); return; }
+
+    // Check if email already exists in mock store
+    const users = getMockUsers();
+    if (users[email.trim().toLowerCase()]) {
+      setError("This email is already registered. Please sign in instead.");
+      return;
+    }
     setStep(1);
   };
 
-  /* Step 1 */
+  /* Step 1 — Identity */
   const handleIdentity = (e) => {
     e.preventDefault(); setError("");
     if (idType === "nid") {
@@ -286,47 +323,53 @@ const RegisterPage = () => {
     setStep(2);
   };
 
-  /* Step 2 — API call */
-  const handleSecurity = async (e) => {
+  /* Step 2 — Security: save to mock store */
+  const handleSecurity = (e) => {
     e.preventDefault(); setError("");
     if (getPwStrength(password) < 4) { setError("Password must have 8+ characters, an uppercase letter, a number, and a symbol."); return; }
     if (password !== confirm)        { setError("Passwords do not match."); return; }
     if (!termsAgree)                 { setError("You must agree to the Terms & Conditions to continue."); return; }
 
     setLoading(true);
-    try {
-      const identityPayload =
-        idType === "nid"      ? { nid: nid.replace(/\D/g,"") } :
-        idType === "dob"      ? { dateOfBirth: dob }            :
-                                { passportNumber: passport.trim() };
+    setTimeout(() => {
+      const users   = getMockUsers();
+      const emailKey = email.trim().toLowerCase();
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          phone: phone.replace(/\D/g,""),
-          email: email.trim().toLowerCase(),
-          password,
-          ...identityPayload,
-        }),
-      });
+      const identityValue =
+        idType === "nid"      ? nid.replace(/\D/g,"") :
+        idType === "dob"      ? dob :
+                                passport.trim();
 
-      const data = await response.json().catch(() => ({}));
+      const newUser = {
+        id: `u_${Date.now()}`,
+        email: emailKey,
+        password,
+        name: name.trim(),
+        phone: phone.replace(/\D/g,""),
+        joinDate: new Date().toISOString().split("T")[0],
+        location: "",
+        bio: "",
+        idType,
+        idValue: identityValue,
+        avatar: null,
+        rating: 0,
+        reviews: 0,
+        totalListings: 0,
+        soldItems: 0,
+        savedItems: 0,
+        verified: false,
+        memberTier: "Basic",
+      };
 
-      if (!response.ok) {
-        setError(data.msg || data.message || "Unable to create account. Please try again.");
-        return;
-      }
+      users[emailKey] = newUser;
+      saveMockUsers(users);
+      saveSession(newUser);
 
       setSuccess("Account created successfully!");
-      setStep(3);
-      setTimeout(() => navigate("/signin", { replace: true }), 2200);
-    } catch {
-      setError("Unable to register right now. Please check your connection and try again.");
-    } finally {
       setLoading(false);
-    }
+      setStep(3);
+      setTimeout(() => navigate("/profile", { replace: true }), 2200);
+    }, 900);
   };
 
   const STEPS = ["Personal","Identity","Security","Done"];
@@ -339,7 +382,7 @@ const RegisterPage = () => {
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width:30, height:30 }}><path d="M7 12.5l3.2 3.2L17.5 8.5"/></svg>
         </div>
         <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:700, color:"#0d1f16", marginBottom:10 }}>Welcome aboard!</h3>
-        <p style={{ fontSize:14, color:"#6b7280", lineHeight:1.65, marginBottom:20 }}>Your account has been created.<br/>Redirecting you to sign in…</p>
+        <p style={{ fontSize:14, color:"#6b7280", lineHeight:1.65, marginBottom:20 }}>Your account has been created.<br/>Loading your profile…</p>
         <div style={{ height:4, borderRadius:100, background:"#f3f4f6", overflow:"hidden" }}>
           <div style={{ height:"100%", background:"linear-gradient(to right,#2ec97e,#1b7d52)", borderRadius:100, animation:"rp-bar 2s linear forwards" }} />
         </div>
@@ -350,6 +393,10 @@ const RegisterPage = () => {
     if (step === 0) return (
       <div className="rp-slide" key="s0">
         <PBar steps={STEPS} cur={0} />
+        <div className="rp-demo-box">
+          <strong>🧪 Demo Mode</strong>
+          A demo account already exists: <code>demo@protibi.com</code>. You can also create your own account here and it will be saved locally.
+        </div>
         <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.3em", textTransform:"uppercase", color:"#2ec97e", marginBottom:6 }}>Step 1 of 3</p>
         <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(20px,2.3vw,27px)", fontWeight:700, color:"#0d1f16", marginBottom:6 }}>Personal Information</h2>
         <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, marginBottom:20, fontWeight:300 }}>Let's start with your basic details. All fields are required.</p>
@@ -391,7 +438,6 @@ const RegisterPage = () => {
           </div>
 
           {error && <div className="rp-err"><ErrIcon />{error}</div>}
-
           <button type="submit" className="rp-btn-submit">Continue <Arr /></button>
         </form>
 
@@ -413,13 +459,13 @@ const RegisterPage = () => {
         <PBar steps={STEPS} cur={1} />
         <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.3em", textTransform:"uppercase", color:"#2ec97e", marginBottom:6 }}>Step 2 of 3</p>
         <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(20px,2.3vw,27px)", fontWeight:700, color:"#0d1f16", marginBottom:6 }}>Identity Verification</h2>
-        <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, marginBottom:16, fontWeight:300 }}>Choose one identity document to verify your account. At least one is required.</p>
+        <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, marginBottom:16, fontWeight:300 }}>Choose one identity document to verify your account.</p>
 
         <div className="rp-id-tabs">
           {[
-            { key:"nid",      icon:"🪪", label:"NID Number"    },
-            { key:"dob",      icon:"📅", label:"Date of Birth"  },
-            { key:"passport", icon:"🛂", label:"Passport"       },
+            { key:"nid", icon:"🪪", label:"NID Number" },
+            { key:"dob", icon:"📅", label:"Date of Birth" },
+            { key:"passport", icon:"🛂", label:"Passport" },
           ].map(t => (
             <button key={t.key} type="button"
               className={`rp-id-tab ${idType === t.key ? "active" : ""}`}

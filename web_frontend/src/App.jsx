@@ -5,9 +5,12 @@ import AboutPage from "./about";
 import SignInPage from "./components/login";
 import RegisterPage from "./components/register";
 import ForgotPasswordPage from "./components/forgot-password";
+import MarketplacePage from "./components/marketplace";
+import UserProfilePage from "./components/user-profile";
 import ResetPasswordPage from "./components/reset-password";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MouseEffects from "./components/mouse-effects";
+import PostItemPage from "./components/post-item";
 import ListingsPage from "./pages/ListingsPage";
 import ListingDetailPage from "./pages/ListingDetailPage";
 import PostListingPage from "./pages/PostListingPage";
@@ -27,6 +30,9 @@ const App = () => {
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/profile" element={<UserProfilePage />} />
+        <Route path="/post-item" element={<PostItemPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/listings" element={<ListingsPage />} />
         <Route path="/listings/:id" element={<ListingDetailPage />} />

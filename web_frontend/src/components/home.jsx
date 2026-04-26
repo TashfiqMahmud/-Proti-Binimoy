@@ -42,6 +42,16 @@ const GlobalStyles = () => (
       padding: 9px 22px; border-radius: 100px; transition: background 0.2s;
     }
     .pb-nav-cta:hover { background: rgba(46,201,126,0.28); }
+    .pb-nav-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      text-decoration: none; font-size: 18px; color: #fff;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      transition: all 0.2s;
+    }
+    .pb-nav-avatar:hover {
+      background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.35);
+    }
     .pb-hamburger {
       display: none; flex-direction: column; gap: 5px;
       cursor: pointer; background: none; border: none; padding: 6px;
@@ -315,8 +325,9 @@ const HomePage = () => {
         {/* Desktop Links */}
         <div className="pb-nav-links">
           <Link to="/"        className="pb-nav-link">Home</Link>
-          <Link to="/listings"  className="pb-nav-link">Listings</Link>
+          <Link to="/marketplace"  className="pb-nav-link">Browse</Link>
           <Link to="/about"   className="pb-nav-link">About</Link>
+          <Link to="/profile" className="pb-nav-avatar" aria-label="Profile">👤</Link>
           <Link to="/signin"  className="pb-nav-cta">Sign In →</Link>
         </div>
 
@@ -331,7 +342,7 @@ const HomePage = () => {
       {/* Mobile Menu */}
       <div className={`pb-mobile-menu ${menuOpen ? "open" : ""}`}>
         <Link to="/"        className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
-        <Link to="/listings"  className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Listings</Link>
+        <Link to="/marketplace"  className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Browse</Link>
         <Link to="/about"   className="pb-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
         <Link to="/signin"  className="pb-mobile-cta"  onClick={() => setMenuOpen(false)}>Sign In →</Link>
       </div>
@@ -385,7 +396,7 @@ const HomePage = () => {
 
             {/* CTA Buttons */}
             <div className="pb-hero-actions pb-fade pb-d4">
-              <Link to="/signin" className="pb-btn-primary">
+              <Link to="/marketplace" className="pb-btn-primary">
                 Explore Marketplace
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 17, height: 17 }}>
                   <path d="M5 12h14M12 5l7 7-7 7" />
@@ -508,7 +519,7 @@ const HomePage = () => {
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div className="pb-cats-top">
             <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(24px,2.8vw,32px)", fontWeight: 700, color: "#08231a" }}>Browse Categories</h3>
-            <Link to="/browse" style={{ fontSize: 14, fontWeight: 600, color: "#1b7d52", textDecoration: "none", borderBottom: "1px solid rgba(27,125,82,0.3)", paddingBottom: 2 }}>
+            <Link to="/marketplace" style={{ fontSize: 14, fontWeight: 600, color: "#1b7d52", textDecoration: "none", borderBottom: "1px solid rgba(27,125,82,0.3)", paddingBottom: 2 }}>
               See all →
             </Link>
           </div>

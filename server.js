@@ -3,9 +3,6 @@
 // JWT_SECRET
 // PORT
 // FRONTEND_URL
-// GOOGLE_CLIENT_ID
-// GOOGLE_CLIENT_SECRET
-// GOOGLE_CALLBACK_URL
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -17,9 +14,9 @@ require('dotenv').config();
 const app = express();
 
 app.use(express.json());
-//app.use(mongoSanitize({
-//    replaceWith: '_'
-//}));
+app.use(mongoSanitize({
+    replaceWith: '_'
+}));
 
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -33,6 +30,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/listings', require('./routes/listings'));
 app.use('/api/offers', require('./routes/offers'));
 app.use('/api/messages', require('./routes/messages'));
+app.use('/api/users', require('./routes/users'));
 
 app.get('/', (req, res) => {
     res.send('Proti-Binimoy API is active.');

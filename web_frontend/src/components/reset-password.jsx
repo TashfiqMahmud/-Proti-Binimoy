@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
 import { API_BASE_URL } from "../config/api";
+import PageFooter from "./page-footer";
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
@@ -170,6 +171,7 @@ const ResetPasswordPage = () => {
           </div>
         </div>
       </section>
+      <PageFooter />
     </div>
   );
 };

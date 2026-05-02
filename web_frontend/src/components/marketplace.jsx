@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-
+import { useNavigate } from "react-router-dom";
+import PageFooter from "./page-footer";
+import { BD_LOCATIONS, BD_LOCATIONS_ALL } from "../config/locations";
 /* ══════════════════════════════════════════════
    MOCK DATA
 ══════════════════════════════════════════════ */
@@ -17,7 +19,7 @@ const MOCK_ITEMS = [
     postedDate: "2025-04-15", views: 142, saves: 28,
     status: "available", emoji: "🪞", accentColor: "#8B5CF6",
     badge: "Popular", tradeOffer: false,
-    image: "/src/assets/second_hand_almirah.png",
+    image: "/src/assets/second_hand_almirah.png", 
   },
   {
     id: 2, title: "Favron Mountain Bike – 27.5\" Wheels",
@@ -62,6 +64,7 @@ const MOCK_ITEMS = [
     postedDate: "2025-04-14", views: 213, saves: 41,
     status: "available", emoji: "📺", accentColor: "#F59E0B",
     badge: "New Post", tradeOffer: false,
+    image: "/src/assets/used tv.png",  
   },
   {
     id: 5, title: "Wooden Study Table with Drawer",
@@ -76,6 +79,7 @@ const MOCK_ITEMS = [
     postedDate: "2025-04-12", views: 88, saves: 14,
     status: "available", emoji: "🪑", accentColor: "#C49A3C",
     badge: null, tradeOffer: false,
+    image: "/src/assets/used reading table.png",
   },
   {
     id: 6, title: "iPhone 13 – 128GB, Midnight",
@@ -90,6 +94,7 @@ const MOCK_ITEMS = [
     postedDate: "2025-04-19", views: 674, saves: 133,
     status: "available", emoji: "📱", accentColor: "#06B6D4",
     badge: "Top Seller", tradeOffer: true,
+    image: "/src/assets/second hand iphone.png",
   },
   {
     id: 7, title: "Canon EOS 200D DSLR Camera",
@@ -104,6 +109,7 @@ const MOCK_ITEMS = [
     postedDate: "2025-04-20", views: 445, saves: 89,
     status: "available", emoji: "📷", accentColor: "#10B981",
     badge: "Popular", tradeOffer: false,
+    image: "/src/assets/used camera.png",
   },
   {
     id: 8, title: "Vintage Leather Sofa Set (3+1+1)",
@@ -118,6 +124,7 @@ const MOCK_ITEMS = [
     postedDate: "2025-04-11", views: 167, saves: 22,
     status: "available", emoji: "🛋️", accentColor: "#92400E",
     badge: null, tradeOffer: true,
+    image: "/src/assets/used sofa.png",
   },
 ];
 
@@ -131,7 +138,7 @@ const CATEGORIES = [
   { label: "Vehicles",    icon: "🚗", count: 0,  color: "#10B981" },
 ];
 
-const LOCATIONS = ["All Areas","Dhanmondi","Gulshan","Bashundhara","Uttara","Mirpur","Mohammadpur","Rayer Bazar","Wari"];
+const LOCATIONS = BD_LOCATIONS_ALL;
 const SORT_OPTIONS = [
   { value: "newest",     label: "Newest First",      icon: "🕐" },
   { value: "price_asc",  label: "Price: Low → High",  icon: "↑" },
@@ -645,6 +652,93 @@ const NotificationToasts = () => {
 };
 
 /* ══════════════════════════════════════════════
+   SESSION HELPER
+══════════════════════════════════════════════ */
+const getSession = () => {
+  try { return JSON.parse(localStorage.getItem("pb_mock_session") || "null"); }
+  catch { return null; }
+};
+
+/* ══════════════════════════════════════════════
+   AUTH GATE MODAL  (shown when not signed in)
+══════════════════════════════════════════════ */
+const AuthGateModal = ({ onClose }) => {
+  const goTo = (path) => { onClose(); window.location.href = path; };
+  return (
+    <div className="pmo" onClick={onClose}>
+      <div className="pmb" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+        <button className="mc" onClick={onClose}>✕</button>
+
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"48px 32px 36px", textAlign:"center" }}>
+          {/* Lock icon */}
+          <div style={{
+            width:72, height:72, borderRadius:20, marginBottom:24,
+            background:"linear-gradient(135deg,rgba(46,201,126,0.15),rgba(27,125,82,0.25))",
+            border:"1.5px solid rgba(46,201,126,0.3)",
+            display:"flex", alignItems:"center", justifyContent:"center", fontSize:32,
+          }}>🔒</div>
+
+          {/* Badge */}
+          <div style={{
+            display:"inline-flex", alignItems:"center", gap:7,
+            background:"rgba(46,201,126,0.1)", border:"1px solid rgba(46,201,126,0.28)",
+            borderRadius:100, padding:"5px 14px", marginBottom:18,
+          }}>
+            <div style={{ width:7, height:7, borderRadius:"50%", background:"#2ec97e" }} />
+            <span style={{ fontSize:11, fontWeight:600, color:"#2ec97e", letterSpacing:"0.06em" }}>Sign-in Required</span>
+          </div>
+
+          <h2 style={{
+            fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:900,
+            color:"var(--t)", lineHeight:1.2, marginBottom:10,
+          }}>
+            Sign in to <em style={{ fontStyle:"italic", color:"#2ec97e" }}>post an item</em>
+          </h2>
+          <p style={{ fontSize:14, color:"var(--td)", lineHeight:1.7, marginBottom:32, maxWidth:300 }}>
+            You need an account to list items on Proti-Binimoy. Sign in or create a free account to get started.
+          </p>
+
+          {/* Buttons */}
+          <div style={{ display:"flex", flexDirection:"column", gap:10, width:"100%" }}>
+            <button
+              onClick={() => goTo("/signin")}
+              style={{
+                width:"100%", padding:"14px", borderRadius:13, border:"none", cursor:"pointer",
+                background:"linear-gradient(135deg,#2ec97e,#1b7d52)", color:"#fff",
+                fontSize:15, fontWeight:700, fontFamily:"inherit",
+                boxShadow:"0 6px 24px rgba(46,201,126,0.35)",
+                display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                transition:"opacity 0.2s, transform 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.opacity="0.88"; e.currentTarget.style.transform="translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity="1"; e.currentTarget.style.transform="none"; }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{width:16,height:16}}>
+                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+              </svg>
+              Sign In to Your Account
+            </button>
+            <button
+              onClick={() => goTo("/register")}
+              style={{
+                width:"100%", padding:"13px", borderRadius:13, cursor:"pointer",
+                background:"rgba(255,255,255,0.05)", border:"1.5px solid rgba(255,255,255,0.14)",
+                color:"var(--tm)", fontSize:14, fontWeight:600, fontFamily:"inherit",
+                transition:"background 0.2s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.1)"}
+              onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.05)"}
+            >
+              New here? Create a free account →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════════
    POST ITEM MODAL
 ══════════════════════════════════════════════ */
 const DELIVERY_OPTS = [
@@ -660,7 +754,7 @@ const PAYMENT_OPTS = [
 ];
 const CATEGORIES_PM = ["Electronics","Furniture","Sports","Clothing","Books","Vehicles","Tools","Other"];
 const CONDITIONS_PM  = ["New","Like New","Used","For Parts"];
-const LOCATIONS_PM   = ["Dhanmondi","Gulshan","Bashundhara","Uttara","Mirpur","Mohammadpur","Rayer Bazar","Wari","Banani","Motijheel","Farmgate","Tejgaon","Other"];
+const LOCATIONS_PM   = [...BD_LOCATIONS, "Other"];
 
 const PostItemModal = ({ onClose }) => {
   const fileRef   = React.useRef(null);
@@ -1320,7 +1414,14 @@ export default function MarketplacePage() {
   const [mobileMenu,   setMobileMenu]   = useState(false);
   const [collapsed,    setCollapsed]    = useState({});
   const [filterOpen,   setFilterOpen]   = useState(true);
-  const [postModal,    setPostModal]    = useState(false);
+  const [authGate,     setAuthGate]     = useState(false);
+
+  const navigate = useNavigate();
+
+  const openPostItem = () => {
+    if (getSession()) { navigate("/post-item"); }
+    else              { setAuthGate(true);      }
+  };
   const toggleSection = (key) => setCollapsed(p => ({ ...p, [key]: !p[key] }));
   const sortRef = useRef(null);
 
@@ -1396,21 +1497,27 @@ export default function MarketplacePage() {
           <span className="nlt">Proti-Binimoy</span>
         </a>
         <div className="nls">
-          {["Home","Marketplace","How It Works","About"].map(l=>(
-            <a key={l} href="#" className={`nla${l==="Marketplace"?" active":""}`}>{l}</a>
+          {[
+            {label:"Home",          href:"/"},
+            {label:"Marketplace",   href:"/marketplace"},
+            {label:"About",         href:"/about"},
+          ].map(({label,href})=>(
+            <a key={label} href={href} className={`nla${label==="Marketplace"?" active":""}`}>{label}</a>
           ))}
         </div>
         <div className="nr">
-          <button className="nib" title="Notifications">🔔<span className="nbadge">3</span></button>
-          <button className="nib" title="Saved">{saved.size>0?`❤️`:"🤍"}{saved.size>0&&<span className="nbadge">{saved.size}</span>}</button>
-          <button className="nb nbg">Sign In</button>
-          <button className="nb nbp" onClick={()=>setPostModal(true)}>+ Post Item</button>
+          <a href="/signin" className="nb nbg" style={{textDecoration:"none",display:"inline-flex",alignItems:"center"}}>Sign In</a>
+          <button className="nb nbp" onClick={openPostItem}>+ Post Item</button>
           <button className="hbg" onClick={()=>setMobileMenu(!mobileMenu)}><span/><span/><span/></button>
         </div>
       </nav>
       <div className={`mmenu${mobileMenu?" open":""}`}>
-        {["Home","Marketplace","How It Works","About"].map(l=><a key={l} href="#" className="mml">{l}</a>)}
-        <button className="nb nbp" style={{marginTop:16,width:"100%",borderRadius:12,padding:14}} onClick={()=>{setPostModal(true);setMobileMenu(false);}}>+ Post an Item</button>
+        {[
+          {label:"Home",          href:"/"},
+          {label:"Marketplace",   href:"/marketplace"},
+          {label:"About",         href:"/about"},
+        ].map(({label,href})=><a key={label} href={href} className="mml">{label}</a>)}
+        <button className="nb nbp" style={{marginTop:16,width:"100%",borderRadius:12,padding:14}} onClick={()=>{openPostItem();setMobileMenu(false);}}>+ Post an Item</button>
       </div>
 
       {/* Sidebar overlay on mobile */}
@@ -1694,14 +1801,10 @@ export default function MarketplacePage() {
           )}
 
           {/* FOOTER */}
-          <div className="ft">
-            <p style={{fontSize:12,color:"var(--td)"}}>© 2025 Proti-Binimoy. All rights reserved.</p>
-            <div className="ftl">
-              {["Privacy","Terms","Contact","Help"].map(l=><a key={l} href="#" className="fta">{l}</a>)}
-            </div>
-          </div>
         </main>
       </div>
+
+      <PageFooter />
 
       {/* DETAILS MODAL */}
       {selected && selected.mode === "details" && (
@@ -1722,7 +1825,7 @@ export default function MarketplacePage() {
       )}
 
       {/* POST ITEM MODAL */}
-      {postModal && <PostItemModal onClose={()=>setPostModal(false)}/>}
+      {authGate  && <AuthGateModal  onClose={()=>setAuthGate(false)}/>}
 
       {/* NOTIFICATION TOASTS */}
       <NotificationToasts/>

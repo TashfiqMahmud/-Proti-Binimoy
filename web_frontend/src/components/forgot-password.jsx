@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
 import { API_BASE_URL } from "../config/api";
+import PageFooter from "./page-footer";
 
 /* ─── Global Styles ─── */
 const GlobalStyles = () => (
@@ -320,6 +321,7 @@ const ForgotPasswordPage = () => {
           </div>
         </div>
       </section>
+      <PageFooter />
     </div>
   );
 };

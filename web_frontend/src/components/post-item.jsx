@@ -2,6 +2,8 @@ import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
 import MouseEffects from "./mouse-effects";
+import PageFooter from "./page-footer";
+import { BD_LOCATIONS } from "../config/locations";
 
 /* ════════════════════════════════════════════════════════════
    GLOBAL STYLES
@@ -423,10 +425,7 @@ const CONDITIONS = [
   { id:"for_parts",label:"For Parts", desc:"Needs repair",   color:"#EF4444", bg:"rgba(239,68,68,0.1)",    border:"rgba(239,68,68,0.4)"   },
 ];
 
-const LOCATIONS = [
-  "Dhanmondi","Gulshan","Bashundhara","Uttara","Mirpur","Mohammadpur",
-  "Rayer Bazar","Wari","Banani","Motijheel","Farmgate","Tejgaon","Khilgaon","Other",
-];
+const LOCATIONS = BD_LOCATIONS;
 
 const DELIVERY_OPTIONS = [
   { id:"pickup",   label:"Local Pickup" },
@@ -494,7 +493,7 @@ const PostItemPage = () => {
     model:       "",
     price:       "",
     negotiable:  false,
-    tradeOffer:  false,
+    tradeOffer:  "",
     location:    "",
     phone:       "",
     delivery:    [],
@@ -549,7 +548,8 @@ const PostItemPage = () => {
         form.location &&
         form.phone.trim().length >= 9 &&
         form.payment.length > 0 &&
-        form.delivery.length > 0
+        form.delivery.length > 0 &&
+        (form.tradeOffer === "open" || form.tradeOffer === "no")
       );
     }
     return true;
@@ -575,23 +575,23 @@ const PostItemPage = () => {
           <span className="pi-nav-brand">Proti-Binimoy</span>
         </Link>
         <div className="pi-nav-links">
-          {["Home","Marketplace","How It Works","About"].map(l => (
+          {["Home","Marketplace","About"].map(l => (
             <Link key={l} to={l === "Home" ? "/" : `/${l.toLowerCase().replace(/ /g,"-")}`} className="pi-nav-link">{l}</Link>
           ))}
         </div>
         <div className="pi-nav-r">
           <Link to="/marketplace" className="pi-nav-ghost">Browse</Link>
-          <a href="#" className="pi-nav-cta">My Account</a>
+          <Link to="/profile" className="pi-nav-cta">My Account</Link>
           <button className="pi-hamburger" onClick={() => setMobileMenu(m => !m)}>
             <span/><span/><span/>
           </button>
         </div>
       </nav>
       <div className={`pi-mobile-menu${mobileMenu ? " open" : ""}`}>
-        {["Home","Marketplace","How It Works","About"].map(l => (
-          <Link key={l} to="/" className="pi-mobile-link">{l}</Link>
+        {["Home","Marketplace","About"].map(l => (
+          <Link key={l} to={l === "Home" ? "/" : `/${l.toLowerCase().replace(/ /g,"-")}`} className="pi-mobile-link">{l}</Link>
         ))}
-        <a href="#" className="pi-mobile-cta">My Account</a>
+        <Link to="/profile" className="pi-mobile-cta">My Account</Link>
       </div>
     </>
   );
@@ -623,7 +623,7 @@ const PostItemPage = () => {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ width: 16, height: 16 }}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
               Go to Marketplace
             </Link>
-            <button className="pi-success-ghost" onClick={() => { setSubmitted(false); setStep(0); setForm({ title:"",category:"",condition:"",description:"",brand:"",model:"",price:"",negotiable:false,tradeOffer:false,location:"",phone:"",delivery:[],payment:[],tags:[],photos:[] }); }}>
+            <button className="pi-success-ghost" onClick={() => { setSubmitted(false); setStep(0); setForm({ title:"",category:"",condition:"",description:"",brand:"",model:"",price:"",negotiable:false,tradeOffer:"",location:"",phone:"",delivery:[],payment:[],tags:[],photos:[] }); }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ width: 15, height: 15 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Post Another Item
             </button>
@@ -933,22 +933,20 @@ const PostItemPage = () => {
                       </label>
                     </div>
 
-                    <div className="pi-toggle-row" style={{ paddingTop: 0 }}>
-                      <div className="pi-toggle-info">
-                        <div className="pi-toggle-lbl">Open to Trade / Barter</div>
-                        <div className="pi-toggle-desc">Show you're willing to exchange for other items</div>
-                      </div>
-                      <label className="pi-switch">
-                        <input type="checkbox" checked={form.tradeOffer} onChange={e => set("tradeOffer", e.target.checked)} />
-                        <span className="pi-switch-track" />
-                      </label>
-                    </div>
-
                     <div className="pi-divider" />
+
+                    {/* Location */}
+                    <div>
+                      <label className="pi-label">Location <span className="pi-required">*</span></label>
+                      <select className={`pi-input pi-select${form.location ? " valid" : ""}`} value={form.location} onChange={e => set("location", e.target.value)}>
+                        <option value="">Select area…</option>
+                        {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                    </div>
 
                     {/* Delivery options */}
                     <div>
-                      <label className="pi-label">Delivery / Pickup Options <span className="pi-required">*</span></label>
+                      <label className="pi-label">Delivery / Pickup <span className="pi-required">*</span></label>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 4 }}>
                         {DELIVERY_OPTIONS.map(o => (
                           <button
@@ -957,9 +955,9 @@ const PostItemPage = () => {
                             style={{
                               padding: "8px 16px", borderRadius: 100, fontSize: 13, fontWeight: 500,
                               border: "1.5px solid", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-                              borderColor: form.delivery.includes(o.id) ? "rgba(46,201,126,0.55)" : (form.delivery.length === 0 ? '#EF4444' : "rgba(255,255,255,0.12)"),
+                              borderColor: form.delivery.includes(o.id) ? "rgba(46,201,126,0.55)" : "rgba(255,255,255,0.12)",
                               background:  form.delivery.includes(o.id) ? "rgba(46,201,126,0.12)" : "rgba(255,255,255,0.04)",
-                              color:       form.delivery.includes(o.id) ? "#2ec97e" : (form.delivery.length === 0 ? '#EF4444' : "rgba(255,255,255,0.5)"),
+                              color:       form.delivery.includes(o.id) ? "#2ec97e" : "rgba(255,255,255,0.5)",
                             }}
                           >{o.label}</button>
                         ))}
@@ -969,7 +967,7 @@ const PostItemPage = () => {
 
                     {/* Payment methods */}
                     <div>
-                      <label className="pi-label">Accepted Payment Methods <span className="pi-required">*</span></label>
+                      <label className="pi-label">Accepted Payment <span className="pi-required">*</span></label>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 4 }}>
                         {PAYMENT_OPTIONS.map(o => (
                           <button
@@ -978,14 +976,38 @@ const PostItemPage = () => {
                             style={{
                               padding: "8px 16px", borderRadius: 100, fontSize: 13, fontWeight: 500,
                               border: "1.5px solid", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-                              borderColor: form.payment.includes(o.id) ? "rgba(46,201,126,0.55)" : (form.payment.length === 0 ? '#EF4444' : "rgba(255,255,255,0.12)"),
+                              borderColor: form.payment.includes(o.id) ? "rgba(46,201,126,0.55)" : "rgba(255,255,255,0.12)",
                               background:  form.payment.includes(o.id) ? "rgba(46,201,126,0.12)" : "rgba(255,255,255,0.04)",
-                              color:       form.payment.includes(o.id) ? "#2ec97e" : (form.payment.length === 0 ? '#EF4444' : "rgba(255,255,255,0.5)"),
+                              color:       form.payment.includes(o.id) ? "#2ec97e" : "rgba(255,255,255,0.5)",
                             }}
                           >{o.label}</button>
                         ))}
                       </div>
                       {form.payment.length === 0 && <div className="pi-field-note" style={{ color: '#EF4444' }}>At least one payment method is required.</div>}
+                    </div>
+
+                    {/* Trade / Barter — pill chips */}
+                    <div>
+                      <label className="pi-label">Trade / Barter <span className="pi-required">*</span></label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 4 }}>
+                        {[
+                          { id: "open", label: "🔄 Open to Trade" },
+                          { id: "no",   label: "🚫 Not Accepting Trades" },
+                        ].map(o => (
+                          <button
+                            key={o.id}
+                            onClick={() => set("tradeOffer", o.id)}
+                            style={{
+                              padding: "8px 16px", borderRadius: 100, fontSize: 13, fontWeight: 500,
+                              border: "1.5px solid", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                              borderColor: form.tradeOffer === o.id ? "rgba(46,201,126,0.55)" : "rgba(255,255,255,0.12)",
+                              background:  form.tradeOffer === o.id ? "rgba(46,201,126,0.12)" : "rgba(255,255,255,0.04)",
+                              color:       form.tradeOffer === o.id ? "#2ec97e" : "rgba(255,255,255,0.5)",
+                            }}
+                          >{o.label}</button>
+                        ))}
+                      </div>
+                      {!form.tradeOffer && <div className="pi-field-note" style={{ color: '#EF4444' }}>Please select a trade preference.</div>}
                     </div>
                   </div>
                 </div>
@@ -994,32 +1016,23 @@ const PostItemPage = () => {
                 <div className="pi-form-card pi-fade pi-d2">
                   <SectionHead
                     icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 20, height: 20 }}><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.81 19.79 19.79 0 01.04 2.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>}
-                    title="Contact & Location"
+                    title="Contact"
                     sub="How buyers can reach you"
                   />
                   <div className="pi-form-body">
-                    <div className="pi-row-2">
-                      <div>
-                        <label className="pi-label">Your Location <span className="pi-required">*</span></label>
-                        <select className={`pi-input pi-select${form.location ? " valid" : ""}`} value={form.location} onChange={e => set("location", e.target.value)}>
-                          <option value="">Select area…</option>
-                          {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                        </select>
+                    <div>
+                      <label className="pi-label">Phone Number <span className="pi-required">*</span></label>
+                      <div className="pi-input-wrap">
+                        <span className="pi-icon-left" style={{ fontSize: 13 }}>🇧🇩</span>
+                        <input
+                          className={`pi-input pi-pl${form.phone.length > 8 ? " valid" : form.phone.length > 0 ? " error" : ""}`}
+                          placeholder="+880 1xxx-xxxxxx"
+                          value={form.phone}
+                          onChange={e => set("phone", e.target.value)}
+                          type="tel"
+                        />
                       </div>
-                      <div>
-                        <label className="pi-label">Phone Number <span className="pi-required">*</span></label>
-                        <div className="pi-input-wrap">
-                          <span className="pi-icon-left" style={{ fontSize: 13 }}>🇧🇩</span>
-                          <input
-                            className={`pi-input pi-pl${form.phone.length > 8 ? " valid" : form.phone.length > 0 ? " error" : ""}`}
-                            placeholder="+880 1xxx-xxxxxx"
-                            value={form.phone}
-                            onChange={e => set("phone", e.target.value)}
-                            type="tel"
-                          />
-                        </div>
-                        <div className="pi-field-note">Visible only to serious buyers</div>
-                      </div>
+                      <div className="pi-field-note">Visible only to serious buyers</div>
                     </div>
                   </div>
                 </div>
@@ -1042,7 +1055,7 @@ const PostItemPage = () => {
                     { label: "Condition",   val: conditionObj?.label || "—" },
                     { label: "Brand",       val: [form.brand, form.model].filter(Boolean).join(" · ") || "Not specified" },
                     { label: "Price",       val: form.price ? `৳${fmt(Number(form.price))} BDT${form.negotiable ? " · Negotiable" : ""}` : "—" },
-                    { label: "Trade",       val: form.tradeOffer ? "Open to trade / barter" : "Not accepting trades" },
+                    { label: "Trade",       val: form.tradeOffer === "open" ? "Open to trade / barter" : form.tradeOffer === "no" ? "Not accepting trades" : "—" },
                     { label: "Location",    val: form.location || "—" },
                     { label: "Delivery",    val: form.delivery.length ? form.delivery.map(d => DELIVERY_OPTIONS.find(o => o.id === d)?.label).join(", ") : "Not specified" },
                     { label: "Payment",     val: form.payment.length ? form.payment.map(d => PAYMENT_OPTIONS.find(o => o.id === d)?.label).join(", ") : "Not specified" },
@@ -1198,19 +1211,7 @@ const PostItemPage = () => {
         </div>
 
         {/* FOOTER */}
-        <footer style={{ background: "rgba(8,35,26,0.9)", padding: "32px 48px", borderTop: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(12px)" }}>
-          <div style={{ maxWidth: 1180, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-            <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.28)", letterSpacing: "0.03em" }}>© 2025 Proti-Binimoy. All rights reserved.</p>
-            <div style={{ display: "flex", gap: 24 }}>
-              {["Privacy","Terms","Contact","Help"].map(l => (
-                <a key={l} href="#" style={{ fontSize: 12.5, color: "rgba(255,255,255,0.32)", textDecoration: "none", transition: "color 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.color = "#2ec97e"}
-                  onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.32)"}
-                >{l}</a>
-              ))}
-            </div>
-          </div>
-        </footer>
+        <PageFooter />
       </div>
     </div>
   );

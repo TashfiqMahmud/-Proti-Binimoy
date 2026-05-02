@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
+import PageFooter from "./page-footer";
 
 /* ══════════════════════════════════════
    MOCK AUTH STORE  (localStorage-backed)
@@ -697,6 +698,7 @@ const RegisterPage = () => {
           )}
         </div>
       </section>
+      <PageFooter />
     </div>
   );
 };

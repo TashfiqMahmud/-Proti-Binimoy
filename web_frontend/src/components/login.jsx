@@ -501,6 +501,11 @@ const LoginPage = () => {
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
                 <label className="lp-label" style={{ margin: 0 }}>Password</label>
+                <Link to="/forgot-password" style={{ fontSize: 12, fontWeight: 600, color: "#1b7d52", textDecoration: "none", transition: "color 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#2ec97e"}
+                  onMouseLeave={e => e.currentTarget.style.color = "#1b7d52"}>
+                  Forgot password?
+                </Link>
               </div>
               <div className="lp-input-wrap">
                 <div className="lp-icon-left">

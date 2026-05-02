@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import webBg from "../assets/web_bg.png";
+import { BD_LOCATIONS } from "../config/locations";
+import PageFooter from "./page-footer";
 
 /* ══════════════════════════════════════
    MOCK AUTH STORE  (localStorage-backed)
@@ -50,11 +53,22 @@ const seedDemoUsers = () => {
 seedDemoUsers();
 
 /* ══════════════════════════════════════
+   MOCK NOTIFICATIONS
+══════════════════════════════════════ */
+const MOCK_NOTIFICATIONS = [
+  { id: 1, type: "message", from: "Tariq Hasan", text: "Is the Dell laptop still available?", time: "2 min ago", read: false, avatar: "T" },
+  { id: 2, type: "message", from: "Nadia Akter", text: "Can you do ৳30,000 for the laptop?", time: "18 min ago", read: false, avatar: "N" },
+  { id: 3, type: "message", from: "Sabbir Ahmed", text: "I'm interested in the study table!", time: "1 hr ago", read: false, avatar: "S" },
+  { id: 4, type: "message", from: "Rima Islam", text: "When can I pick it up?", time: "3 hr ago", read: true, avatar: "R" },
+  { id: 5, type: "message", from: "Hasib Chowdhury", text: "Thanks for the quick response!", time: "Yesterday", read: true, avatar: "H" },
+];
+
+/* ══════════════════════════════════════
    GLOBAL STYLES
 ══════════════════════════════════════ */
 const GlobalStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { overflow-x: hidden; scroll-behavior: smooth; }
 
@@ -224,7 +238,89 @@ const GlobalStyles = () => (
     /* DECO BUBBLES */
     .auth-deco { position:absolute; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); }
 
-    @keyframes up-toastIn { from{opacity:0;transform:translateX(-50%) translateY(16px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    @keyframes up-bellShake { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-12deg)} 40%{transform:rotate(12deg)} 60%{transform:rotate(-8deg)} 80%{transform:rotate(8deg)} }
+    @keyframes up-notifSlide { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── NOTIFICATION BELL ── */
+    .up-bell-btn {
+      position:relative; width:40px; height:40px; border-radius:12px;
+      background:#f7f8f6; border:1.5px solid #e9eceb;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; transition:background 0.2s, border-color 0.2s; color:#374151; flex-shrink:0;
+    }
+    .up-bell-btn:hover { background:#eff1ee; border-color:#c8d0cb; }
+    .up-bell-btn.has-unread svg { animation:up-bellShake 1.4s ease-in-out; }
+    .up-bell-dot {
+      position:absolute; top:7px; right:7px; width:9px; height:9px;
+      border-radius:50%; background:#ef4444; border:2px solid #fff;
+    }
+    .up-notif-panel {
+      position:fixed; top:80px; right:48px; width:min(340px, calc(100vw - 32px));
+      background:#fff; border-radius:18px; box-shadow:0 16px 48px rgba(0,0,0,0.16);
+      border:1px solid rgba(0,0,0,0.07); overflow:hidden; z-index:1000;
+      animation:up-notifSlide 0.22s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    .up-notif-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 18px 12px; border-bottom:1px solid #f0f2f0;
+    }
+    .up-notif-item {
+      display:flex; align-items:flex-start; gap:12px; padding:13px 18px;
+      border-bottom:1px solid #f8f9f8; cursor:pointer; transition:background 0.15s;
+    }
+    .up-notif-item:last-child { border-bottom:none; }
+    .up-notif-item:hover { background:#f8faf9; }
+    .up-notif-item.unread { background:rgba(46,201,126,0.04); }
+    .up-notif-avatar {
+      width:36px; height:36px; border-radius:11px; flex-shrink:0;
+      background:linear-gradient(135deg,#2ec97e,#1b7d52);
+      display:flex; align-items:center; justify-content:center;
+      font-size:14px; font-weight:700; color:#fff;
+    }
+    .up-reply-box {
+      margin-top:10px; padding:10px; border-radius:12px;
+      background:#fff; border:1px solid #e9eceb;
+    }
+    .up-reply-input {
+      width:100%; min-height:58px; resize:vertical; border:none; outline:none;
+      font-family:inherit; font-size:12px; line-height:1.45; color:#0d1f16;
+      background:transparent;
+    }
+    .up-reply-actions { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-top:8px; }
+    .up-reply-cancel,
+    .up-reply-send {
+      border:none; border-radius:999px; padding:6px 12px;
+      font-family:inherit; font-size:11px; font-weight:700; cursor:pointer;
+    }
+    .up-reply-cancel { background:#f3f4f6; color:#6b7280; }
+    .up-reply-send { background:#1b7d52; color:#fff; }
+    .up-reply-send:disabled { opacity:0.45; cursor:not-allowed; }
+    .up-sent-reply {
+      margin-top:8px; padding:8px 10px; border-radius:10px;
+      background:rgba(46,201,126,0.08); color:#1b7d52;
+      font-size:11px; line-height:1.45; font-weight:600;
+    }
+    .up-messages-backdrop {
+      position:fixed; inset:0; z-index:1200; padding:72px 20px 24px;
+      background:rgba(13,31,22,0.48); backdrop-filter:blur(8px);
+      display:flex; align-items:flex-start; justify-content:center;
+    }
+    .up-messages-modal {
+      width:min(720px, 100%); max-height:calc(100vh - 96px);
+      background:#fff; border-radius:20px; overflow:hidden;
+      border:1px solid rgba(0,0,0,0.08);
+      box-shadow:0 24px 80px rgba(0,0,0,0.28);
+      animation:up-notifSlide 0.22s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    .up-messages-titlebar {
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      padding:18px 22px; border-bottom:1px solid #f0f2f0;
+    }
+    .up-messages-list { max-height:calc(100vh - 190px); overflow-y:auto; }
+    .up-messages-close {
+      width:34px; height:34px; border-radius:50%; border:1px solid #e9eceb;
+      background:#fff; color:#374151; cursor:pointer; font-size:20px; line-height:1;
+    }
     .up-login-toast {
       position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
       z-index:900; display:flex; align-items:center; gap:12px;
@@ -255,84 +351,84 @@ const GlobalStyles = () => (
     /* ── PROFILE LAYOUT ── */
     .up-page {
       min-height:100vh; padding-top:61px;
-      background:linear-gradient(180deg,#08231a 0%,#0d2e1f 40%,#f0f4f1 40%);
+      background:#f7f8f6;
     }
     .up-cover {
-      height:220px; position:relative; overflow:hidden;
-      background:linear-gradient(135deg,#08231a 0%,#0f3d28 40%,#1b7d52 100%);
+      height:200px; position:relative; overflow:hidden;
+      background:linear-gradient(135deg,#08231a 0%,#0f3d28 55%,#1a6644 100%);
     }
     .up-cover-pattern {
       position:absolute; inset:0;
-      background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),
-        linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);
-      background-size:40px 40px;
+      background-image:radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0);
+      background-size:28px 28px;
     }
-    .up-main { max-width:1100px; margin:0 auto; padding:0 24px 80px; }
+    .up-main { max-width:960px; margin:0 auto; padding:0 24px 80px; }
     .up-header-row {
       display:flex; align-items:flex-end; justify-content:space-between;
-      gap:20px; margin-bottom:28px; flex-wrap:wrap;
+      gap:20px; margin-bottom:32px; flex-wrap:wrap;
     }
 
     /* ── AVATAR ── */
-    .up-avatar-wrap { position:relative; margin-top:-56px; }
+    .up-avatar-wrap { position:relative; margin-top:-52px; }
     .up-avatar {
-      width:112px; height:112px; border-radius:50%;
-      border:4px solid #fff;
+      width:104px; height:104px; border-radius:26px;
+      border:3px solid #fff;
       background:linear-gradient(135deg,#2ec97e,#0d3322);
       display:flex; align-items:center; justify-content:center;
-      font-family:'Playfair Display',serif; font-size:38px; font-weight:700; color:#fff;
-      box-shadow:0 8px 32px rgba(0,0,0,0.2);
-      overflow:hidden; cursor:pointer; transition:opacity 0.2s;
+      font-family:'Sora',sans-serif; font-size:36px; font-weight:700; color:#fff;
+      box-shadow:0 8px 28px rgba(0,0,0,0.18);
+      overflow:hidden; cursor:pointer; transition:opacity 0.2s, transform 0.2s;
     }
-    .up-avatar:hover { opacity:0.88; }
+    .up-avatar:hover { opacity:0.9; transform:scale(1.03); }
     .up-avatar-badge {
-      position:absolute; bottom:4px; right:4px;
-      width:26px; height:26px; border-radius:50%;
+      position:absolute; bottom:-4px; right:-4px;
+      width:28px; height:28px; border-radius:9px;
       background:linear-gradient(135deg,#2ec97e,#1b7d52);
-      border:3px solid #fff;
+      border:2.5px solid #f7f8f6;
       display:flex; align-items:center; justify-content:center;
+      box-shadow:0 2px 8px rgba(46,201,126,0.4);
     }
     .up-verify-ring {
-      position:absolute; inset:-3px; border-radius:50%;
-      border:2px solid rgba(46,201,126,0.6);
-      animation:up-ping 2.5s ease-out infinite;
+      position:absolute; inset:-3px; border-radius:29px;
+      border:2px solid rgba(46,201,126,0.5);
+      animation:up-ping 2.8s ease-out infinite;
     }
 
     /* ── BODY GRID ── */
-    .up-grid { display:grid; grid-template-columns:320px 1fr; gap:28px; align-items:start; }
+    .up-grid { position:relative; z-index:1; display:grid; grid-template-columns:1fr; gap:20px; align-items:start; }
 
     /* ── CARD ── */
-    .up-card { background:#fff; border-radius:20px; padding:28px; box-shadow:0 2px 20px rgba(0,0,0,0.07); border:1px solid rgba(0,0,0,0.05); }
-    .up-card-sm { background:#fff; border-radius:16px; padding:20px 24px; box-shadow:0 2px 16px rgba(0,0,0,0.06); border:1px solid rgba(0,0,0,0.05); }
+    .up-card { background:#fff; border-radius:20px; padding:28px; box-shadow:0 1px 12px rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.06); }
+    .up-card-sm { background:#fff; border-radius:16px; padding:20px 24px; box-shadow:0 1px 8px rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.06); }
 
     /* ── TABS ── */
-    .up-tabs { display:flex; gap:4px; background:#f1f5f2; border-radius:14px; padding:4px; margin-bottom:24px; overflow-x:auto; }
-    .up-tab { flex:1; min-width:max-content; padding:10px 16px; border-radius:10px; border:none; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; transition:all 0.22s; background:none; color:#6b7280; white-space:nowrap; display:flex; align-items:center; justify-content:center; gap:6px; }
-    .up-tab.active { background:#fff; color:#0d3322; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+    .up-tabs { display:flex; gap:2px; background:#eff1ee; border-radius:14px; padding:4px; margin-bottom:26px; overflow-x:auto; }
+    .up-tab { flex:1; min-width:max-content; padding:10px 18px; border-radius:11px; border:none; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; transition:all 0.22s; background:none; color:#7a8c82; white-space:nowrap; display:flex; align-items:center; justify-content:center; gap:6px; }
+    .up-tab.active { background:#fff; color:#0d3322; box-shadow:0 1px 6px rgba(0,0,0,0.09); }
     .up-tab:hover:not(.active) { color:#374151; }
 
     /* ── INPUTS ── */
-    .up-label { display:block; font-size:11px; font-weight:700; color:#6b7280; margin-bottom:6px; letter-spacing:0.05em; text-transform:uppercase; }
-    .up-input { width:100%; border:1.5px solid #e5e7eb; background:#f9fafb; border-radius:12px; padding:12px 16px; font-size:14px; font-family:inherit; outline:none; transition:border-color 0.2s, box-shadow 0.2s, background 0.2s; color:#111827; }
-    .up-input::placeholder { color:#9ca3af; }
-    .up-input:focus { border-color:#2ec97e; background:#fff; box-shadow:0 0 0 4px rgba(46,201,126,0.1); }
+    .up-label { display:block; font-size:11px; font-weight:700; color:#9ca3af; margin-bottom:7px; letter-spacing:0.06em; text-transform:uppercase; }
+    .up-input { width:100%; border:1.5px solid #e9eceb; background:#fafbfa; border-radius:12px; padding:12px 16px; font-size:14px; font-family:inherit; outline:none; transition:border-color 0.2s, box-shadow 0.2s, background 0.2s; color:#111827; }
+    .up-input::placeholder { color:#b0b9b5; }
+    .up-input:focus { border-color:#2ec97e; background:#fff; box-shadow:0 0 0 3px rgba(46,201,126,0.1); }
     .up-input:disabled { background:#f3f4f6; color:#9ca3af; cursor:not-allowed; }
     .up-textarea { resize:vertical; min-height:90px; line-height:1.6; }
     .up-input-wrap { position:relative; }
     .up-input-icon { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:#9ca3af; pointer-events:none; }
     .up-pl { padding-left:40px; }
-    .up-select { width:100%; border:1.5px solid #e5e7eb; background:#f9fafb; border-radius:12px; padding:12px 16px; font-size:14px; font-family:inherit; outline:none; color:#111827; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; background-size:16px; }
-    .up-select:focus { border-color:#2ec97e; box-shadow:0 0 0 4px rgba(46,201,126,0.1); }
+    .up-select { width:100%; border:1.5px solid #e9eceb; background:#fafbfa; border-radius:12px; padding:12px 16px; font-size:14px; font-family:inherit; outline:none; color:#111827; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; background-size:16px; }
+    .up-select:focus { border-color:#2ec97e; box-shadow:0 0 0 3px rgba(46,201,126,0.1); }
 
     /* ── BUTTONS ── */
-    .up-btn-primary { display:inline-flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(135deg,#0d3322,#1b7d52); color:#fff; border:none; border-radius:12px; padding:12px 22px; font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; transition:opacity 0.2s, transform 0.15s, box-shadow 0.2s; box-shadow:0 4px 16px rgba(13,51,34,0.28); }
-    .up-btn-primary:hover:not(:disabled) { opacity:0.88; transform:translateY(-1px); box-shadow:0 7px 24px rgba(13,51,34,0.38); }
+    .up-btn-primary { display:inline-flex; align-items:center; justify-content:center; gap:8px; background:#0d3322; color:#fff; border:none; border-radius:11px; padding:11px 22px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; transition:background 0.2s, transform 0.15s; }
+    .up-btn-primary:hover:not(:disabled) { background:#1a5c3a; transform:translateY(-1px); }
     .up-btn-primary:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
-    .up-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:none; border:1.5px solid #e5e7eb; border-radius:12px; padding:11px 18px; font-size:14px; font-weight:600; font-family:inherit; color:#374151; cursor:pointer; transition:all 0.2s; }
-    .up-btn-ghost:hover { border-color:#9ca3af; background:#f9fafb; }
-    .up-btn-danger { display:inline-flex; align-items:center; gap:6px; background:none; border:1.5px solid #fecaca; border-radius:12px; padding:11px 18px; font-size:14px; font-weight:600; font-family:inherit; color:#dc2626; cursor:pointer; transition:all 0.2s; }
+    .up-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1.5px solid #e9eceb; border-radius:11px; padding:10px 18px; font-size:13px; font-weight:600; font-family:inherit; color:#374151; cursor:pointer; transition:all 0.2s; }
+    .up-btn-ghost:hover { border-color:#b0b9b5; background:#fafbfa; }
+    .up-btn-danger { display:inline-flex; align-items:center; gap:6px; background:none; border:1.5px solid #fecaca; border-radius:11px; padding:10px 18px; font-size:13px; font-weight:600; font-family:inherit; color:#dc2626; cursor:pointer; transition:all 0.2s; }
     .up-btn-danger:hover { background:#fef2f2; border-color:#ef4444; }
-    .up-btn-sm { display:inline-flex; align-items:center; gap:5px; background:rgba(46,201,126,0.1); border:1px solid rgba(46,201,126,0.25); border-radius:100px; padding:6px 14px; font-size:12px; font-weight:600; font-family:inherit; color:#1b7d52; cursor:pointer; transition:all 0.2s; }
+    .up-btn-sm { display:inline-flex; align-items:center; gap:5px; background:rgba(46,201,126,0.1); border:1px solid rgba(46,201,126,0.22); border-radius:100px; padding:6px 14px; font-size:12px; font-weight:600; font-family:inherit; color:#1b7d52; cursor:pointer; transition:all 0.2s; }
     .up-btn-sm:hover { background:rgba(46,201,126,0.2); }
 
     /* ── ALERTS ── */
@@ -341,23 +437,26 @@ const GlobalStyles = () => (
     .up-warn { background:#fffbeb; border:1px solid #fde68a; border-radius:11px; padding:10px 14px; font-size:12px; color:#92400e; display:flex; align-items:flex-start; gap:7px; }
 
     /* ── STAT CHIP ── */
-    .up-stat-chip { display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg,rgba(46,201,126,0.08),rgba(27,125,82,0.04)); border:1px solid rgba(46,201,126,0.18); border-radius:16px; padding:16px 12px; flex:1; min-width:80px; }
+    .up-stat-chip { display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f7f8f6; border:1px solid #e9eceb; border-radius:16px; padding:18px 12px; flex:1; min-width:80px; transition:border-color 0.2s, background 0.2s, transform 0.15s; font-family:inherit; cursor:default; }
+    .up-stat-chip.clickable { cursor:pointer; }
+    .up-stat-chip.clickable:hover { border-color:rgba(46,201,126,0.4); transform:translateY(-1px); }
+    .up-stat-chip.active { background:rgba(46,201,126,0.08); border-color:rgba(46,201,126,0.45); }
 
     /* ── ACTIVITY ITEM ── */
-    .up-activity-item { display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid #f0f0f0; }
+    .up-activity-item { display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid #f0f2f0; }
     .up-activity-item:last-child { border-bottom:none; }
     .up-activity-icon { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:18px; }
 
     /* ── LISTING CARD ── */
-    .up-listing-card { display:flex; gap:14px; padding:14px; border-radius:14px; border:1.5px solid #f0f0f0; transition:border-color 0.2s, box-shadow 0.2s; margin-bottom:12px; align-items:center; }
-    .up-listing-card:hover { border-color:rgba(46,201,126,0.3); box-shadow:0 4px 16px rgba(0,0,0,0.06); }
-    .up-listing-img { width:56px; height:56px; border-radius:10px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0; }
+    .up-listing-card { display:flex; gap:14px; padding:14px; border-radius:14px; border:1.5px solid #f0f2f0; transition:border-color 0.2s, box-shadow 0.2s; margin-bottom:10px; align-items:center; }
+    .up-listing-card:hover { border-color:rgba(46,201,126,0.3); box-shadow:0 3px 12px rgba(0,0,0,0.05); }
+    .up-listing-img { width:52px; height:52px; border-radius:10px; background:#f3f5f2; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; }
 
     /* ── TIER BADGE ── */
-    .up-tier { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:100px; font-size:11px; font-weight:700; letter-spacing:0.05em; }
+    .up-tier { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:100px; font-size:11px; font-weight:700; letter-spacing:0.04em; }
 
     /* ── PROGRESS ── */
-    .up-progress-bar { height:6px; background:#e5e7eb; border-radius:100px; overflow:hidden; }
+    .up-progress-bar { height:5px; background:#e9eceb; border-radius:100px; overflow:hidden; }
     .up-progress-fill { height:100%; border-radius:100px; background:linear-gradient(to right,#2ec97e,#1b7d52); transition:width 0.8s cubic-bezier(0.22,1,0.36,1); }
 
     /* ── SPINNER ── */
@@ -365,8 +464,8 @@ const GlobalStyles = () => (
     .up-spinner-dark { border-color:rgba(13,51,34,0.2); border-top-color:#0d3322; }
 
     /* ── SECTION TITLE ── */
-    .up-section-title { font-size:12px; font-weight:700; color:#9ca3af; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
-    .up-section-title::after { content:''; flex:1; height:1px; background:#f0f0f0; }
+    .up-section-title { font-size:11px; font-weight:700; color:#b0b9b5; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:18px; display:flex; align-items:center; gap:10px; }
+    .up-section-title::after { content:''; flex:1; height:1px; background:#f0f2f0; }
 
     /* ── SLIDE ANIMATION ── */
     .up-fade  { opacity:0; animation:up-fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) forwards; }
@@ -374,12 +473,20 @@ const GlobalStyles = () => (
     .up-d4{animation-delay:0.30s} .up-d5{animation-delay:0.38s} .up-d6{animation-delay:0.46s}
     .up-slide { opacity:0; animation:up-slideIn 0.32s cubic-bezier(0.22,1,0.36,1) forwards; }
 
+    /* ── PROFILE IDENTITY BAR ── */
+    .up-identity-bar {
+      position:relative; z-index:20; overflow:visible;
+      background:#fff; border-radius:20px; padding:24px 28px;
+      box-shadow:0 1px 12px rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.06);
+      margin-bottom:20px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+      animation:up-fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) forwards; opacity:0;
+    }
+
     /* ── RESPONSIVE ── */
     @media(max-width:900px) {
-      .up-grid { grid-template-columns:1fr; }
       .up-nav { padding:14px 24px; }
       .up-cover { height:160px; }
-      .up-avatar { width:90px; height:90px; font-size:30px; margin-top:-45px; }
+      .up-avatar { width:88px; height:88px; font-size:28px; }
       .auth-login-grid { grid-template-columns:1fr; padding:60px 24px 60px; gap:32px; }
       .auth-nav { padding:14px 28px; }
     }
@@ -390,6 +497,8 @@ const GlobalStyles = () => (
       .up-main { padding:0 16px 60px; }
       .up-card { padding:20px 18px; }
       .up-header-row { flex-direction:column; align-items:flex-start; }
+      .up-identity-bar { flex-direction:column; align-items:flex-start; }
+      .up-notif-panel { right:16px; }
       .up-tabs { gap:2px; }
       .up-tab { padding:9px 12px; font-size:12px; }
       .auth-nav { padding:14px 20px; }
@@ -1336,89 +1445,42 @@ const TierBadge = ({ tier }) => {
 };
 
 /* ══════════════════════════════════════
-   PROFILE SIDEBAR
+   PROFILE STAT STRIP (replaces sidebar)
 ══════════════════════════════════════ */
 const calcCompletion = (u) => {
   const fields = [u.name, u.email, u.phone, u.location, u.bio, u.idValue, u.avatar];
   return Math.round((fields.filter(Boolean).length / fields.length) * 100);
 };
 
-const ProfileSidebar = ({ user }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-    <div className="up-card up-fade up-d2">
-      <p className="up-section-title">Activity Overview</p>
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-        {[
-          { label: "Listings", value: user.totalListings, icon: "📦" },
-          { label: "Sold",     value: user.soldItems,     icon: "✅" },
-          { label: "Saved",    value: user.savedItems,    icon: "❤️" },
-        ].map(s => (
-          <div key={s.label} className="up-stat-chip">
-            <span style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</span>
-            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 700, color: "#0d1f16", lineHeight: 1 }}>{s.value}</span>
-            <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginTop: 2 }}>{s.label}</span>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderTop: "1px solid #f0f0f0", borderBottom: "1px solid #f0f0f0", marginBottom: 14 }}>
-        <div>
-          <p style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginBottom: 4 }}>SELLER RATING</p>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Stars rating={user.rating || 0} />
-            <span style={{ fontSize: 16, fontWeight: 700, color: "#0d1f16" }}>{user.rating > 0 ? user.rating.toFixed(1) : "—"}</span>
-            <span style={{ fontSize: 12, color: "#9ca3af" }}>({user.reviews} reviews)</span>
-          </div>
-        </div>
-        <TierBadge tier={user.memberTier} />
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, color: "#6b7280" }}>Member since</span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#0d1f16" }}>
-            {new Date(user.joinDate).toLocaleDateString("en-US", { year: "numeric", month: "short" })}
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 100, background: user.verified ? "rgba(46,201,126,0.1)" : "rgba(245,158,11,0.1)", border: `1px solid ${user.verified ? "rgba(46,201,126,0.25)" : "rgba(245,158,11,0.25)"}` }}>
-            <ShieldIcon />
-            <span style={{ fontSize: 11, fontWeight: 700, color: user.verified ? "#1b7d52" : "#92400e" }}>
-              {user.verified ? "Verified" : "Not Verified"}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div className="up-card-sm up-fade up-d3">
-      <p className="up-section-title">Trust Score</p>
-      {[
-        { label: "Profile Complete", val: calcCompletion(user), color: "#2ec97e" },
-        { label: "Response Rate",    val: user.reviews > 0 ? 88 : 0, color: "#3b82f6" },
-        { label: "Transaction Score",val: user.soldItems > 0 ? Math.min(100, user.soldItems * 14) : 0, color: "#f59e0b" },
-      ].map(s => (
-        <div key={s.label} style={{ marginBottom: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-            <span style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>{s.label}</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#0d1f16" }}>{s.val}%</span>
-          </div>
-          <div className="up-progress-bar">
-            <div className="up-progress-fill" style={{ width: `${s.val}%`, background: `linear-gradient(to right,${s.color}99,${s.color})` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-    <div className="up-card-sm up-fade up-d4">
-      <p className="up-section-title">Contact</p>
-      {[
-        { icon: "📧", label: user.email },
-        { icon: "📱", label: user.phone ? `+88 ${user.phone}` : "—" },
-        { icon: "📍", label: user.location || "Location not set" },
-      ].map((c, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < 2 ? "1px solid #f5f5f5" : "none" }}>
-          <span style={{ fontSize: 16, flexShrink: 0 }}>{c.icon}</span>
-          <span style={{ fontSize: 13, color: "#374151", wordBreak: "break-all" }}>{c.label}</span>
-        </div>
-      ))}
-    </div>
+const ProfileSidebar = ({ user, activeView, onViewChange }) => (
+  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20, animation: "up-fadeUp 0.6s 0.1s cubic-bezier(0.22,1,0.36,1) both" }}>
+    {[
+      { key: "all", value: user.totalListings, label: "Listings", icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1b7d52" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:16,height:16}}><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+      )},
+      { key: "sold", value: user.soldItems, label: "Sold", icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1b7d52" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:16,height:16}}><polyline points="20 6 9 17 4 12"/></svg>
+      )},
+      { value: user.rating > 0 ? user.rating.toFixed(1) : "—", label: "Rating", icon: (
+        <svg viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{width:16,height:16}}><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
+      )},
+      { key: "saved", value: user.savedItems || 0, label: "Saved", icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1b7d52" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:16,height:16}}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+      )},
+    ].map(s => (
+      <button
+        type="button"
+        key={s.label}
+        className={`up-stat-chip${s.key ? " clickable" : ""}${s.key && activeView === s.key ? " active" : ""}`}
+        onClick={() => s.key && onViewChange(s.key)}
+        disabled={!s.key}
+        title={s.key ? `Show ${s.label.toLowerCase()} items` : undefined}
+      >
+        <div style={{ marginBottom: 6 }}>{s.icon}</div>
+        <span style={{ fontSize: 20, fontWeight: 700, color: "#0d1f16", lineHeight: 1, letterSpacing: "-0.01em" }}>{s.value}</span>
+        <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 3 }}>{s.label}</span>
+      </button>
+    ))}
   </div>
 );
 
@@ -1484,7 +1546,16 @@ const EditProfileTab = ({ user, onSave }) => {
           <div className="up-input-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
           </div>
-          <input type="text" className="up-input up-pl" value={form.location} onChange={e => set("location", e.target.value)} placeholder="e.g. Dhanmondi, Dhaka" />
+          <select
+            className="up-input up-pl"
+            value={form.location}
+            onChange={e => set("location", e.target.value)}
+          >
+            <option value="" disabled>Select district / area</option>
+            {BD_LOCATIONS.map(locationOption => (
+              <option key={locationOption} value={locationOption}>{locationOption}</option>
+            ))}
+          </select>
         </div>
       </div>
       <div>
@@ -1605,15 +1676,33 @@ const MOCK_LISTINGS = [
   { id: 4, emoji: "👟", title: "Nike Air Max (Size 42)", price: "৳4,500", status: "paused", cat: "Clothing", views: 31, saves: 5 },
 ];
 
-const ListingsTab = ({ user }) => (
+const MOCK_SAVED_ITEMS = [
+  { id: 101, emoji: "Phone", title: "iPhone 12 Pro", price: "TK 52,000", status: "saved", cat: "Electronics", views: 312, saves: 41 },
+  { id: 102, emoji: "Bike", title: "Mountain Bike", price: "TK 12,500", status: "saved", cat: "Sports", views: 205, saves: 33 },
+  { id: 103, emoji: "Sofa", title: "Two Seater Sofa", price: "TK 8,000", status: "saved", cat: "Furniture", views: 147, saves: 22 },
+];
+
+const ListingsTab = ({ user, view = "all" }) => {
+  const data = view === "saved"
+    ? MOCK_SAVED_ITEMS
+    : view === "sold"
+      ? MOCK_LISTINGS.filter(l => l.status === "sold")
+      : MOCK_LISTINGS;
+  const title = view === "saved" ? "Saved Items" : view === "sold" ? "Sold Items" : "My Listings";
+  const empty = view === "saved" ? "No saved items yet." : view === "sold" ? "No sold items yet." : "No listings yet.";
+
+  return (
   <div>
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-      <p className="up-section-title" style={{ margin: 0 }}>My Listings</p>
-      <Link to="/post-item" style={{ textDecoration: "none" }}>
-        <button className="up-btn-sm">+ New Listing</button>
-      </Link>
+      <p className="up-section-title" style={{ margin: 0 }}>{title}</p>
+      {view !== "saved" && (
+        <Link to="/post-item" style={{ textDecoration: "none" }}>
+          <button className="up-btn-sm">+ New Listing</button>
+        </Link>
+      )}
     </div>
-    {MOCK_LISTINGS.map(l => (
+    {data.length === 0 && <p style={{ fontSize: 13, color: "#7a8c82" }}>{empty}</p>}
+    {data.map(l => (
       <div key={l.id} className="up-listing-card">
         <div className="up-listing-img">{l.emoji}</div>
         <div style={{ flex: 1 }}>
@@ -1631,7 +1720,8 @@ const ListingsTab = ({ user }) => (
       </div>
     ))}
   </div>
-);
+  );
+};
 
 /* ══════════════════════════════════════
    ACTIVITY TAB
@@ -1662,24 +1752,159 @@ const ActivityTab = () => (
 );
 
 /* ══════════════════════════════════════
+   NOTIFICATION BELL
+══════════════════════════════════════ */
+const NotificationBell = () => {
+  const [open, setOpen] = useState(false);
+  const [showAllMessages, setShowAllMessages] = useState(false);
+  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [activeReplyId, setActiveReplyId] = useState(null);
+  const [replyDrafts, setReplyDrafts] = useState({});
+  const [sentReplies, setSentReplies] = useState({});
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const markAllRead = () => setNotifications(ns => ns.map(n => ({ ...n, read: true })));
+  const markRead = (id) => setNotifications(ns => ns.map(n => n.id === id ? { ...n, read: true } : n));
+  const selectMessage = (id) => {
+    markRead(id);
+    setActiveReplyId(id);
+  };
+  const sendReply = (id) => {
+    const text = (replyDrafts[id] || "").trim();
+    if (!text) return;
+    setSentReplies(rs => ({ ...rs, [id]: [...(rs[id] || []), text] }));
+    setReplyDrafts(ds => ({ ...ds, [id]: "" }));
+    setActiveReplyId(null);
+  };
+  const openAllMessages = (e) => {
+    e.stopPropagation();
+    setShowAllMessages(true);
+    setNotifications(ns => ns.map(n => ({ ...n, read: true })));
+  };
+  const renderMessages = () => notifications.map(n => (
+    <div key={n.id} className={`up-notif-item${!n.read ? " unread" : ""}`} onClick={() => selectMessage(n.id)}>
+      <div className="up-notif-avatar">{n.avatar}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "#0d1f16" }}>{n.from}</p>
+          <span style={{ fontSize: 10, color: "#b0b9b5", flexShrink: 0, marginLeft: 8 }}>{n.time}</span>
+        </div>
+        <p style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.45 }}>{n.text}</p>
+        {(sentReplies[n.id] || []).map((reply, index) => (
+          <div key={index} className="up-sent-reply">You: {reply}</div>
+        ))}
+        {activeReplyId === n.id ? (
+          <div className="up-reply-box" onClick={e => e.stopPropagation()}>
+            <textarea
+              className="up-reply-input"
+              value={replyDrafts[n.id] || ""}
+              onChange={e => setReplyDrafts(ds => ({ ...ds, [n.id]: e.target.value }))}
+              placeholder={`Reply to ${n.from}...`}
+              autoFocus
+            />
+            <div className="up-reply-actions">
+              <button type="button" className="up-reply-cancel" onClick={() => setActiveReplyId(null)}>Cancel</button>
+              <button type="button" className="up-reply-send" disabled={!(replyDrafts[n.id] || "").trim()} onClick={() => sendReply(n.id)}>Send</button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); selectMessage(n.id); }}
+            style={{ marginTop: 8, background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "#1b7d52", fontFamily: "inherit" }}
+          >
+            Reply
+          </button>
+        )}
+      </div>
+      {!n.read && <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#2ec97e", flexShrink: 0, marginTop: 4 }} />}
+    </div>
+  ));
+
+  return (
+    <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        className={`up-bell-btn${unreadCount > 0 ? " has-unread" : ""}`}
+        onClick={() => setOpen(o => !o)}
+        title="Notifications"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+        {unreadCount > 0 && <span className="up-bell-dot" />}
+      </button>
+
+      {open && (
+        <div className="up-notif-panel">
+          <div className="up-notif-header">
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#0d1f16" }}>Messages</p>
+              {unreadCount > 0 && <p style={{ fontSize: 11, color: "#2ec97e", fontWeight: 600, marginTop: 1 }}>{unreadCount} unread</p>}
+            </div>
+            {unreadCount > 0 && (
+              <button onClick={markAllRead} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 600, color: "#7a8c82", fontFamily: "inherit" }}>
+                Mark all read
+              </button>
+            )}
+          </div>
+          <div style={{ maxHeight: 380, overflowY: "auto" }}>
+            {renderMessages()}
+          </div>
+          <div style={{ padding: "12px 18px", borderTop: "1px solid #f0f2f0", textAlign: "center" }}>
+            <button onClick={openAllMessages} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#1b7d52", fontFamily: "inherit" }}>
+              View all messages →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showAllMessages && (
+        <div className="up-messages-backdrop" onClick={() => setShowAllMessages(false)}>
+          <div className="up-messages-modal" onClick={e => e.stopPropagation()}>
+            <div className="up-messages-titlebar">
+              <div>
+                <p style={{ fontSize: 18, fontWeight: 800, color: "#0d1f16" }}>All Messages</p>
+                <p style={{ fontSize: 12, color: "#7a8c82", marginTop: 3 }}>{notifications.length} conversations</p>
+              </div>
+              <button type="button" className="up-messages-close" onClick={() => setShowAllMessages(false)} aria-label="Close messages">×</button>
+            </div>
+            <div className="up-messages-list">
+              {renderMessages()}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════
    MAIN PROFILE PAGE
 ══════════════════════════════════════ */
 const UserProfilePage = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(getSession());
-  // "none" | "login" | "register"
-  const [authMode, setAuthMode] = useState(!getSession() ? "login" : "none");
   const [activeTab, setActiveTab] = useState("edit");
+  const [listingView, setListingView] = useState("all");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [loginToast, setLoginToast] = useState(false);
+  const [loginModal, setLoginModal] = useState(false);
   const fileRef = useRef(null);
 
-  const handleAuth = (u) => { setUser(u); setAuthMode("none"); };
-  const handleLogout = () => { clearSession(); setUser(null); setAuthMode("login"); };
+  const handleLogout = () => { clearSession(); setUser(null); navigate("/signin"); };
 
-  const showLoginToast = () => {
-    setLoginToast(true);
-    setTimeout(() => setLoginToast(false), 3000);
+  const showLoginModal = () => { setLoginModal(true); };
+  const showListingView = (view) => {
+    setListingView(view);
+    setActiveTab("listings");
   };
 
   const handleAvatarChange = (e) => {
@@ -1709,37 +1934,41 @@ const UserProfilePage = () => {
     <div style={{ fontFamily: "'DM Sans',sans-serif" }}>
       <GlobalStyles />
 
-      {/* FULL-PAGE AUTH OVERLAYS */}
-      {authMode === "login" && (
-        <LoginOverlay
-          onClose={() => { if (user) setAuthMode("none"); }}
-          onSuccess={handleAuth}
-          onSwitchToRegister={() => setAuthMode("register")}
-        />
-      )}
-      {authMode === "register" && (
-        <RegisterOverlay
-          onClose={() => { if (user) setAuthMode("none"); }}
-          onSuccess={handleAuth}
-          onSwitchToLogin={() => setAuthMode("login")}
-        />
-      )}
-
-      {/* LOGIN-FIRST TOAST */}
-      {loginToast && (
-        <div className="up-login-toast">
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg,#2ec97e,#1b7d52)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            </svg>
-          </div>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>Please log in first to access your profile</span>
-          <button
-            onClick={() => { setLoginToast(false); setAuthMode("login"); }}
-            style={{ background: "rgba(46,201,126,0.2)", border: "1px solid rgba(46,201,126,0.45)", borderRadius: 100, padding: "5px 16px", fontSize: 12, fontWeight: 700, color: "#2ec97e", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+      {/* LOGIN-FIRST MODAL */}
+      {loginModal && (
+        <div
+          onClick={() => setLoginModal(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 900, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 24, padding: "40px 36px", maxWidth: 420, width: "100%", textAlign: "center", boxShadow: "0 24px 80px rgba(0,0,0,0.25)", animation: "up-pop 0.38s cubic-bezier(0.34,1.56,0.64,1) forwards" }}
           >
-            Sign In →
-          </button>
+            <div style={{ width: 68, height: 68, borderRadius: "50%", background: "linear-gradient(135deg,rgba(46,201,126,0.12),rgba(27,125,82,0.08))", border: "2px dashed rgba(46,201,126,0.4)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#2ec97e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
+                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 700, color: "#0d1f16", marginBottom: 10 }}>Log in first</h3>
+            <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.65, marginBottom: 28 }}>
+              You need to be signed in to view your profile. Please sign in to continue — or create a free account if you're new here.
+            </p>
+            <button
+              onClick={() => { setLoginModal(false); navigate("/signin"); }}
+              style={{ width: "100%", padding: "14px 24px", borderRadius: 13, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#0d3322,#1b7d52)", color: "#fff", fontSize: 15, fontWeight: 700, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 6px 20px rgba(13,51,34,0.3)", transition: "opacity 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+              Sign In
+            </button>
+            <button
+              onClick={() => setLoginModal(false)}
+              style={{ marginTop: 12, width: "100%", padding: "11px", borderRadius: 13, border: "1.5px solid #e5e7eb", cursor: "pointer", background: "none", color: "#6b7280", fontSize: 14, fontWeight: 600, fontFamily: "inherit" }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
@@ -1767,9 +1996,9 @@ const UserProfilePage = () => {
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {/* Ghost avatar — tapping shows "please login first" toast */}
+              {/* Ghost avatar — tapping shows "please login first" modal */}
               <div
-                onClick={showLoginToast}
+                onClick={showLoginModal}
                 title="Tap to see login prompt"
                 style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "2px dashed rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}
                 onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.16)"}
@@ -1779,7 +2008,7 @@ const UserProfilePage = () => {
                   <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
                 </svg>
               </div>
-              <button onClick={() => setAuthMode("login")} className="up-btn-primary" style={{ padding: "8px 18px", fontSize: 13, borderRadius: 100 }}>
+              <button onClick={() => navigate("/signin")} className="up-btn-primary" style={{ padding: "8px 18px", fontSize: 13, borderRadius: 100 }}>
                 Sign In
               </button>
             </div>
@@ -1798,71 +2027,124 @@ const UserProfilePage = () => {
         {user && <button onClick={handleLogout} className="up-mobile-link" style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: "#ef4444", fontWeight: 600, fontSize: 17 }}>Sign Out</button>}
       </div>
 
+      {!user && (
+        <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#08231a 0%,#0f3d28 55%,#1b7d52 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "100px 24px 60px" }}>
+          <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)", backgroundSize: "56px 56px" }} />
+          <div style={{ position: "absolute", top: 0, left: "20%", width: 420, height: 420, background: "radial-gradient(circle,rgba(46,201,126,0.15) 0%,transparent 65%)", borderRadius: "50%" }} />
+          <div style={{ position: "relative", zIndex: 10, textAlign: "center", maxWidth: 480 }}>
+            <div style={{ width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "2px dashed rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 28px", animation: "up-pulse 2.4s ease-in-out infinite" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 36, height: 36 }}>
+                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(46,201,126,0.12)", border: "1px solid rgba(46,201,126,0.3)", borderRadius: 100, padding: "7px 16px", marginBottom: 20 }}>
+              <div style={{ width: 7, height: 7, background: "#2ec97e", borderRadius: "50%", animation: "up-shimmer 2s infinite" }} />
+              <span style={{ fontSize: 12, fontWeight: 500, color: "#2ec97e", letterSpacing: "0.05em" }}>Authentication Required</span>
+            </div>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(28px,4vw,44px)", fontWeight: 900, color: "#fff", lineHeight: 1.1, marginBottom: 16 }}>
+              Sign in to view<br /><em style={{ fontStyle: "italic", color: "#2ec97e" }}>your profile</em>
+            </h2>
+            <p style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", lineHeight: 1.7, marginBottom: 36, fontWeight: 300 }}>
+              Your profile, listings, and account settings are only visible after signing in. Join thousands of verified members on Proti-Binimoy.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <button
+                onClick={() => navigate("/signin")}
+                style={{ padding: "15px 32px", borderRadius: 14, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#2ec97e,#1b7d52)", color: "#fff", fontSize: 16, fontWeight: 700, fontFamily: "inherit", boxShadow: "0 8px 28px rgba(46,201,126,0.35)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, transition: "opacity 0.2s, transform 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "none"; }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 17, height: 17 }}><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                Sign In to Your Account
+              </button>
+              <button
+                onClick={() => navigate("/register")}
+                style={{ padding: "14px 32px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.85)", fontSize: 15, fontWeight: 600, fontFamily: "inherit", backdropFilter: "blur(8px)", transition: "background 0.2s" }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
+                onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+              >
+                New here? Create a free account →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {user && (
         <div className="up-page">
           {/* COVER */}
           <div className="up-cover">
             <div className="up-cover-pattern" />
-            <div style={{ position: "absolute", top: -80, right: -80, width: 380, height: 380, background: "radial-gradient(circle,rgba(46,201,126,0.22),transparent 65%)", borderRadius: "50%" }} />
-            <div style={{ position: "absolute", bottom: -60, left: "30%", width: 260, height: 260, background: "radial-gradient(circle,rgba(196,154,60,0.14),transparent 65%)", borderRadius: "50%" }} />
+            <div style={{
+              position: "absolute", inset: 0,
+              backgroundImage: `linear-gradient(135deg, rgba(8,35,26,0.72), rgba(15,61,40,0.62) 55%, rgba(27,125,82,0.45) 100%), url(${webBg})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center top",
+              backgroundBlendMode: "overlay",
+            }} />
+            <div style={{ position: "absolute", top: -60, right: -40, width: 300, height: 300, background: "radial-gradient(circle,rgba(46,201,126,0.2),transparent 65%)", borderRadius: "50%" }} />
           </div>
 
           <div className="up-main">
-            <div className="up-header-row">
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 18 }}>
-                {/* Avatar — click to open login overlay */}
-                <div className="up-avatar-wrap">
-                  {user.verified && <div className="up-verify-ring" />}
-                  <div className="up-avatar" onClick={() => fileRef.current?.click()} title="Change photo">
-                    {user.avatar
-                      ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : <span>{user.name?.[0]?.toUpperCase() || "?"}</span>
-                    }
-                  </div>
-                  <div className="up-avatar-badge" title="Change photo" onClick={() => fileRef.current?.click()} style={{ cursor: "pointer" }}>
-                    <CameraIcon />
-                  </div>
-                  <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: "none" }} />
+            {/* IDENTITY BAR */}
+            <div className="up-identity-bar">
+              {/* Avatar */}
+              <div className="up-avatar-wrap" style={{ marginTop: -52, flexShrink: 0 }}>
+                {user.verified && <div className="up-verify-ring" />}
+                <div className="up-avatar" onClick={() => fileRef.current?.click()} title="Change photo">
+                  {user.avatar
+                    ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <span>{user.name?.[0]?.toUpperCase() || "?"}</span>
+                  }
                 </div>
-                <div style={{ paddingBottom: 6 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.5vw,28px)", fontWeight: 700, color: "#0d1f16" }}>{user.name}</h1>
-                    {user.verified && (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 100, background: "rgba(46,201,126,0.12)", border: "1px solid rgba(46,201,126,0.3)", fontSize: 11, fontWeight: 700, color: "#1b7d52" }}>
-                        <ShieldIcon /> Verified
-                      </span>
-                    )}
-                    <TierBadge tier={user.memberTier} />
-                  </div>
-                  <p style={{ fontSize: 13, color: "#6b7280", marginTop: 3 }}>
-                    {user.location || "No location set"} · Member since {new Date(user.joinDate).toLocaleDateString("en-US", { year: "numeric", month: "long" })}
-                  </p>
-                  {user.bio && <p style={{ fontSize: 13, color: "#374151", marginTop: 5, maxWidth: 480, lineHeight: 1.5 }}>{user.bio}</p>}
+                <div className="up-avatar-badge" title="Change photo" onClick={() => fileRef.current?.click()} style={{ cursor: "pointer" }}>
+                  <CameraIcon />
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: "none" }} />
+              </div>
+
+              {/* Name + meta */}
+              <div style={{ flex: 1, minWidth: 0, paddingBottom: 2 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
+                  <h1 style={{ fontSize: "clamp(18px,2.2vw,24px)", fontWeight: 700, color: "#0d1f16", letterSpacing: "-0.02em" }}>{user.name}</h1>
+                  {user.verified && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 100, background: "rgba(46,201,126,0.1)", border: "1px solid rgba(46,201,126,0.25)", fontSize: 11, fontWeight: 700, color: "#1b7d52" }}>
+                      <ShieldIcon /> Verified
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                  {user.location && (
+                    <span style={{ fontSize: 13, color: "#7a8c82", display: "flex", alignItems: "center", gap: 5 }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:13,height:13}}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      {user.location}
+                    </span>
+                  )}
+                  {user.bio && (
+                    <span style={{ fontSize: 13, color: "#7a8c82", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {user.bio}
+                    </span>
+                  )}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 10, paddingBottom: 4 }}>
-                <Link to="/marketplace" style={{ textDecoration: "none" }}>
-                  <button className="up-btn-ghost" style={{ fontSize: 13 }}>Browse Marketplace</button>
-                </Link>
-                <Link to="/post-item" style={{ textDecoration: "none" }}>
-                  <button className="up-btn-primary" style={{ fontSize: 13 }}>+ List an Item</button>
-                </Link>
-              </div>
+
+              {/* Notification Bell */}
+              <NotificationBell />
             </div>
 
             <div className="up-grid">
-              <ProfileSidebar user={user} />
-              <div className="up-card up-fade up-d2" style={{ minHeight: 400 }}>
+              <ProfileSidebar user={user} activeView={listingView} onViewChange={showListingView} />
+              <div className="up-card up-fade up-d2" style={{ minHeight: 360 }}>
                 <div className="up-tabs">
                   {tabs.map(t => (
-                    <button key={t.key} className={`up-tab ${activeTab === t.key ? "active" : ""}`} onClick={() => setActiveTab(t.key)}>
+                    <button key={t.key} className={`up-tab ${activeTab === t.key ? "active" : ""}`} onClick={() => { if (t.key === "listings") setListingView("all"); setActiveTab(t.key); }}>
                       <span style={{ fontSize: 14 }}>{t.icon}</span> {t.label}
                     </button>
                   ))}
                 </div>
                 <div className="up-slide" key={activeTab}>
                   {activeTab === "edit"     && <EditProfileTab user={user} onSave={setUser} />}
-                  {activeTab === "listings" && <ListingsTab    user={user} />}
+                  {activeTab === "listings" && <ListingsTab    user={user} view={listingView} />}
                   {activeTab === "activity" && <ActivityTab />}
                   {activeTab === "security" && <SecurityTab    user={user} />}
                 </div>
@@ -1872,16 +2154,7 @@ const UserProfilePage = () => {
         </div>
       )}
 
-      <footer style={{ background: "#08231a", padding: "28px 48px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>© 2025 Proti-Binimoy. All rights reserved.</p>
-          <div style={{ display: "flex", gap: 24 }}>
-            {["Privacy", "Terms", "Contact"].map(l => (
-              <a key={l} href="#" style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>{l}</a>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <PageFooter />
     </div>
   );
 };

@@ -1,3 +1,4 @@
+import AuthSuccess from "./pages/AuthSuccess";
 import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import HomePage from "./components/home";
@@ -16,6 +17,7 @@ const App = () => {
     <>
       <MouseEffects />
       <Routes>
+        <Route path="/auth-success" element={<AuthSuccess />} />
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/signin" element={<SignInPage />} />

@@ -1,30 +1,36 @@
 ﻿// Required environment variables:
-// MONGO_URI       - MongoDB connection string
-// JWT_SECRET      - Strong random secret for JWT signing
-// PORT            - Server port (default 5000)
-// EMAIL_HOST      - SMTP host (e.g. smtp.gmail.com)
-// EMAIL_PORT      - SMTP port (e.g. 587)
-// EMAIL_USER      - SMTP username / sender address
-// EMAIL_PASS      - SMTP password or app password
-// FRONTEND_URL    - Frontend origin (e.g. http://localhost:5173)
+// MONGO_URI
+// JWT_SECRET
+// PORT
+// FRONTEND_URL
 
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const mongoSanitize = require('express-mongo-sanitize');
+const passport = require('passport');
 require('dotenv').config();
 
 const app = express();
 
 app.use(express.json());
-app.use(mongoSanitize());
-app.use(cors());
+app.use(mongoSanitize({
+    replaceWith: '_'
+}));
+
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true
+}));
+
+app.use(passport.initialize());
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/listings', require('./routes/listings')); // NEW
+app.use('/api/listings', require('./routes/listings'));
 app.use('/api/offers', require('./routes/offers'));
 app.use('/api/messages', require('./routes/messages'));
+app.use('/api/users', require('./routes/users'));
 
 app.get('/', (req, res) => {
     res.send('Proti-Binimoy API is active.');

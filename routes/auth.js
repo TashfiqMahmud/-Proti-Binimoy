@@ -1,4 +1,6 @@
-﻿const express = require('express');
+﻿const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -31,6 +33,31 @@ const normalizePhone = (phone) => String(phone || '').replace(/\D/g, '');
 const isValidPhone = (phone) => /^\d{11}$/.test(phone);
 const isValidOtp = (otp) => /^\d{6}$/.test(String(otp || '').trim());
 const FORGOT_PASSWORD_RESPONSE = { msg: 'If that email is registered, a reset link has been sent.' };
+
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL
+}, async (accessToken, refreshToken, profile, done) => {
+    try {
+        const email = profile.emails[0].value.toLowerCase();
+        let user = await User.findOne({ email });
+        if (!user) {
+            user = new User({
+                googleId: profile.id,
+                name: profile.displayName,
+                email: email,
+                profilePicture: profile.photos?.[0]?.value || '',
+                isVerified: true,
+                phone: ''
+            });
+            await user.save();
+        }
+        return done(null, user);
+    } catch (err) {
+        return done(err, null);
+    }
+}));
 
 // @route   POST api/auth/register
 router.post('/register', generalLimiter, async (req, res) => {
@@ -92,6 +119,11 @@ router.post('/login', loginLimiter, async (req, res) => {
             return res.status(401).json({ msg: 'Invalid credentials' });
         }
 
+        // Block Google-only accounts from password login
+        if (!user.password) {
+            return res.status(401).json({ msg: 'Please sign in with Google.' });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ msg: 'Invalid credentials' });
@@ -101,7 +133,8 @@ router.post('/login', loginLimiter, async (req, res) => {
             return res.status(500).json({ msg: 'Server configuration error' });
         }
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        // Updated to 7d
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         return res.json({
             token,
@@ -110,7 +143,10 @@ router.post('/login', loginLimiter, async (req, res) => {
                 name: user.name,
                 email: user.email,
                 phone: user.phone,
-                location: user.location
+                location: user.location,
+                profilePicture: user.profilePicture,
+                rating: user.rating,
+                isVerified: user.isVerified
             }
         });
     } catch (err) {
@@ -192,7 +228,8 @@ router.post('/phone/verify', generalLimiter, async (req, res) => {
             return res.status(500).json({ msg: 'Server configuration error' });
         }
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        // Updated to 7d
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         return res.status(200).json({
             token,
@@ -201,7 +238,9 @@ router.post('/phone/verify', generalLimiter, async (req, res) => {
                 name: user.name,
                 email: user.email,
                 phone: user.phone,
-                location: user.location
+                location: user.location,
+                profilePicture: user.profilePicture,
+                isVerified: user.isVerified
             }
         });
     } catch (err) {
@@ -350,11 +389,40 @@ router.post('/refresh-token', async (req, res) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const newToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const newToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
         return res.status(200).json({ token: newToken });
     } catch (err) {
         return res.status(401).json({ msg: 'Invalid or expired token.' });
     }
+});
+
+// @route   GET api/auth/google
+router.get('/google',
+    passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+// @route   GET api/auth/google/callback
+router.get('/google/callback', (req, res, next) => {
+    passport.authenticate('google', { session: false }, (err, user, info) => {
+        if (err) {
+            console.error('GOOGLE PASSPORT ERROR:', err);
+            return res.status(500).json({ error: err.message });
+        }
+
+        if (!user) {
+            console.error('GOOGLE USER NOT FOUND:', info);
+            return res.status(401).json({ error: 'Google login failed', info });
+        }
+
+        const token = jwt.sign(
+            { id: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        // Fixed: send token to frontend
+        return res.redirect(`${process.env.FRONTEND_URL}/?token=${token}`);
+    })(req, res, next);
 });
 
 module.exports = router;

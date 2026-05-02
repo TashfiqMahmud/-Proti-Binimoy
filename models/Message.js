@@ -35,5 +35,7 @@ const messageSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-module.exports = mongoose.model('Message', messageSchema);
+// Faster message thread fetching
+messageSchema.index({ offer: 1, createdAt: 1 });
 
+module.exports = mongoose.model('Message', messageSchema);

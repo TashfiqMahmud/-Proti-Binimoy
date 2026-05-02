@@ -287,6 +287,10 @@ const LoginPage = () => {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
 
+  const handleGoogleLogin = () => {
+    window.location.href = "http://localhost:5000/api/auth/google";
+  };
+
   // phone flow
   const [phone, setPhone]   = useState("");
   const [otp, setOtp]       = useState("");
@@ -621,6 +625,24 @@ const LoginPage = () => {
                 )}
 
                 {renderCard()}
+
+                {step === 0 && (
+                  <div style={{ marginTop: 20 }}>
+                    <button
+                      type="button"
+                      onClick={handleGoogleLogin}
+                      className="lp-btn-submit"
+                      style={{
+                        background: "#ffffff",
+                        color: "#111827",
+                        border: "1px solid #d1d5db",
+                        boxShadow: "none"
+                      }}
+                    >
+                      Continue with Google
+                    </button>
+                  </div>
+                )}
 
                 {step === 0 && (
                   <>

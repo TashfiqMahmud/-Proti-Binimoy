@@ -50,9 +50,9 @@ const offerSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-offerSchema.pre('save', function (next) {
-    this.updatedAt = new Date();
-    next();
-});
+// Compound index for faster offer fetching
+offerSchema.index({ listing: 1, status: 1 });
+offerSchema.index({ fromUser: 1, status: 1 });
+offerSchema.index({ toUser: 1, status: 1 });
 
 module.exports = mongoose.model('Offer', offerSchema);

@@ -11,6 +11,15 @@ import MarketplacePage from "./components/marketplace";
 import UserProfilePage from "./components/user-profile";
 import PostItemPage from "./components/post-item";
 import MouseEffects from "./components/mouse-effects";
+import ProtectedRoute from "./components/ProtectedRoute";
+import ListingsPage from "./pages/ListingsPage";
+import ListingDetailPage from "./pages/ListingDetailPage";
+import PostListingPage from "./pages/PostListingPage";
+import EditListingPage from "./pages/EditListingPage";
+import DashboardPage from "./pages/DashboardPage";
+import OffersPage from "./pages/OffersPage";
+import MessageThreadPage from "./pages/MessageThreadPage";
+import SavedListingsPage from "./pages/SavedListingsPage";
 
 const App = () => {
   return (
@@ -27,6 +36,16 @@ const App = () => {
         <Route path="/marketplace" element={<MarketplacePage />} />
         <Route path="/profile" element={<UserProfilePage />} />
         <Route path="/post-item" element={<PostItemPage />} />
+        <Route path="/listings" element={<ListingsPage />} />
+        <Route path="/listings/:id" element={<ListingDetailPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/listings/new" element={<PostListingPage />} />
+          <Route path="/listings/:id/edit" element={<EditListingPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/offers" element={<OffersPage />} />
+          <Route path="/messages/:offerId" element={<MessageThreadPage />} />
+          <Route path="/saved" element={<SavedListingsPage />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

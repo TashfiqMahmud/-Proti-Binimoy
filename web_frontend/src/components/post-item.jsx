@@ -1,9 +1,11 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
 import MouseEffects from "./mouse-effects";
 import PageFooter from "./page-footer";
 import { BD_LOCATIONS } from "../config/locations";
+import { API_BASE_URL } from "../config/api";
+import { useAuth } from "../context/AuthContext";
 
 /* ════════════════════════════════════════════════════════════
    GLOBAL STYLES
@@ -451,6 +453,29 @@ const TIPS = [
    HELPERS
 ════════════════════════════════════════════════════════════ */
 const fmt = (n) => new Intl.NumberFormat("en-BD").format(n);
+const CATEGORY_API_MAP = {
+  electronics: "Electronics",
+  furniture: "Home",
+  clothing: "Clothing",
+  books: "Books",
+  sports: "Sports",
+  vehicles: "Vehicles",
+  tools: "Other",
+  other: "Other",
+};
+const CONDITION_API_MAP = {
+  new: "New",
+  like_new: "Used",
+  used: "Used",
+  for_parts: "Used",
+};
+
+const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve({ name: file.name, preview: reader.result || "" });
+  reader.onerror = () => reject(new Error("Unable to read selected image."));
+  reader.readAsDataURL(file);
+});
 
 const STEPS = ["Item Details", "Pricing & Contact", "Review & Post"];
 
@@ -471,18 +496,21 @@ const SectionHead = ({ icon, title, sub }) => (
    MAIN PAGE COMPONENT
 ════════════════════════════════════════════════════════════ */
 const PostItemPage = () => {
-  const navigate = useNavigate ? useNavigate() : null;
+  const navigate = useNavigate();
+  const { token, user: authUser } = useAuth();
   const [mobileMenu, setMobileMenu] = useState(false);
   const [step, setStep]     = useState(0);
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef(null);
-  const addFileRef = useRef(null);
 
-  // Mock user
-  const user = { name: "Rafi Islam", initials: "RI" };
+  const sellerName = authUser?.name || "Seller";
+  const user = {
+    name: sellerName,
+    initials: sellerName.split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase() || "S",
+  };
 
   const [form, setForm] = useState({
     title:       "",
@@ -499,7 +527,7 @@ const PostItemPage = () => {
     delivery:    [],
     payment:     [],
     tags:        [],
-    photos:      [],  // mock: array of emoji strings for demo
+    photos:      [],
   });
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -510,16 +538,19 @@ const PostItemPage = () => {
       [k]: p[k].includes(v) ? p[k].filter(x => x !== v) : [...p[k], v],
     }));
 
-  // Real image upload
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = async (e) => {
     const files = Array.from(e.target.files).slice(0, 8 - form.photos.length);
-    const newPhotos = files.map(file => Object.assign(file, { preview: URL.createObjectURL(file) }));
-    set("photos", [...form.photos, ...newPhotos]);
     e.target.value = null;
+    if (files.length === 0) return;
+
+    try {
+      const newPhotos = (await Promise.all(files.map(fileToDataUrl))).filter(photo => photo.preview);
+      setForm(p => ({ ...p, photos: [...p.photos, ...newPhotos].slice(0, 8) }));
+    } catch (err) {
+      setError(err.message || "Unable to read selected image.");
+    }
   };
   const removePhoto = (i) => {
-    const toRemove = form.photos[i];
-    if (toRemove && toRemove.preview) URL.revokeObjectURL(toRemove.preview);
     set("photos", form.photos.filter((_, idx) => idx !== i));
   };
 
@@ -558,9 +589,55 @@ const PostItemPage = () => {
   const next = () => { if (step < 2) setStep(s => s + 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const prev = () => { if (step > 0) setStep(s => s - 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
-  const submit = () => {
+  useEffect(() => {
+    if (!token) {
+      navigate("/signin", { replace: true });
+    }
+  }, [navigate, token]);
+
+  const submit = async () => {
+    if (!token) {
+      navigate("/signin", { replace: true });
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => { setLoading(false); setSubmitted(true); }, 1600);
+    setError("");
+
+    const payload = {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      price: Number(form.price),
+      category: CATEGORY_API_MAP[form.category] || "Other",
+      condition: CONDITION_API_MAP[form.condition] || "Used",
+      images: form.photos
+        .map(photo => photo.preview || (typeof photo === "string" ? photo : ""))
+        .filter(Boolean),
+      location: {
+        city: form.location,
+        address: form.location,
+      },
+    };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/listings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.msg || "Unable to create listing.");
+
+      const listingId = data._id || data.listing?._id;
+      navigate(listingId ? `/listings/${listingId}` : "/listings");
+    } catch (err) {
+      setError(err.message || "Unable to create listing.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const categoryObj   = CATEGORIES.find(c => c.id === form.category);
@@ -597,42 +674,6 @@ const PostItemPage = () => {
   );
 
   // ── Success Screen ──
-  if (submitted) return (
-    <div className="pi-page" style={{ background: "#08231a" }}>
-      <GlobalStyles />
-      <Nav />
-      <div className="pi-success-wrap pi-fade">
-        <div className="pi-success-card">
-          <div className="pi-success-ring">
-            <div className="pi-success-ring-ping" />
-            <div className="pi-success-ring-inner">
-              <div className="pi-success-check">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#2ec97e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 38, height: 38 }}>
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
-            </div>
-          </div>
-          <h2 className="pi-success-title">Item Posted!</h2>
-          <p className="pi-success-msg">
-            <strong style={{ color: "#fff" }}>"{form.title}"</strong> is now live on the marketplace.
-            Buyers can find it right away. You'll get notified when someone contacts you.
-          </p>
-          <div className="pi-success-actions">
-            <Link to="/marketplace" className="pi-success-primary">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ width: 16, height: 16 }}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              Go to Marketplace
-            </Link>
-            <button className="pi-success-ghost" onClick={() => { setSubmitted(false); setStep(0); setForm({ title:"",category:"",condition:"",description:"",brand:"",model:"",price:"",negotiable:false,tradeOffer:"",location:"",phone:"",delivery:[],payment:[],tags:[],photos:[] }); }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ width: 15, height: 15 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Post Another Item
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="pi-page" style={{ backgroundImage: `url(${websiteBackground})`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
       <GlobalStyles />
@@ -714,7 +755,7 @@ const PostItemPage = () => {
                     sub="Upload up to 8 images — first photo is the cover (required)"
                   />
                   <div className="pi-form-body">
-                    <div className="pi-photo-zone" style={{ borderColor: form.photos.length === 0 ? '#EF4444' : undefined }}
+                    <div className={`pi-photo-zone${dragging ? " dragging" : ""}`} style={{ borderColor: form.photos.length === 0 ? '#EF4444' : undefined }}
                       onDragOver={e => { e.preventDefault(); setDragging(true); }}
                       onDragLeave={() => setDragging(false)}
                       onDrop={e => {
@@ -1086,6 +1127,9 @@ const PostItemPage = () => {
             )}
 
             {/* ── Navigation Buttons ── */}
+            {error && (
+              <div className="pi-err-msg pi-fade pi-d3">{error}</div>
+            )}
             <div style={{ display: "flex", gap: 12, alignItems: "center" }} className="pi-fade pi-d4">
               {step > 0 && (
                 <button

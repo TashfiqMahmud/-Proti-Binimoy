@@ -60,15 +60,15 @@ VITE_API_URL=http://localhost:5000
 Backend:
 
 ```powershell
-cd ""
-npm install
+cd <project-root>
+npm.cmd install
 ```
 
 Frontend:
 
 ```powershell
-cd ""
-npm install
+cd <project-root>\web_frontend
+npm.cmd install
 ```
 
 If PowerShell blocks `npm`, use `npm.cmd` instead.
@@ -78,15 +78,15 @@ If PowerShell blocks `npm`, use `npm.cmd` instead.
 Start backend:
 
 ```powershell
-cd ""
-npm run dev
+cd <project-root>
+npm.cmd run dev
 ```
 
 Start frontend:
 
 ```powershell
-cd ""
-npm run dev
+cd <project-root>\web_frontend
+npm.cmd run dev
 ```
 
 Open the Vite URL shown in the terminal (usually `http://localhost:5173`).
@@ -96,15 +96,33 @@ Open the Vite URL shown in the terminal (usually `http://localhost:5173`).
 - `GET /` - API health message
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/email/check`
+- `POST /api/auth/phone/check`
+- `POST /api/auth/phone/verify`
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/reset-password`
 - `POST /api/auth/refresh-token`
-- `GET /api/listings`
+- `GET /api/auth/google`
+- `GET /api/auth/google/callback`
+- `GET /api/listings` (supports `page`, `limit`, `category`, `condition`, `search`)
 - `GET /api/listings/mine` (auth required)
+- `GET /api/listings/saved` (auth required)
 - `GET /api/listings/:id`
 - `POST /api/listings` (auth required)
+- `POST /api/listings/:id/save` (auth required)
 - `PUT /api/listings/:id` (auth required)
 - `DELETE /api/listings/:id` (auth required)
+- `GET /api/offers/received` (auth required)
+- `GET /api/offers/sent` (auth required)
+- `POST /api/offers` (auth required)
+- `GET /api/messages/:offerId` (auth required)
+- `POST /api/messages` (auth required)
+- `GET /api/users/:id`
+- `PUT /api/users/profile` (auth required)
+
+Protected endpoints accept either:
+- `Authorization: Bearer <token>`
+- `x-auth-token: <token>`
 
 ## Frontend Routes
 
@@ -116,16 +134,12 @@ Public:
 - `/register`
 - `/forgot-password`
 - `/reset-password`
-- `/listings`
-- `/listings/:id`
-
-Protected:
-
-- `/listings/new`
-- `/listings/:id/edit`
-- `/dashboard`
+- `/marketplace`
+- `/profile`
+- `/post-item`
+- `/auth-success`
 
 ## Notes
 
 - Forgot/reset password emails require valid SMTP credentials in backend `.env`.
-- Google OAuth, location-based search, and exchange workflow modules are not implemented in the current codebase.
+- Google OAuth requires `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL`.

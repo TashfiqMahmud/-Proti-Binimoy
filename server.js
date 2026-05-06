@@ -7,16 +7,16 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const mongoSanitize = require('express-mongo-sanitize');
+// const mongoSanitize = require('express-mongo-sanitize');
 const passport = require('passport');
 require('dotenv').config();
 
 const app = express();
 
 app.use(express.json());
-app.use(mongoSanitize({
-    replaceWith: '_'
-}));
+// app.use(mongoSanitize({
+//     replaceWith: '_'
+// }));
 
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',

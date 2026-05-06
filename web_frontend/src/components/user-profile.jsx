@@ -56,6 +56,31 @@ const mapProfileUser = (profile, listings = [], fallback = {}) => ({
   memberTier: profile?.isVerified ? "Verified" : "Member",
 });
 
+const isMockToken = (value) => typeof value === "string" && value.startsWith("mock_");
+
+const mapMockProfileUser = (profile = {}) => ({
+  id: profile.id || profile._id || "",
+  email: profile.email || "",
+  name: profile.name || "User",
+  phone: profile.phone || "",
+  joinDate: profile.joinDate || profile.createdAt || "",
+  location: getLocationText(profile.location),
+  locationData: typeof profile.location === "object" && profile.location ? profile.location : {},
+  bio: profile.bio || "",
+  idType: profile.idType || "",
+  idValue: profile.idValue || profile.nid || profile.passportNumber || "",
+  avatar: profile.avatar || profile.profilePicture || "",
+  profilePicture: profile.profilePicture || profile.avatar || "",
+  rating: Number(profile.rating) || 0,
+  reviews: Number(profile.reviews || profile.totalReviews) || 0,
+  totalReviews: Number(profile.totalReviews || profile.reviews) || 0,
+  totalListings: Number(profile.totalListings) || 0,
+  soldItems: Number(profile.soldItems) || 0,
+  savedItems: Number(profile.savedItems) || 0,
+  verified: Boolean(profile.verified || profile.isVerified),
+  memberTier: profile.memberTier || (profile.verified || profile.isVerified ? "Verified" : "Member"),
+});
+
 const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -1174,6 +1199,14 @@ const UserProfilePage = () => {
     if (!token) {
       setProfileLoading(false);
       navigate("/signin", { replace: true });
+      return;
+    }
+
+    if (isMockToken(token)) {
+      setProfileLoading(false);
+      setProfileError("");
+      setUserListings([]);
+      setUser(authUser ? mapMockProfileUser(authUser) : null);
       return;
     }
 

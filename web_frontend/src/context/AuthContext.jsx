@@ -4,6 +4,8 @@ import { API_BASE_URL } from "../config/api";
 
 export const AuthContext = createContext(null);
 
+const isMockToken = (value) => typeof value === "string" && value.startsWith("mock_");
+
 const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
@@ -64,6 +66,10 @@ const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (!token) {
+      return undefined;
+    }
+
+    if (isMockToken(token)) {
       return undefined;
     }
 

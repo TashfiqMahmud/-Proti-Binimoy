@@ -413,7 +413,7 @@ const LoginPage = () => {
           {/* Demo hint */}
           <div className="lp-demo-box">
             <strong>🧪 Demo Account</strong>
-            Phone: <code>01712345678</code> — Use any 6-digit OTP shown after submitting.
+            Phone: <code>01812345678</code> — Use any 6-digit OTP shown after submitting.
           </div>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 1 of 2</p>
           <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,28px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter your phone</h2>
@@ -470,7 +470,7 @@ const LoginPage = () => {
           <PBar steps={["Email", "Password", "Done"]} cur={0} />
           <div className="lp-demo-box">
             <strong>🧪 Demo Account</strong>
-            Email: <code>demo@protibi.com</code> &nbsp;/&nbsp; Password: <code>Demo@1234</code>
+            Email: <code>test@example.com</code> &nbsp;/&nbsp; Password: <code>Test123</code>
           </div>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 1 of 2</p>
           <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,28px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter your email</h2>

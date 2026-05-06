@@ -1,4 +1,4 @@
-﻿const passport = require('passport');
+const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const express = require('express');
 const router = express.Router();
@@ -32,32 +32,155 @@ const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const normalizePhone = (phone) => String(phone || '').replace(/\D/g, '');
 const isValidPhone = (phone) => /^\d{11}$/.test(phone);
 const isValidOtp = (otp) => /^\d{6}$/.test(String(otp || '').trim());
+const isDuplicateKeyError = (err) => Boolean(err && err.code === 11000);
 const FORGOT_PASSWORD_RESPONSE = { msg: 'If that email is registered, a reset link has been sent.' };
 
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
-    try {
-        const email = profile.emails[0].value.toLowerCase();
-        let user = await User.findOne({ email });
-        if (!user) {
-            user = new User({
-                googleId: profile.id,
-                name: profile.displayName,
-                email: email,
-                profilePicture: profile.photos?.[0]?.value || '',
-                isVerified: true,
-                phone: ''
-            });
-            await user.save();
-        }
-        return done(null, user);
-    } catch (err) {
-        return done(err, null);
+const TOKEN_EXPIRES_IN = '7d';
+const LOGIN_WINDOW_MS = 10 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 8;
+const MAX_TRACKED_LOGIN_KEYS = 10000;
+const loginAttemptsByKey = new Map();
+
+const getClientIp = (req) => {
+    const forwardedFor = req.headers['x-forwarded-for'];
+    if (typeof forwardedFor === 'string' && forwardedFor.trim().length > 0) {
+        return forwardedFor.split(',')[0].trim();
     }
-}));
+
+    return req.ip || req.socket?.remoteAddress || 'unknown-ip';
+};
+
+const getLoginAttemptKey = (req, normalizedEmail) => `${getClientIp(req)}:${normalizedEmail}`;
+
+const pruneLoginAttempts = (now) => {
+    for (const [key, record] of loginAttemptsByKey.entries()) {
+        const isExpired = now - record.lastAttemptAt >= LOGIN_WINDOW_MS && record.blockUntil <= now;
+        if (isExpired) {
+            loginAttemptsByKey.delete(key);
+        }
+    }
+
+    while (loginAttemptsByKey.size > MAX_TRACKED_LOGIN_KEYS) {
+        const oldestKey = loginAttemptsByKey.keys().next().value;
+        if (!oldestKey) break;
+        loginAttemptsByKey.delete(oldestKey);
+    }
+};
+
+const getOrCreateAttemptRecord = (key, now) => {
+    const existing = loginAttemptsByKey.get(key);
+    if (!existing || now - existing.windowStart >= LOGIN_WINDOW_MS) {
+        const fresh = {
+            attempts: 0,
+            windowStart: now,
+            lastAttemptAt: now,
+            blockUntil: 0
+        };
+        loginAttemptsByKey.set(key, fresh);
+        return fresh;
+    }
+
+    existing.lastAttemptAt = now;
+    return existing;
+};
+
+const markFailedLoginAttempt = (key) => {
+    if (!key) return;
+
+    const now = Date.now();
+    const record = getOrCreateAttemptRecord(key, now);
+
+    if (record.blockUntil > now) {
+        return;
+    }
+
+    record.attempts += 1;
+    record.lastAttemptAt = now;
+
+    if (record.attempts >= LOGIN_MAX_ATTEMPTS) {
+        record.blockUntil = now + LOGIN_WINDOW_MS;
+    }
+};
+
+const clearLoginAttemptsForKey = (key) => {
+    if (!key) return;
+    loginAttemptsByKey.delete(key);
+};
+
+const applyLoginRateLimit = (req, res, next) => {
+    const normalizedEmail = isNonEmptyString(req.body?.email)
+        ? normalizeEmail(req.body.email)
+        : 'unknown-email';
+    const key = getLoginAttemptKey(req, normalizedEmail);
+    const now = Date.now();
+
+    pruneLoginAttempts(now);
+    const record = getOrCreateAttemptRecord(key, now);
+
+    if (record.blockUntil > now) {
+        const retryAfterSeconds = Math.ceil((record.blockUntil - now) / 1000);
+        res.set('Retry-After', String(retryAfterSeconds));
+        return res.status(429).json({ msg: 'Too many login attempts. Please try again later.' });
+    }
+
+    req.loginRateLimitKey = key;
+    next();
+};
+
+const signAuthToken = (userId) => jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: TOKEN_EXPIRES_IN });
+
+const serializeUser = (user) => ({
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    location: user.location,
+    profilePicture: user.profilePicture,
+    rating: user.rating,
+    isVerified: user.isVerified
+});
+
+const hasGoogleOAuthConfig = Boolean(
+    process.env.GOOGLE_CLIENT_ID &&
+    process.env.GOOGLE_CLIENT_SECRET &&
+    process.env.GOOGLE_CALLBACK_URL
+);
+
+if (hasGoogleOAuthConfig) {
+    passport.use(new GoogleStrategy({
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL
+    }, async (accessToken, refreshToken, profile, done) => {
+        try {
+            const email = profile.emails?.[0]?.value?.toLowerCase();
+            if (!email) {
+                return done(new Error('Google account did not provide an email address'), null);
+            }
+
+            let user = await User.findOne({ email });
+            if (!user) {
+                user = new User({
+                    googleId: profile.id,
+                    name: profile.displayName || email,
+                    email,
+                    profilePicture: profile.photos?.[0]?.value || '',
+                    isVerified: true,
+                    phone: ''
+                });
+            } else {
+                user.googleId = user.googleId || profile.id;
+                user.profilePicture = user.profilePicture || profile.photos?.[0]?.value || '';
+                user.isVerified = true;
+            }
+
+            await user.save();
+            return done(null, user);
+        } catch (err) {
+            return done(err, null);
+        }
+    }));
+}
 
 // @route   POST api/auth/register
 router.post('/register', generalLimiter, async (req, res) => {
@@ -99,13 +222,17 @@ router.post('/register', generalLimiter, async (req, res) => {
         await user.save();
         return res.status(201).json({ msg: 'User registered successfully!' });
     } catch (err) {
+        if (isDuplicateKeyError(err)) {
+            return res.status(409).json({ msg: 'User already exists' });
+        }
+
         console.error('REGISTER_ERROR:', err);
         return res.status(500).json({ msg: 'Server error' });
     }
 });
 
 // @route   POST api/auth/login
-router.post('/login', loginLimiter, async (req, res) => {
+router.post('/login', loginLimiter, applyLoginRateLimit, async (req, res) => {
     try {
         const { email, password } = req.body || {};
 
@@ -116,16 +243,18 @@ router.post('/login', loginLimiter, async (req, res) => {
         const normalizedEmail = normalizeEmail(email);
         const user = await User.findOne({ email: normalizedEmail });
         if (!user) {
+            markFailedLoginAttempt(req.loginRateLimitKey);
             return res.status(401).json({ msg: 'Invalid credentials' });
         }
 
-        // Block Google-only accounts from password login
         if (!user.password) {
+            markFailedLoginAttempt(req.loginRateLimitKey);
             return res.status(401).json({ msg: 'Please sign in with Google.' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
+            markFailedLoginAttempt(req.loginRateLimitKey);
             return res.status(401).json({ msg: 'Invalid credentials' });
         }
 
@@ -133,21 +262,12 @@ router.post('/login', loginLimiter, async (req, res) => {
             return res.status(500).json({ msg: 'Server configuration error' });
         }
 
-        // Updated to 7d
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        clearLoginAttemptsForKey(req.loginRateLimitKey);
+        const token = signAuthToken(user._id);
 
         return res.json({
             token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                phone: user.phone,
-                location: user.location,
-                profilePicture: user.profilePicture,
-                rating: user.rating,
-                isVerified: user.isVerified
-            }
+            user: serializeUser(user)
         });
     } catch (err) {
         console.error('LOGIN_ERROR:', err);
@@ -228,20 +348,11 @@ router.post('/phone/verify', generalLimiter, async (req, res) => {
             return res.status(500).json({ msg: 'Server configuration error' });
         }
 
-        // Updated to 7d
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        const token = signAuthToken(user._id);
 
         return res.status(200).json({
             token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                phone: user.phone,
-                location: user.location,
-                profilePicture: user.profilePicture,
-                isVerified: user.isVerified
-            }
+            user: serializeUser(user)
         });
     } catch (err) {
         console.error('PHONE_VERIFY_ERROR:', err);
@@ -389,7 +500,7 @@ router.post('/refresh-token', async (req, res) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const newToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        const newToken = signAuthToken(decoded.id);
         return res.status(200).json({ token: newToken });
     } catch (err) {
         return res.status(401).json({ msg: 'Invalid or expired token.' });
@@ -397,12 +508,20 @@ router.post('/refresh-token', async (req, res) => {
 });
 
 // @route   GET api/auth/google
-router.get('/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
-);
+router.get('/google', (req, res, next) => {
+    if (!hasGoogleOAuthConfig) {
+        return res.status(503).json({ msg: 'Google OAuth is not configured.' });
+    }
+
+    return passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
 
 // @route   GET api/auth/google/callback
 router.get('/google/callback', (req, res, next) => {
+    if (!hasGoogleOAuthConfig) {
+        return res.status(503).json({ msg: 'Google OAuth is not configured.' });
+    }
+
     passport.authenticate('google', { session: false }, (err, user, info) => {
         if (err) {
             console.error('GOOGLE PASSPORT ERROR:', err);
@@ -414,14 +533,19 @@ router.get('/google/callback', (req, res, next) => {
             return res.status(401).json({ error: 'Google login failed', info });
         }
 
-        const token = jwt.sign(
-            { id: user._id },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' }
-        );
+        if (!process.env.JWT_SECRET) {
+            return res.status(500).json({ msg: 'Server configuration error' });
+        }
 
-        // Fixed: send token to frontend
-        return res.redirect(`${process.env.FRONTEND_URL}/?token=${token}`);
+        const token = signAuthToken(user._id);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const redirectParams = new URLSearchParams({
+            token,
+            name: user.name || '',
+            email: user.email || ''
+        });
+
+        return res.redirect(`${frontendUrl}/auth-success?${redirectParams.toString()}`);
     })(req, res, next);
 });
 

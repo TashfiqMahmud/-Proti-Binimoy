@@ -3,69 +3,59 @@ import { Link, useNavigate } from "react-router-dom";
 import webBg from "../assets/web_bg.png";
 import { BD_LOCATIONS } from "../config/locations";
 import PageFooter from "./page-footer";
+import { API_BASE_URL } from "../config/api";
+import { useAuth } from "../context/AuthContext";
 
-/* ══════════════════════════════════════
-   MOCK AUTH STORE  (localStorage-backed)
-══════════════════════════════════════ */
-const MOCK_USERS_KEY = "pb_mock_users";
-const MOCK_SESSION_KEY = "pb_mock_session";
-
-const getMockUsers = () => {
-  try { return JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || "{}"); }
-  catch { return {}; }
-};
-const saveMockUsers = (users) => localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(users));
-
-const getSession = () => {
-  try { return JSON.parse(localStorage.getItem(MOCK_SESSION_KEY) || "null"); }
-  catch { return null; }
-};
-const saveSession = (user) => localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(user));
-const clearSession = () => localStorage.removeItem(MOCK_SESSION_KEY);
-
-/* Seed two demo users on first load */
-const seedDemoUsers = () => {
-  const users = getMockUsers();
-  if (!users["demo@protibi.com"]) {
-    users["demo@protibi.com"] = {
-      id: "u_demo",
-      email: "demo@protibi.com",
-      password: "Demo@1234",
-      name: "Rafiul Hasan",
-      phone: "01712345678",
-      joinDate: "2024-09-01",
-      location: "Dhanmondi, Dhaka",
-      bio: "Passionate about sustainable commerce and zero-waste living.",
-      idType: "nid",
-      idValue: "1234567890",
-      avatar: null,
-      rating: 4.8,
-      reviews: 12,
-      totalListings: 7,
-      soldItems: 4,
-      savedItems: 19,
-      verified: true,
-      memberTier: "Gold",
-    };
-    saveMockUsers(users);
+const getTokenUserId = (token) => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.id || payload._id || "";
+  } catch {
+    return "";
   }
 };
-seedDemoUsers();
 
-/* ══════════════════════════════════════
-   MOCK NOTIFICATIONS
-══════════════════════════════════════ */
-const MOCK_NOTIFICATIONS = [
-  { id: 1, type: "message", from: "Tariq Hasan", text: "Is the Dell laptop still available?", time: "2 min ago", read: false, avatar: "T" },
-  { id: 2, type: "message", from: "Nadia Akter", text: "Can you do ৳30,000 for the laptop?", time: "18 min ago", read: false, avatar: "N" },
-  { id: 3, type: "message", from: "Sabbir Ahmed", text: "I'm interested in the study table!", time: "1 hr ago", read: false, avatar: "S" },
-  { id: 4, type: "message", from: "Rima Islam", text: "When can I pick it up?", time: "3 hr ago", read: true, avatar: "R" },
-  { id: 5, type: "message", from: "Hasib Chowdhury", text: "Thanks for the quick response!", time: "Yesterday", read: true, avatar: "H" },
-];
+const getLocationText = (location) => {
+  if (!location) return "";
+  if (typeof location === "string") return location;
+  return location.city || "";
+};
 
-/* ══════════════════════════════════════
-   GLOBAL STYLES
-══════════════════════════════════════ */
+const mapListingForProfile = (listing) => ({
+  id: listing._id,
+  emoji: Array.isArray(listing.images) && listing.images[0] ? listing.images[0] : "📦",
+  title: listing.title || "Untitled listing",
+  price: `৳${new Intl.NumberFormat("en-BD").format(Number(listing.price) || 0)}`,
+  status: listing.status || "active",
+  cat: listing.category || "Other",
+  views: 0,
+  saves: 0,
+  image: Array.isArray(listing.images) ? listing.images.find(Boolean) || "" : ""
+});
+
+const mapProfileUser = (profile, listings = [], fallback = {}) => ({
+  id: profile?._id || profile?.id || fallback?.id || "",
+  email: profile?.email || fallback?.email || "",
+  name: profile?.name || fallback?.name || "User",
+  phone: profile?.phone || "",
+  joinDate: profile?.createdAt || "",
+  location: getLocationText(profile?.location),
+  locationData: profile?.location || {},
+  bio: profile?.bio || "",
+  idType: profile?.nid ? "nid" : profile?.passportNumber ? "passport" : "",
+  idValue: profile?.nid || profile?.passportNumber || "",
+  avatar: profile?.profilePicture || "",
+  profilePicture: profile?.profilePicture || "",
+  rating: Number(profile?.rating) || 0,
+  reviews: Number(profile?.totalReviews) || 0,
+  totalReviews: Number(profile?.totalReviews) || 0,
+  totalListings: listings.length,
+  soldItems: listings.filter(listing => listing.status === "sold").length,
+  savedItems: 0,
+  verified: Boolean(profile?.isVerified),
+  memberTier: profile?.isVerified ? "Verified" : "Member",
+});
+
 const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -600,33 +590,33 @@ const AuthPwStrength = ({ password }) => {
 
 /* ── OTP Input ── */
 const AuthOtpInput = ({ value, onChange }) => {
-  const refs = Array.from({ length: 6 }, () => useRef(null));
+  const refs = useRef([]);
   const cells = value.split("");
   const handleKey = (i, e) => {
     if (e.key === "Backspace") {
       if (cells[i]) { const n = [...cells]; n[i] = ""; onChange(n.join("")); }
-      else if (i > 0) { refs[i - 1].current?.focus(); const n = [...cells]; n[i - 1] = ""; onChange(n.join("")); }
+      else if (i > 0) { refs.current[i - 1]?.focus(); const n = [...cells]; n[i - 1] = ""; onChange(n.join("")); }
       return;
     }
-    if (e.key === "ArrowLeft" && i > 0) refs[i - 1].current?.focus();
-    if (e.key === "ArrowRight" && i < 5) refs[i + 1].current?.focus();
+    if (e.key === "ArrowLeft" && i > 0) refs.current[i - 1]?.focus();
+    if (e.key === "ArrowRight" && i < 5) refs.current[i + 1]?.focus();
   };
   const handleChange = (i, e) => {
     const d = e.target.value.replace(/\D/, "").slice(-1);
     if (!d) return;
     const n = [...cells]; n[i] = d; onChange(n.join(""));
-    if (i < 5) refs[i + 1].current?.focus();
+    if (i < 5) refs.current[i + 1]?.focus();
   };
   const handlePaste = (e) => {
     e.preventDefault();
     const p = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     onChange(p.padEnd(6, "").slice(0, 6));
-    refs[Math.min(p.length, 5)].current?.focus();
+    refs.current[Math.min(p.length, 5)]?.focus();
   };
   return (
     <div className="auth-otp-row">
       {Array.from({ length: 6 }).map((_, i) => (
-        <input key={i} ref={refs[i]} type="text" inputMode="numeric" maxLength={1}
+        <input key={i} ref={(el) => { refs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1}
           value={cells[i] || ""} className={`auth-otp-box ${cells[i] ? "filled" : ""}`}
           onChange={e => handleChange(i, e)} onKeyDown={e => handleKey(i, e)}
           onPaste={handlePaste} autoFocus={i === 0}
@@ -653,731 +643,6 @@ const TermsText = () => (
 
 /* ══════════════════════════════════════
    FULL-PAGE LOGIN OVERLAY
-══════════════════════════════════════ */
-const LoginOverlay = ({ onClose, onSuccess, onSwitchToRegister }) => {
-  const [method, setMethod] = useState("phone");
-  const [step, setStep] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  // phone flow
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-
-  // email flow
-  const [email, setEmail] = useState("");
-  const [password, setPw] = useState("");
-  const [showPw, setShowPw] = useState(false);
-
-  const sim = ms => new Promise(r => setTimeout(r, ms));
-
-  const switchMethod = (m) => {
-    setMethod(m); setStep(0); setError("");
-    setPhone(""); setOtp(""); setEmail(""); setPw(""); setShowPw(false);
-  };
-
-  /* Phone mock: check → OTP → success */
-  const handlePhoneCheck = async (e) => {
-    e.preventDefault(); setError("");
-    const d = phone.replace(/\D/g, "");
-    if (d.length < 11) { setError("Enter a valid 11-digit Bangladeshi number."); return; }
-    setLoading(true);
-    await sim(600);
-    const users = getMockUsers();
-    const found = Object.values(users).find(u => u.phone === d);
-    if (!found) { setError("This number is not registered. Please create an account first."); setLoading(false); return; }
-    setLoading(false); setStep(1);
-  };
-
-  const handleOtpVerify = async (e) => {
-    e?.preventDefault(); setError("");
-    if (otp.length < 6) { setError("Enter the full 6-digit OTP."); return; }
-    setLoading(true);
-    await sim(700);
-    // Mock: accept any 6-digit OTP
-    const users = getMockUsers();
-    const d = phone.replace(/\D/g, "");
-    const user = Object.values(users).find(u => u.phone === d);
-    if (!user) { setError("Could not find user. Please try again."); setLoading(false); return; }
-    const session = { ...user }; delete session.password;
-    saveSession(session);
-    setLoading(false); setStep(2);
-    setTimeout(() => onSuccess(session), 1600);
-  };
-
-  /* Email mock: check → password → success */
-  const handleEmailCheck = async (e) => {
-    e.preventDefault(); setError("");
-    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError("Enter a valid email address."); return; }
-    setLoading(true);
-    await sim(500);
-    const users = getMockUsers();
-    if (!users[email.trim().toLowerCase()]) { setError("This email is not registered. Please create an account first."); setLoading(false); return; }
-    setLoading(false); setStep(1);
-  };
-
-  const handlePasswordCheck = async (e) => {
-    e.preventDefault(); setError("");
-    if (!password) { setError("Enter your password."); return; }
-    setLoading(true);
-    await sim(600);
-    const users = getMockUsers();
-    const user = users[email.trim().toLowerCase()];
-    if (!user || user.password !== password) { setError("Invalid email or password."); setLoading(false); return; }
-    const session = { ...user }; delete session.password;
-    saveSession(session);
-    setLoading(false); setStep(2);
-    setTimeout(() => onSuccess(session), 1600);
-  };
-
-  const trustPoints = [
-    "Verified profiles for more confident exchanges",
-    "Cleaner listings and simpler communication",
-    "Built for sustainable buying, selling, and barter",
-  ];
-
-  const renderCard = () => {
-    if (step === 2) return (
-      <div className="auth-pop" style={{ textAlign: "center", padding: "12px 0" }}>
-        <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg,#2ec97e,#1b7d52)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 18, boxShadow: "0 8px 28px rgba(46,201,126,0.4)", animation: "auth-pulse2 1.6s ease-in-out infinite" }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 30, height: 30 }}>
-            <path d="M7 12.5l3.2 3.2L17.5 8.5" />
-          </svg>
-        </div>
-        <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 700, color: "#0d1f16", marginBottom: 10 }}>You're in!</h3>
-        <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>Loading your profile…</p>
-        <div style={{ height: 4, borderRadius: 100, background: "#f3f4f6", overflow: "hidden" }}>
-          <div style={{ height: "100%", background: "linear-gradient(to right,#2ec97e,#1b7d52)", borderRadius: 100, animation: "auth-bar 1.5s linear forwards" }} />
-        </div>
-      </div>
-    );
-
-    if (method === "phone") {
-      if (step === 0) return (
-        <div className="auth-slide" key="ph0">
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Phone Login</p>
-          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2vw,24px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter your number</h2>
-          <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 18, fontWeight: 300 }}>We'll send a one-time code to verify your identity.</p>
-          <form onSubmit={handlePhoneCheck} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <label className="auth-label">Phone Number</label>
-              <div className="auth-input-wrap">
-                <div className="auth-phone-pre">🇧🇩 +88</div>
-                <input type="tel" inputMode="numeric" placeholder="01XXXXXXXXX" value={phone}
-                  onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
-                  className={`auth-input auth-phl ${phone.replace(/\D/g, "").length === 11 ? "valid" : ""}`} autoFocus />
-              </div>
-            </div>
-            <div className="auth-hint">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-              Demo phone: <strong>01712345678</strong> — any 6-digit OTP works
-            </div>
-            {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
-            <button type="submit" disabled={loading} className="auth-btn-submit">
-              {loading ? <><AuthSpinner /> Checking…</> : <>Send OTP <AuthArr /></>}
-            </button>
-          </form>
-        </div>
-      );
-      if (step === 1) return (
-        <div className="auth-slide" key="ph1">
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Verify OTP</p>
-          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2vw,24px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter the code</h2>
-          <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 18, fontWeight: 300 }}>
-            Sent to <strong style={{ color: "#0d1f16" }}>+88 {phone}</strong>
-          </p>
-          <form onSubmit={handleOtpVerify} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <AuthOtpInput value={otp} onChange={setOtp} />
-            <div className="auth-hint">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-              Enter any 6-digit code to simulate OTP verification
-            </div>
-            {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
-            <button type="submit" disabled={loading || otp.length < 6} className="auth-btn-submit">
-              {loading ? <><AuthSpinner /> Verifying…</> : <>Verify & Sign In <AuthArr /></>}
-            </button>
-          </form>
-          <div className="auth-resend">
-            <span>Didn't receive it?</span>
-            <button className="auth-btn-link" onClick={() => setStep(0)}>Change number</button>
-          </div>
-          <button className="auth-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(0); setError(""); }}>
-            <AuthArrL /> Back
-          </button>
-        </div>
-      );
-    }
-
-    if (method === "email") {
-      if (step === 0) return (
-        <div className="auth-slide" key="em0">
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Email Login</p>
-          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2vw,24px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter your email</h2>
-          <form onSubmit={handleEmailCheck} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <label className="auth-label">Email Address</label>
-              <div className="auth-input-wrap">
-                <div className="auth-icon-left">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-                </div>
-                <input type="email" placeholder="you@example.com" value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className={`auth-input auth-pl ${email && /\S+@\S+\.\S+/.test(email) ? "valid" : ""}`} autoFocus />
-              </div>
-            </div>
-            <div className="auth-hint">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-              Demo: <strong>demo@protibi.com</strong>
-            </div>
-            {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
-            <button type="submit" disabled={loading} className="auth-btn-submit">
-              {loading ? <><AuthSpinner /> Checking…</> : <>Continue <AuthArr /></>}
-            </button>
-          </form>
-        </div>
-      );
-      if (step === 1) return (
-        <div className="auth-slide" key="em1">
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Enter Password</p>
-          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2vw,24px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Welcome back</h2>
-          <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 18, fontWeight: 300 }}>
-            Signing in as <strong style={{ color: "#0d1f16" }}>{email}</strong>
-          </p>
-          <form onSubmit={handlePasswordCheck} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <label className="auth-label">Password</label>
-              <div className="auth-input-wrap">
-                <div className="auth-icon-left">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
-                </div>
-                <input type={showPw ? "text" : "password"} placeholder="Enter your password" value={password}
-                  onChange={e => setPw(e.target.value)}
-                  className="auth-input auth-pl auth-pr" autoFocus />
-                <button type="button" className="auth-eye" onClick={() => setShowPw(!showPw)}>
-                  {showPw ? <AuthEyeOn /> : <AuthEyeOff />}
-                </button>
-              </div>
-            </div>
-            <div className="auth-hint">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-              Demo password: <strong>Demo@1234</strong>
-            </div>
-            {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
-            <button type="submit" disabled={loading} className="auth-btn-submit">
-              {loading ? <><AuthSpinner /> Signing in…</> : <>Sign In <AuthArr /></>}
-            </button>
-          </form>
-          <button className="auth-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(0); setError(""); }}>
-            <AuthArrL /> Back
-          </button>
-        </div>
-      );
-    }
-  };
-
-  return (
-    <div className="auth-overlay">
-      {/* Close button */}
-      <button className="auth-close-btn" onClick={onClose} title="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
-          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
-
-      {/* Hero section with exact login.jsx layout */}
-      <section style={{ position: "relative", minHeight: "100vh", background: "linear-gradient(135deg,#08231a 0%,#0f3d28 60%,#1b7d52 100%)" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)", backgroundSize: "56px 56px" }} />
-        <div style={{ position: "absolute", top: -80, left: -80, width: 400, height: 400, background: "radial-gradient(circle,rgba(46,201,126,0.18) 0%,transparent 65%)", borderRadius: "50%" }} />
-        <div style={{ position: "absolute", bottom: -60, right: -60, width: 340, height: 340, background: "radial-gradient(circle,rgba(27,125,82,0.15) 0%,transparent 65%)", borderRadius: "50%" }} />
-
-        {/* Nav */}
-        <nav className="auth-nav">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, flexShrink: 0, background: "linear-gradient(135deg,#2ec97e,#1b7d52)", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display',serif", fontWeight: 900, fontSize: 19, color: "#fff" }}>P</div>
-            <div>
-              <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 19, fontWeight: 700, color: "#fff", lineHeight: 1 }}>Proti-Binimoy</p>
-              <p style={{ fontSize: 9, letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", marginTop: 3 }}>Sustainable Marketplace</p>
-            </div>
-          </div>
-          <div className="auth-nav-links">
-            <span className="auth-nav-link" style={{ cursor: "pointer" }} onClick={onClose}>Home</span>
-            <span className="auth-nav-link" style={{ cursor: "pointer" }}>About</span>
-            <span className="auth-nav-cta" style={{ cursor: "pointer" }} onClick={onSwitchToRegister}>Create Account →</span>
-          </div>
-        </nav>
-
-        {/* Deco bubbles */}
-        <div className="auth-deco" style={{ width: 88, height: 88, top: "18%", left: "3%", animation: "auth-float 5s ease-in-out infinite" }}><span style={{ fontSize: 34 }}>📷</span></div>
-        <div className="auth-deco" style={{ width: 68, height: 68, top: "62%", left: "6%", animation: "auth-float 7s ease-in-out infinite 1s" }}><span style={{ fontSize: 26 }}>👟</span></div>
-        <div className="auth-deco" style={{ width: 56, height: 56, top: "38%", left: "1%", animation: "auth-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize: 21 }}>🎧</span></div>
-
-        {/* Grid */}
-        <div className="auth-login-grid" style={{ position: "relative", zIndex: 10 }}>
-          {/* LEFT: copy */}
-          <div>
-            <div className="auth-fade auth-d1" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(46,201,126,0.12)", border: "1px solid rgba(46,201,126,0.3)", borderRadius: 100, padding: "7px 16px", marginBottom: 26 }}>
-              <div style={{ width: 7, height: 7, background: "#2ec97e", borderRadius: "50%", animation: "auth-shimmer 2s infinite" }} />
-              <span style={{ fontSize: 12, fontWeight: 500, color: "#2ec97e", letterSpacing: "0.05em" }}>Welcome back to Proti-Binimoy</span>
-            </div>
-            <h1 className="auth-fade auth-d2" style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(36px,4.5vw,64px)", fontWeight: 900, lineHeight: 1.06, color: "#fff", marginBottom: 18 }}>
-              Sign in to your<br />
-              <em style={{ fontStyle: "italic", color: "#2ec97e" }}>trusted marketplace</em><br />
-              <span style={{ color: "#f3edd8", fontSize: "clamp(28px,3.5vw,50px)" }}>journey.</span>
-            </h1>
-            <p className="auth-fade auth-d3" style={{ fontSize: "clamp(13px,1.5vw,15px)", lineHeight: 1.75, color: "rgba(255,255,255,0.6)", maxWidth: 420, marginBottom: 0, fontWeight: 300 }}>
-              Use your phone for instant OTP access, or sign in with your email and password.
-            </p>
-            <div className="auth-fade auth-d4" style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 28 }}>
-              {trustPoints.map((p, i) => (
-                <div key={i} className="auth-trust-item">
-                  <div className="auth-trust-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}><path d="M7 12.5l3.2 3.2L17.5 8.5" /></svg>
-                  </div>
-                  <p style={{ fontSize: "clamp(12px,1.3vw,14px)", color: "rgba(255,255,255,0.82)", fontWeight: 400 }}>{p}</p>
-                </div>
-              ))}
-            </div>
-            <p className="auth-fade auth-d5" style={{ marginTop: 26, fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
-              No account?{" "}
-              <span style={{ color: "#2ec97e", fontWeight: 600, textDecoration: "none", cursor: "pointer" }} onClick={onSwitchToRegister}>Create one for free →</span>
-            </p>
-          </div>
-
-          {/* RIGHT: form card */}
-          <div className="auth-fade auth-d3" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-            <div className="auth-card-outer" style={{ width: "100%", maxWidth: 468 }}>
-              <div className="auth-card">
-                {step === 0 && (
-                  <div className="auth-toggle">
-                    <button className={`auth-toggle-btn ${method === "phone" ? "active" : ""}`} onClick={() => switchMethod("phone")}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10 19.79 19.79 0 01.22 1.37 2 2 0 012.2 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14.92z" /></svg>
-                      Phone & OTP
-                    </button>
-                    <button className={`auth-toggle-btn ${method === "email" ? "active" : ""}`} onClick={() => switchMethod("email")}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-                      Email
-                    </button>
-                  </div>
-                )}
-                {renderCard()}
-                {step === 0 && (
-                  <>
-                    <div className="auth-divider" style={{ marginTop: 18 }}>
-                      <div className="auth-div-line" /><span className="auth-div-txt">New here</span><div className="auth-div-line" />
-                    </div>
-                    <p style={{ textAlign: "center", fontSize: 13, color: "#6b7280" }}>
-                      Don't have an account?{" "}
-                      <span style={{ fontWeight: 700, color: "#1b7d52", cursor: "pointer" }} onClick={onSwitchToRegister}>Create one now</span>
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-};
-
-/* ══════════════════════════════════════
-   FULL-PAGE REGISTER OVERLAY
-══════════════════════════════════════ */
-const RegisterOverlay = ({ onClose, onSuccess, onSwitchToLogin }) => {
-  const [step, setStep] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  // Step 0
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-
-  // Step 1
-  const [idType, setIdType] = useState("nid");
-  const [nid, setNid] = useState("");
-  const [dob, setDob] = useState("");
-  const [passport, setPassport] = useState("");
-
-  // Step 2
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [showPw, setShowPw] = useState(false);
-  const [showCf, setShowCf] = useState(false);
-  const [termsRead, setTermsRead] = useState(false);
-  const [termsAgree, setTermsAgree] = useState(false);
-
-  const sim = ms => new Promise(r => setTimeout(r, ms));
-
-  const handleTermsScroll = (e) => {
-    const el = e.target;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) setTermsRead(true);
-  };
-
-  const handlePersonal = (e) => {
-    e.preventDefault(); setError("");
-    if (!name.trim() || name.trim().length < 3) { setError("Enter your full name (at least 3 characters)."); return; }
-    const d = phone.replace(/\D/g, "");
-    if (d.length < 11) { setError("Enter a valid 11-digit Bangladeshi phone number."); return; }
-    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError("Enter a valid email address."); return; }
-    setStep(1);
-  };
-
-  const handleIdentity = (e) => {
-    e.preventDefault(); setError("");
-    if (idType === "nid") {
-      const n = nid.replace(/\D/g, "");
-      if (![10, 13, 17].includes(n.length)) { setError("NID must be 10, 13, or 17 digits."); return; }
-    } else if (idType === "dob") {
-      if (!dob) { setError("Please select your date of birth."); return; }
-      const age = (new Date() - new Date(dob)) / (1000 * 60 * 60 * 24 * 365.25);
-      if (age < 18) { setError("You must be at least 18 years old to register."); return; }
-    } else {
-      if (!passport.trim() || passport.trim().length < 6) { setError("Enter a valid passport number (minimum 6 characters)."); return; }
-    }
-    setStep(2);
-  };
-
-  const handleSecurity = async (e) => {
-    e.preventDefault(); setError("");
-    if (getPwStrength(password) < 4) { setError("Password must have 8+ characters, an uppercase letter, a number, and a symbol."); return; }
-    if (password !== confirm) { setError("Passwords do not match."); return; }
-    if (!termsAgree) { setError("You must agree to the Terms & Conditions to continue."); return; }
-    setLoading(true);
-    await sim(700);
-    const users = getMockUsers();
-    const emailKey = email.trim().toLowerCase();
-    if (users[emailKey]) { setError("This email is already registered."); setLoading(false); return; }
-    const identityPayload =
-      idType === "nid" ? { idType: "nid", idValue: nid.replace(/\D/g, "") } :
-      idType === "dob" ? { idType: "dob", idValue: dob } :
-      { idType: "passport", idValue: passport.trim() };
-    const newUser = {
-      id: `u_${Date.now()}`,
-      email: emailKey,
-      password,
-      name: name.trim(),
-      phone: phone.replace(/\D/g, ""),
-      joinDate: new Date().toISOString().split("T")[0],
-      location: "",
-      bio: "",
-      ...identityPayload,
-      avatar: null,
-      rating: 0, reviews: 0, totalListings: 0, soldItems: 0, savedItems: 0,
-      verified: false,
-      memberTier: "Bronze",
-    };
-    users[emailKey] = newUser;
-    saveMockUsers(users);
-    const session = { ...newUser }; delete session.password;
-    saveSession(session);
-    setSuccess("Account created successfully!");
-    setStep(3);
-    setLoading(false);
-    setTimeout(() => onSuccess(session), 2000);
-  };
-
-  const STEPS = ["Personal", "Identity", "Security", "Done"];
-
-  const renderCard = () => {
-    if (step === 3) return (
-      <div className="auth-pop" style={{ textAlign: "center", padding: "12px 0" }}>
-        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#2ec97e,#1b7d52)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 18, boxShadow: "0 8px 28px rgba(46,201,126,0.4)", animation: "auth-pulse2 1.6s ease-in-out infinite" }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 30, height: 30 }}><path d="M7 12.5l3.2 3.2L17.5 8.5" /></svg>
-        </div>
-        <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, fontWeight: 700, color: "#0d1f16", marginBottom: 10 }}>Welcome aboard!</h3>
-        <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.65, marginBottom: 20 }}>Your account has been created.<br />Loading your profile…</p>
-        <div style={{ height: 4, borderRadius: 100, background: "#f3f4f6", overflow: "hidden" }}>
-          <div style={{ height: "100%", background: "linear-gradient(to right,#2ec97e,#1b7d52)", borderRadius: 100, animation: "auth-bar 2s linear forwards" }} />
-        </div>
-      </div>
-    );
-
-    if (step === 0) return (
-      <div className="auth-slide" key="s0">
-        <AuthPBar steps={STEPS} cur={0} />
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 1 of 3</p>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,27px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Personal Information</h2>
-        <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 20, fontWeight: 300 }}>Let's start with your basic details. All fields are required.</p>
-        <form onSubmit={handlePersonal} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <label className="auth-label">Full Name</label>
-            <div className="auth-input-wrap">
-              <div className="auth-icon-left">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-              </div>
-              <input type="text" placeholder="e.g. Rafi Ahmed" value={name}
-                onChange={e => setName(e.target.value)} autoComplete="name"
-                className={`auth-input auth-pl ${name.trim().length >= 3 ? "valid" : ""}`} autoFocus />
-            </div>
-          </div>
-          <div>
-            <label className="auth-label">Phone Number</label>
-            <div className="auth-input-wrap">
-              <div className="auth-phone-pre">🇧🇩 +88</div>
-              <input type="tel" inputMode="numeric" placeholder="01XXXXXXXXX" value={phone}
-                onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
-                className={`auth-input auth-phl ${phone.replace(/\D/g, "").length === 11 ? "valid" : ""}`} />
-            </div>
-            <p className="auth-field-note">Used for OTP verification at login.</p>
-          </div>
-          <div>
-            <label className="auth-label">Email Address</label>
-            <div className="auth-input-wrap">
-              <div className="auth-icon-left">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-              </div>
-              <input type="email" placeholder="you@example.com" value={email}
-                onChange={e => setEmail(e.target.value)}
-                className={`auth-input auth-pl ${email && /\S+@\S+\.\S+/.test(email) ? "valid" : ""}`} />
-            </div>
-          </div>
-          {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
-          <button type="submit" className="auth-btn-submit">Continue <AuthArr /></button>
-        </form>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0 0" }}>
-          <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#9ca3af" }}>Have an account</span>
-          <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
-        </div>
-        <p style={{ textAlign: "center", fontSize: 13, color: "#6b7280", marginTop: 14 }}>
-          Already registered?{" "}
-          <span style={{ fontWeight: 700, color: "#1b7d52", cursor: "pointer" }} onClick={onSwitchToLogin}>Sign in here</span>
-        </p>
-      </div>
-    );
-
-    if (step === 1) return (
-      <div className="auth-slide" key="s1">
-        <AuthPBar steps={STEPS} cur={1} />
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 2 of 3</p>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,27px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Identity Verification</h2>
-        <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 16, fontWeight: 300 }}>Choose one identity document to verify your account.</p>
-        <div className="auth-id-tabs">
-          {[
-            { key: "nid", icon: "🪪", label: "NID Number" },
-            { key: "dob", icon: "📅", label: "Date of Birth" },
-            { key: "passport", icon: "🛂", label: "Passport" },
-          ].map(t => (
-            <button key={t.key} type="button"
-              className={`auth-id-tab ${idType === t.key ? "active" : ""}`}
-              onClick={() => { setIdType(t.key); setError(""); }}>
-              {t.icon} {t.label}
-            </button>
-          ))}
-        </div>
-        <form onSubmit={handleIdentity} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {idType === "nid" && (
-            <div>
-              <label className="auth-label">National ID Number</label>
-              <div className="auth-input-wrap">
-                <div className="auth-icon-left">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
-                </div>
-                <input type="text" inputMode="numeric" placeholder="10, 13, or 17 digit NID"
-                  value={nid} onChange={e => setNid(e.target.value.replace(/\D/g, "").slice(0, 17))}
-                  className={`auth-input auth-pl ${[10, 13, 17].includes(nid.replace(/\D/g, "").length) ? "valid" : ""}`} autoFocus />
-              </div>
-              <p className="auth-field-note">Encrypted and used for identity verification only.</p>
-            </div>
-          )}
-          {idType === "dob" && (
-            <div>
-              <label className="auth-label">Date of Birth</label>
-              <div className="auth-input-wrap">
-                <div className="auth-icon-left">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-                </div>
-                <input type="date" value={dob} onChange={e => setDob(e.target.value)}
-                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
-                  className={`auth-input auth-pl ${dob ? "valid" : ""}`} autoFocus />
-              </div>
-              <p className="auth-field-note">You must be at least 18 years old to register.</p>
-            </div>
-          )}
-          {idType === "passport" && (
-            <div>
-              <label className="auth-label">Passport Number</label>
-              <div className="auth-input-wrap">
-                <div className="auth-icon-left">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14,2 14,8 20,8" /></svg>
-                </div>
-                <input type="text" placeholder="e.g. AB1234567" value={passport}
-                  onChange={e => setPassport(e.target.value.toUpperCase().slice(0, 12))}
-                  className={`auth-input auth-pl ${passport.trim().length >= 6 ? "valid" : ""}`} autoFocus />
-              </div>
-              <p className="auth-field-note">Enter exactly as it appears on your passport.</p>
-            </div>
-          )}
-          <div className="auth-info-box">
-            <AuthInfoSvg />
-            <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, fontWeight: 300 }}>
-              This data is <strong style={{ fontWeight: 700, color: "#1b7d52" }}>end-to-end encrypted</strong> and used solely for identity verification. We never share it.
-            </p>
-          </div>
-          {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
-          <button type="submit" className="auth-btn-submit">Continue <AuthArr /></button>
-        </form>
-        <button className="auth-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(0); setError(""); }}>
-          <AuthArrL /> Back
-        </button>
-      </div>
-    );
-
-    if (step === 2) return (
-      <div className="auth-slide" key="s2">
-        <AuthPBar steps={STEPS} cur={2} />
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 3 of 3</p>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,27px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Create Password</h2>
-        <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 18, fontWeight: 300 }}>Choose a strong password and agree to our terms.</p>
-        <form onSubmit={handleSecurity} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div>
-            <label className="auth-label">Password</label>
-            <div className="auth-input-wrap">
-              <div className="auth-icon-left">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
-              </div>
-              <input type={showPw ? "text" : "password"} placeholder="Create a strong password"
-                value={password} onChange={e => setPassword(e.target.value)}
-                className={`auth-input auth-pl auth-pr ${getPwStrength(password) === 4 ? "valid" : password ? "error" : ""}`} autoFocus />
-              <button type="button" className="auth-eye" onClick={() => setShowPw(!showPw)}>
-                {showPw ? <AuthEyeOn /> : <AuthEyeOff />}
-              </button>
-            </div>
-            <AuthPwStrength password={password} />
-          </div>
-          {password.length > 0 && (
-            <div>
-              <label className="auth-label">Confirm Password</label>
-              <div className="auth-input-wrap">
-                <div className="auth-icon-left">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}><path d="M7 12.5l3.2 3.2L17.5 8.5" /></svg>
-                </div>
-                <input type={showCf ? "text" : "password"} placeholder="Re-enter your password"
-                  value={confirm} onChange={e => setConfirm(e.target.value)}
-                  className={`auth-input auth-pl auth-pr ${confirm && confirm === password ? "valid" : confirm ? "error" : ""}`} />
-                <button type="button" className="auth-eye" onClick={() => setShowCf(!showCf)}>
-                  {showCf ? <AuthEyeOn /> : <AuthEyeOff />}
-                </button>
-              </div>
-              {confirm && confirm !== password && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 5, fontWeight: 600 }}>Passwords don't match.</p>}
-              {confirm && confirm === password && <p style={{ fontSize: 11, color: "#1b7d52", marginTop: 5, fontWeight: 600 }}>✓ Passwords match!</p>}
-            </div>
-          )}
-          <div>
-            <label className="auth-label" style={{ marginBottom: 10 }}>Terms & Conditions <span style={{ color: "#ef4444" }}>*</span></label>
-            <div className="auth-terms-box">
-              <div className="auth-terms-scroll" onScroll={handleTermsScroll}><TermsText /></div>
-              <div className="auth-terms-footer" onClick={() => setTermsAgree(v => !v)} role="button" tabIndex={0}
-                onKeyDown={e => e.key === " " && setTermsAgree(v => !v)}>
-                <div className={`auth-checkbox ${termsAgree ? "checked" : ""}`}>
-                  {termsAgree && (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 11, height: 11 }}>
-                      <path d="M7 12.5l3.2 3.2L17.5 8.5" />
-                    </svg>
-                  )}
-                </div>
-                <span style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, flex: 1, userSelect: "none" }}>
-                  I have read and agree to the <strong style={{ color: "#1b7d52" }}>Terms & Conditions</strong> and <strong style={{ color: "#1b7d52" }}>Privacy Policy</strong>
-                </span>
-              </div>
-            </div>
-            {!termsRead && <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 5 }}>↑ Scroll through the terms above before agreeing.</p>}
-          </div>
-          {error && <div className="auth-err"><AuthErrIcon />{error}</div>}
-          {success && <div className="auth-success"><AuthOkIcon />{success}</div>}
-          <button type="submit" disabled={loading || !termsAgree} className="auth-btn-submit">
-            {loading ? <><AuthSpinner /> Creating Account…</> : <>Create Account <AuthArr /></>}
-          </button>
-        </form>
-        <button className="auth-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(1); setError(""); }}>
-          <AuthArrL /> Back to Identity
-        </button>
-      </div>
-    );
-  };
-
-  return (
-    <div className="auth-overlay">
-      {/* Close button */}
-      <button className="auth-close-btn" onClick={onClose} title="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
-          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
-
-      {/* Full-page register layout */}
-      <section style={{ position: "relative", minHeight: "100vh", background: "linear-gradient(115deg,rgba(2,6,23,0.97) 0%,rgba(2,6,23,0.88) 42%,rgba(8,35,26,0.85) 100%)", backgroundColor: "#020617" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)", backgroundSize: "56px 56px" }} />
-        <div style={{ position: "absolute", top: -80, right: -60, width: 420, height: 420, background: "radial-gradient(circle,rgba(46,201,126,0.15) 0%,transparent 65%)", borderRadius: "50%" }} />
-        <div style={{ position: "absolute", bottom: -80, left: -60, width: 360, height: 360, background: "radial-gradient(circle,rgba(27,125,82,0.12) 0%,transparent 65%)", borderRadius: "50%" }} />
-
-        {/* Nav */}
-        <nav className="auth-nav">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, flexShrink: 0, background: "linear-gradient(135deg,#2ec97e,#1b7d52)", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display',serif", fontWeight: 900, fontSize: 19, color: "#fff" }}>P</div>
-            <div>
-              <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 19, fontWeight: 700, color: "#fff", lineHeight: 1 }}>Proti-Binimoy</p>
-              <p style={{ fontSize: 9, letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", marginTop: 3 }}>Sustainable Marketplace</p>
-            </div>
-          </div>
-          <div className="auth-nav-links">
-            <span className="auth-nav-link" style={{ cursor: "pointer" }} onClick={onClose}>Home</span>
-            <span className="auth-nav-link" style={{ cursor: "pointer" }} onClick={onSwitchToLogin}>Sign In</span>
-            <span className="auth-nav-cta" style={{ cursor: "pointer", background: "rgba(46,201,126,0.28)", borderColor: "rgba(46,201,126,0.7)" }}>Register →</span>
-          </div>
-        </nav>
-
-        {/* Deco bubbles */}
-        <div className="auth-deco" style={{ width: 82, height: 82, top: "18%", left: "4%", animation: "auth-float 5.5s ease-in-out infinite" }}><span style={{ fontSize: 30 }}>🌱</span></div>
-        <div className="auth-deco" style={{ width: 66, height: 66, top: "65%", left: "6%", animation: "auth-float 7s ease-in-out infinite 1.2s" }}><span style={{ fontSize: 24 }}>📦</span></div>
-        <div className="auth-deco" style={{ width: 58, height: 58, top: "38%", right: "4%", animation: "auth-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize: 22 }}>🤝</span></div>
-        <div className="auth-deco" style={{ width: 50, height: 50, top: "74%", right: "7%", animation: "auth-float 8s ease-in-out infinite 2s" }}><span style={{ fontSize: 18 }}>♻️</span></div>
-
-        <div className="auth-register-center" style={{ position: "relative", zIndex: 10 }}>
-          <div className="auth-fade auth-d1" style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(46,201,126,0.12)", border: "1px solid rgba(46,201,126,0.3)", borderRadius: 100, padding: "7px 16px" }}>
-              <div style={{ width: 7, height: 7, background: "#2ec97e", borderRadius: "50%", animation: "auth-shimmer 2s infinite" }} />
-              <span style={{ fontSize: 12, fontWeight: 500, color: "#2ec97e", letterSpacing: "0.05em" }}>Join the Proti-Binimoy community</span>
-            </div>
-          </div>
-          <h1 className="auth-fade auth-d2" style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(30px,4vw,52px)", fontWeight: 900, lineHeight: 1.08, color: "#fff", textAlign: "center", marginBottom: 12 }}>
-            Create your<br /><em style={{ fontStyle: "italic", color: "#2ec97e" }}>free account.</em>
-          </h1>
-          <p className="auth-fade auth-d3" style={{ fontSize: "clamp(13px,1.4vw,15px)", lineHeight: 1.75, color: "rgba(255,255,255,0.58)", textAlign: "center", maxWidth: 380, margin: "0 auto 30px", fontWeight: 300 }}>
-            Buy, sell, and barter sustainably with verified members across Bangladesh.
-          </p>
-          <div className="auth-fade auth-d4">
-            <div className="auth-card-outer">
-              <div className="auth-card">{renderCard()}</div>
-            </div>
-          </div>
-          {step < 3 && (
-            <div className="auth-fade auth-d5 auth-trust-row">
-              {[
-                { icon: "🔒", title: "Secure & Private", text: "End-to-end encryption" },
-                { icon: "✅", title: "Verified Community", text: "Safe marketplace" },
-                { icon: "♻️", title: "Sustainable", text: "Eco-friendly exchanges" },
-              ].map((t, i) => (
-                <div key={i} className="auth-trust-item-sm">
-                  <div className="auth-trust-icon-sm"><span style={{ fontSize: 15 }}>{t.icon}</span></div>
-                  <div>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: "#fff", lineHeight: 1 }}>{t.title}</p>
-                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 3 }}>{t.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-    </div>
-  );
-};
-
-/* ══════════════════════════════════════
-   PROFILE ATOMS
 ══════════════════════════════════════ */
 const Spinner = ({ dark }) => <div className={`up-spinner${dark ? " up-spinner-dark" : ""}`} />;
 const ErrIcon = () => (
@@ -1447,11 +712,6 @@ const TierBadge = ({ tier }) => {
 /* ══════════════════════════════════════
    PROFILE STAT STRIP (replaces sidebar)
 ══════════════════════════════════════ */
-const calcCompletion = (u) => {
-  const fields = [u.name, u.email, u.phone, u.location, u.bio, u.idValue, u.avatar];
-  return Math.round((fields.filter(Boolean).length / fields.length) * 100);
-};
-
 const ProfileSidebar = ({ user, activeView, onViewChange }) => (
   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20, animation: "up-fadeUp 0.6s 0.1s cubic-bezier(0.22,1,0.36,1) both" }}>
     {[
@@ -1504,17 +764,19 @@ const EditProfileTab = ({ user, onSave }) => {
     e.preventDefault(); setMsg(null);
     if (!form.name.trim()) { setMsg({ type: "err", text: "Name is required." }); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 500));
-    const users = getMockUsers();
-    if (users[user.email]) {
-      users[user.email] = { ...users[user.email], ...form };
-      saveMockUsers(users);
-      const updated = { ...users[user.email] }; delete updated.password;
-      saveSession(updated);
-      onSave(updated);
+    try {
+      await onSave({
+        name: form.name,
+        phone: form.phone,
+        bio: form.bio,
+        location: { city: form.location }
+      });
+      setMsg({ type: "ok", text: "Profile updated successfully!" });
+    } catch (err) {
+      setMsg({ type: "err", text: err.message || "Unable to update profile." });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    setMsg({ type: "ok", text: "Profile updated successfully!" });
   };
 
   return (
@@ -1591,17 +853,9 @@ const SecurityTab = ({ user }) => {
     if (form.next.length < 8) { setMsg({ type: "err", text: "New password must be at least 8 characters." }); return; }
     if (form.next !== form.conf) { setMsg({ type: "err", text: "New passwords don't match." }); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-    const users = getMockUsers();
-    if (!users[user.email] || users[user.email].password !== form.cur) {
-      setMsg({ type: "err", text: "Current password is incorrect." });
-      setLoading(false); return;
-    }
-    users[user.email].password = form.next;
-    saveMockUsers(users);
+    await new Promise(r => setTimeout(r, 300));
     setLoading(false);
-    setMsg({ type: "ok", text: "Password updated successfully!" });
-    setForm({ cur: "", next: "", conf: "" });
+    setMsg({ type: "err", text: "Password changes are not connected to the API yet." });
   };
 
   const eye = (show, toggle, val, onChange, ph) => (
@@ -1669,25 +923,12 @@ const SecurityTab = ({ user }) => {
 /* ══════════════════════════════════════
    LISTINGS TAB
 ══════════════════════════════════════ */
-const MOCK_LISTINGS = [
-  { id: 1, emoji: "💻", title: "Dell Laptop Core i5", price: "৳32,000", status: "active",  cat: "Electronics", views: 521, saves: 97 },
-  { id: 2, emoji: "🪑", title: "Wooden Study Table",  price: "৳3,200",  status: "active",  cat: "Furniture",   views: 88,  saves: 14 },
-  { id: 3, emoji: "📚", title: "Engineering Textbooks Bundle", price: "৳1,800", status: "sold", cat: "Books", views: 64, saves: 9 },
-  { id: 4, emoji: "👟", title: "Nike Air Max (Size 42)", price: "৳4,500", status: "paused", cat: "Clothing", views: 31, saves: 5 },
-];
-
-const MOCK_SAVED_ITEMS = [
-  { id: 101, emoji: "Phone", title: "iPhone 12 Pro", price: "TK 52,000", status: "saved", cat: "Electronics", views: 312, saves: 41 },
-  { id: 102, emoji: "Bike", title: "Mountain Bike", price: "TK 12,500", status: "saved", cat: "Sports", views: 205, saves: 33 },
-  { id: 103, emoji: "Sofa", title: "Two Seater Sofa", price: "TK 8,000", status: "saved", cat: "Furniture", views: 147, saves: 22 },
-];
-
-const ListingsTab = ({ user, view = "all" }) => {
+const ListingsTab = ({ listings = [], view = "all" }) => {
   const data = view === "saved"
-    ? MOCK_SAVED_ITEMS
+    ? []
     : view === "sold"
-      ? MOCK_LISTINGS.filter(l => l.status === "sold")
-      : MOCK_LISTINGS;
+      ? listings.filter(l => l.status === "sold")
+      : listings;
   const title = view === "saved" ? "Saved Items" : view === "sold" ? "Sold Items" : "My Listings";
   const empty = view === "saved" ? "No saved items yet." : view === "sold" ? "No sold items yet." : "No listings yet.";
 
@@ -1704,7 +945,7 @@ const ListingsTab = ({ user, view = "all" }) => {
     {data.length === 0 && <p style={{ fontSize: 13, color: "#7a8c82" }}>{empty}</p>}
     {data.map(l => (
       <div key={l.id} className="up-listing-card">
-        <div className="up-listing-img">{l.emoji}</div>
+        <div className="up-listing-img">{l.image ? <img src={l.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10 }} /> : l.emoji}</div>
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 14, fontWeight: 600, color: "#0d1f16", marginBottom: 2 }}>{l.title}</p>
           <p style={{ fontSize: 12, color: "#9ca3af" }}>{l.cat} · {l.views} views · {l.saves} saves</p>
@@ -1726,28 +967,12 @@ const ListingsTab = ({ user, view = "all" }) => {
 /* ══════════════════════════════════════
    ACTIVITY TAB
 ══════════════════════════════════════ */
-const MOCK_ACTIVITY = [
-  { icon: "💬", label: "Message sent to Tariq Hasan about Mountain Bike", time: "2 hours ago", color: "rgba(59,130,246,0.12)" },
-  { icon: "❤️", label: "Saved: Samsung 43\" LED Smart TV", time: "Yesterday", color: "rgba(239,68,68,0.1)" },
-  { icon: "📦", label: "Listed: Dell Laptop Core i5", time: "Apr 18", color: "rgba(46,201,126,0.1)" },
-  { icon: "✅", label: "Sold: Engineering Textbooks Bundle", time: "Apr 12", color: "rgba(46,201,126,0.1)" },
-  { icon: "🔍", label: "Browsed Electronics category", time: "Apr 11", color: "rgba(245,158,11,0.1)" },
-];
-
 const ActivityTab = () => (
   <div>
     <p className="up-section-title">Recent Activity</p>
-    {MOCK_ACTIVITY.map((a, i) => (
-      <div key={i} className="up-activity-item">
-        <div className="up-activity-icon" style={{ background: a.color }}>
-          <span>{a.icon}</span>
-        </div>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontSize: 13, color: "#374151", fontWeight: 500, lineHeight: 1.4 }}>{a.label}</p>
-          <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 3 }}>{a.time}</p>
-        </div>
-      </div>
-    ))}
+    <p style={{ fontSize: 13, color: "#7a8c82" }}>No activity yet.</p>
+    <p className="up-section-title" style={{ marginTop: 24 }}>Reviews</p>
+    <p style={{ fontSize: 13, color: "#7a8c82" }}>No reviews yet.</p>
   </div>
 );
 
@@ -1757,7 +982,7 @@ const ActivityTab = () => (
 const NotificationBell = () => {
   const [open, setOpen] = useState(false);
   const [showAllMessages, setShowAllMessages] = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
   const [activeReplyId, setActiveReplyId] = useState(null);
   const [replyDrafts, setReplyDrafts] = useState({});
   const [sentReplies, setSentReplies] = useState({});
@@ -1892,14 +1117,18 @@ const NotificationBell = () => {
 ══════════════════════════════════════ */
 const UserProfilePage = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(getSession());
+  const { user: authUser, token, login, logout } = useAuth();
+  const [user, setUser] = useState(null);
+  const [userListings, setUserListings] = useState([]);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState("");
   const [activeTab, setActiveTab] = useState("edit");
   const [listingView, setListingView] = useState("all");
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
   const fileRef = useRef(null);
 
-  const handleLogout = () => { clearSession(); setUser(null); navigate("/signin"); };
+  const handleLogout = () => { logout(); setUser(null); navigate("/"); };
 
   const showLoginModal = () => { setLoginModal(true); };
   const showListingView = (view) => {
@@ -1907,21 +1136,92 @@ const UserProfilePage = () => {
     setActiveTab("listings");
   };
 
+  const updateProfile = async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-auth-token": token,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.msg || "Unable to update profile.");
+    }
+
+    const nextUser = mapProfileUser(data.user, userListings, user);
+    setUser(nextUser);
+    login(token, { ...data.user, id: data.user?._id || data.user?.id });
+    return nextUser;
+  };
+
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !token) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const users = getMockUsers();
-      if (!users[user.email]) return;
-      users[user.email].avatar = ev.target.result;
-      saveMockUsers(users);
-      const updated = { ...users[user.email] }; delete updated.password;
-      saveSession(updated);
-      setUser(updated);
+    reader.onload = async (ev) => {
+      try {
+        await updateProfile({ profilePicture: ev.target.result });
+      } catch (err) {
+        setProfileError(err.message || "Unable to update profile picture.");
+      }
     };
     reader.readAsDataURL(file);
   };
+
+  useEffect(() => {
+    if (!token) {
+      setProfileLoading(false);
+      navigate("/signin", { replace: true });
+      return;
+    }
+
+    const userId = authUser?.id || authUser?._id || getTokenUserId(token);
+    if (!userId) {
+      setProfileLoading(false);
+      setProfileError("Unable to identify the signed-in user.");
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchProfile = async () => {
+      setProfileLoading(true);
+      setProfileError("");
+      try {
+        const [profileResponse, listingsResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/users/${userId}`),
+          fetch(`${API_BASE_URL}/api/listings/mine`, {
+            headers: { "x-auth-token": token },
+          }),
+        ]);
+
+        const profileData = await profileResponse.json().catch(() => ({}));
+        const listingsData = await listingsResponse.json().catch(() => []);
+
+        if (!profileResponse.ok) throw new Error(profileData.msg || "Unable to load profile.");
+        if (!listingsResponse.ok) throw new Error(listingsData.msg || "Unable to load listings.");
+
+        const normalizedListings = Array.isArray(listingsData)
+          ? listingsData.map(mapListingForProfile)
+          : [];
+        const normalizedUser = mapProfileUser(profileData, normalizedListings, authUser);
+
+        if (!cancelled) {
+          setUserListings(normalizedListings);
+          setUser(normalizedUser);
+        }
+      } catch (err) {
+        if (!cancelled) setProfileError(err.message || "Unable to load profile.");
+      } finally {
+        if (!cancelled) setProfileLoading(false);
+      }
+    };
+
+    fetchProfile();
+    return () => { cancelled = true; };
+  }, [authUser, navigate, token]);
 
   const tabs = [
     { key: "edit",     label: "Edit Profile", icon: "✏️" },
@@ -2027,7 +1327,15 @@ const UserProfilePage = () => {
         {user && <button onClick={handleLogout} className="up-mobile-link" style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", color: "#ef4444", fontWeight: 600, fontSize: 17 }}>Sign Out</button>}
       </div>
 
-      {!user && (
+      {profileLoading && (
+        <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#08231a 0%,#0f3d28 55%,#1b7d52 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "100px 24px 60px" }}>
+          <div style={{ color: "#fff", display: "flex", alignItems: "center", gap: 12, fontSize: 15 }}>
+            <Spinner /> Loading profile...
+          </div>
+        </div>
+      )}
+
+      {!profileLoading && !user && (
         <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#08231a 0%,#0f3d28 55%,#1b7d52 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "100px 24px 60px" }}>
           <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)", backgroundSize: "56px 56px" }} />
           <div style={{ position: "absolute", top: 0, left: "20%", width: 420, height: 420, background: "radial-gradient(circle,rgba(46,201,126,0.15) 0%,transparent 65%)", borderRadius: "50%" }} />
@@ -2045,7 +1353,7 @@ const UserProfilePage = () => {
               Sign in to view<br /><em style={{ fontStyle: "italic", color: "#2ec97e" }}>your profile</em>
             </h2>
             <p style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", lineHeight: 1.7, marginBottom: 36, fontWeight: 300 }}>
-              Your profile, listings, and account settings are only visible after signing in. Join thousands of verified members on Proti-Binimoy.
+              {profileError || "Your profile, listings, and account settings are only visible after signing in. Join thousands of verified members on Proti-Binimoy."}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <button
@@ -2070,7 +1378,7 @@ const UserProfilePage = () => {
         </div>
       )}
 
-      {user && (
+      {!profileLoading && user && (
         <div className="up-page">
           {/* COVER */}
           <div className="up-cover">
@@ -2143,8 +1451,8 @@ const UserProfilePage = () => {
                   ))}
                 </div>
                 <div className="up-slide" key={activeTab}>
-                  {activeTab === "edit"     && <EditProfileTab user={user} onSave={setUser} />}
-                  {activeTab === "listings" && <ListingsTab    user={user} view={listingView} />}
+                  {activeTab === "edit"     && <EditProfileTab user={user} onSave={updateProfile} />}
+                  {activeTab === "listings" && <ListingsTab    listings={userListings} view={listingView} />}
                   {activeTab === "activity" && <ActivityTab />}
                   {activeTab === "security" && <SecurityTab    user={user} />}
                 </div>

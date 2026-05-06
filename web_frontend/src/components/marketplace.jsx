@@ -1,133 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import PageFooter from "./page-footer";
 import { BD_LOCATIONS, BD_LOCATIONS_ALL } from "../config/locations";
-/* ══════════════════════════════════════════════
-   MOCK DATA
-══════════════════════════════════════════════ */
-const MOCK_ITEMS = [
-  {
-    id: 1, title: "Single-Door Wardrobe with Mirror",
-    category: "Furniture", subcategory: "Storage",
-    condition: "Used", conditionScore: 3,
-    price: 4500, currency: "BDT", negotiable: true,
-    description: "Lightly used wardrobe with full-length mirror and 2 bottom drawers. Dark finish, sturdy build. Keys included. Perfect for small bedrooms.",
-    brand: "Local Craft", model: "Single Door",
-    seller: { name: "Rafi Islam", avatar: "RI", rating: 4.8, reviews: 12, location: "Bashundhara, Dhaka", verified: true, responseTime: "~1 hr" },
-    tags: ["wardrobe", "mirror", "storage", "bedroom"],
-    shipping: "Local Pickup Only", payment: ["Cash", "bKash"],
-    postedDate: "2025-04-15", views: 142, saves: 28,
-    status: "available", emoji: "🪞", accentColor: "#8B5CF6",
-    badge: "Popular", tradeOffer: false,
-    image: "/src/assets/second_hand_almirah.png", 
-  },
-  {
-    id: 2, title: "Favron Mountain Bike – 27.5\" Wheels",
-    category: "Sports", subcategory: "Cycling",
-    condition: "Like New", conditionScore: 5,
-    price: 18000, currency: "BDT", negotiable: true,
-    description: "Barely ridden Favron MTB, black/red colorway. Disc brakes front & rear, 21-speed Shimano gears. No scratches, bought 3 months ago.",
-    brand: "Favron", model: "MTB 275",
-    seller: { name: "Tariq Hasan", avatar: "TH", rating: 4.9, reviews: 27, location: "Mirpur-10, Dhaka", verified: true, responseTime: "~30 min" },
-    tags: ["cycle", "mtb", "outdoor", "shimano"],
-    shipping: "Local Pickup / Delivery Available", payment: ["Cash", "bKash", "Nagad"],
-    postedDate: "2025-04-17", views: 389, saves: 64,
-    status: "available", emoji: "🚵", accentColor: "#EF4444",
-    badge: "Hot Deal", tradeOffer: true,
-    image: "/src/assets/second_hand_cycle.png",
-  },
-  {
-    id: 3, title: "Dell Laptop – Core i5, 8GB RAM, 256GB SSD",
-    category: "Electronics", subcategory: "Computers",
-    condition: "Used", conditionScore: 4,
-    price: 32000, currency: "BDT", negotiable: false,
-    description: "Dell laptop running Windows 10. Screen in excellent condition, battery holds 3-4 hrs. Ideal for office work and students. Charger included.",
-    brand: "Dell", model: "Inspiron 14",
-    seller: { name: "Nadia Chowdhury", avatar: "NC", rating: 4.7, reviews: 44, location: "Gulshan, Dhaka", verified: true, responseTime: "~2 hr" },
-    tags: ["laptop", "dell", "computer", "student"],
-    shipping: "Local Pickup / Courier Available", payment: ["Cash", "bKash", "Bank Transfer"],
-    postedDate: "2025-04-18", views: 521, saves: 97,
-    status: "available", emoji: "💻", accentColor: "#2ec97e",
-    badge: "Verified", tradeOffer: false,
-    image: "/src/assets/second_hand_laptop.png",
-  },
-  {
-    id: 4, title: "Samsung 43\" LED Smart TV",
-    category: "Electronics", subcategory: "Television",
-    condition: "Like New", conditionScore: 5,
-    price: 28000, currency: "BDT", negotiable: true,
-    description: "Samsung 43-inch smart TV, 2 years old. HDR, WiFi, all ports working. Remote and original box included. No dead pixels.",
-    brand: "Samsung", model: "43\" Series 5",
-    seller: { name: "Arif Billah", avatar: "AB", rating: 4.6, reviews: 8, location: "Uttara, Dhaka", verified: false, responseTime: "~3 hr" },
-    tags: ["tv", "samsung", "smart tv", "hdr"],
-    shipping: "Local Pickup Only", payment: ["Cash", "bKash"],
-    postedDate: "2025-04-14", views: 213, saves: 41,
-    status: "available", emoji: "📺", accentColor: "#F59E0B",
-    badge: "New Post", tradeOffer: false,
-    image: "/src/assets/used tv.png",  
-  },
-  {
-    id: 5, title: "Wooden Study Table with Drawer",
-    category: "Furniture", subcategory: "Tables",
-    condition: "Used", conditionScore: 3,
-    price: 3200, currency: "BDT", negotiable: true,
-    description: "Solid wood study table with 1 drawer. Light brown finish. Ideal for students. Minor surface scratches on top. Very sturdy.",
-    brand: "Local Craft", model: "Study Desk",
-    seller: { name: "Sumaiya Begum", avatar: "SB", rating: 4.4, reviews: 6, location: "Rayer Bazar, Dhaka", verified: false, responseTime: "~5 hr" },
-    tags: ["table", "study", "wooden", "student"],
-    shipping: "Local Pickup Only", payment: ["Cash"],
-    postedDate: "2025-04-12", views: 88, saves: 14,
-    status: "available", emoji: "🪑", accentColor: "#C49A3C",
-    badge: null, tradeOffer: false,
-    image: "/src/assets/used reading table.png",
-  },
-  {
-    id: 6, title: "iPhone 13 – 128GB, Midnight",
-    category: "Electronics", subcategory: "Phones",
-    condition: "Like New", conditionScore: 5,
-    price: 62000, currency: "BDT", negotiable: false,
-    description: "iPhone 13 128GB midnight color. Used 8 months, no scratches. Original charger + EarPods included. PTA approved. Battery 91%.",
-    brand: "Apple", model: "iPhone 13",
-    seller: { name: "Fahim Uddin", avatar: "FU", rating: 5.0, reviews: 19, location: "Dhanmondi, Dhaka", verified: true, responseTime: "~45 min" },
-    tags: ["iphone", "apple", "smartphone", "mobile"],
-    shipping: "Local Pickup / Courier", payment: ["Cash", "bKash", "Bank Transfer"],
-    postedDate: "2025-04-19", views: 674, saves: 133,
-    status: "available", emoji: "📱", accentColor: "#06B6D4",
-    badge: "Top Seller", tradeOffer: true,
-    image: "/src/assets/second hand iphone.png",
-  },
-  {
-    id: 7, title: "Canon EOS 200D DSLR Camera",
-    category: "Electronics", subcategory: "Cameras",
-    condition: "Like New", conditionScore: 4,
-    price: 45000, currency: "BDT", negotiable: true,
-    description: "Canon 200D with 18-55mm kit lens. Shutter count under 3000. Comes with 32GB card, 2 batteries, bag. Perfect for beginners.",
-    brand: "Canon", model: "EOS 200D",
-    seller: { name: "Mehedi Hasan", avatar: "MH", rating: 4.9, reviews: 31, location: "Mohammadpur, Dhaka", verified: true, responseTime: "~1 hr" },
-    tags: ["camera", "canon", "dslr", "photography"],
-    shipping: "Local Pickup / Courier", payment: ["Cash", "bKash"],
-    postedDate: "2025-04-20", views: 445, saves: 89,
-    status: "available", emoji: "📷", accentColor: "#10B981",
-    badge: "Popular", tradeOffer: false,
-    image: "/src/assets/used camera.png",
-  },
-  {
-    id: 8, title: "Vintage Leather Sofa Set (3+1+1)",
-    category: "Furniture", subcategory: "Seating",
-    condition: "Used", conditionScore: 3,
-    price: 22000, currency: "BDT", negotiable: true,
-    description: "Genuine leather sofa set (3-seater + 2 single chairs). Tan brown color. Minor wear on armrests. Very comfortable, solid frame.",
-    brand: "Otobi", model: "Classic Series",
-    seller: { name: "Kawsar Ahmed", avatar: "KA", rating: 4.3, reviews: 5, location: "Wari, Dhaka", verified: false, responseTime: "~6 hr" },
-    tags: ["sofa", "leather", "furniture", "living room"],
-    shipping: "Local Pickup Only", payment: ["Cash"],
-    postedDate: "2025-04-11", views: 167, saves: 22,
-    status: "available", emoji: "🛋️", accentColor: "#92400E",
-    badge: null, tradeOffer: true,
-    image: "/src/assets/used sofa.png",
-  },
-];
-
+import { API_BASE_URL } from "../config/api";
+import { useAuth } from "../context/AuthContext";
 const CATEGORIES = [
   { label: "All",         icon: "◈", count: 8,  color: "#2ec97e" },
   { label: "Electronics", icon: "⚡", count: 4,  color: "#06B6D4" },
@@ -165,6 +41,61 @@ const bMeta  = (b) => ({
   "New Post":   { bg:"#F59E0B", glow:"rgba(245,158,11,.4)" },
   "Top Seller": { bg:"#06B6D4", glow:"rgba(6,182,212,.4)" },
 }[b] || { bg:"#555", glow:"transparent" });
+
+const getInitials = (name = "") => {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  return (parts[0]?.[0] || "?").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
+};
+
+const normalizeCategoryLabel = (category) => category === "Home" ? "Furniture" : category;
+const categoryColor = (category) => CATEGORIES.find(c => c.label === normalizeCategoryLabel(category))?.color || "#2ec97e";
+const categoryMatches = (itemCategory, selectedCategory) => {
+  if (selectedCategory === "All") return true;
+  if (selectedCategory === "Furniture") return itemCategory === "Furniture" || itemCategory === "Home";
+  return itemCategory === selectedCategory;
+};
+
+const mapListingToItem = (listing) => {
+  const sellerName = listing.seller?.name || "Unknown Seller";
+  const color = categoryColor(listing.category);
+  const sellerLocation = listing.location?.city || listing.seller?.location?.city || "Not specified";
+
+  return {
+    id: listing._id,
+    title: listing.title || "Untitled listing",
+    category: listing.category || "Other",
+    subcategory: listing.category || "Other",
+    condition: listing.condition || "Used",
+    conditionScore: listing.condition === "New" ? 5 : 3,
+    price: Number(listing.price) || 0,
+    currency: "BDT",
+    negotiable: true,
+    description: listing.description || "",
+    brand: "",
+    model: "",
+    seller: {
+      name: sellerName,
+      avatar: getInitials(sellerName),
+      rating: Number(listing.seller?.rating) || 0,
+      reviews: Number(listing.seller?.totalReviews) || 0,
+      location: sellerLocation,
+      verified: Boolean(listing.seller?.isVerified),
+      responseTime: "—"
+    },
+    tags: [listing.category, listing.condition].filter(Boolean),
+    shipping: "Contact seller",
+    payment: ["Cash"],
+    postedDate: listing.createdAt || new Date().toISOString(),
+    views: 0,
+    saves: 0,
+    status: listing.status || "active",
+    emoji: "📦",
+    accentColor: color,
+    badge: listing.seller?.isVerified ? "Verified" : null,
+    tradeOffer: true,
+    image: Array.isArray(listing.images) ? listing.images.find(Boolean) || "" : ""
+  };
+};
 
 /* ══════════════════════════════════════════════
    GLOBAL STYLES
@@ -654,11 +585,6 @@ const NotificationToasts = () => {
 /* ══════════════════════════════════════════════
    SESSION HELPER
 ══════════════════════════════════════════════ */
-const getSession = () => {
-  try { return JSON.parse(localStorage.getItem("pb_mock_session") || "null"); }
-  catch { return null; }
-};
-
 /* ══════════════════════════════════════════════
    AUTH GATE MODAL  (shown when not signed in)
 ══════════════════════════════════════════════ */
@@ -758,7 +684,6 @@ const LOCATIONS_PM   = [...BD_LOCATIONS, "Other"];
 
 const PostItemModal = ({ onClose }) => {
   const fileRef   = React.useRef(null);
-  const addRef    = React.useRef(null);
   const [dragging, setDragging] = React.useState(false);
   const [tried,    setTried]    = React.useState(false);
 
@@ -1396,6 +1321,7 @@ const ContactModal = ({ item, onClose }) => {
    MAIN PAGE
 ══════════════════════════════════════════════ */
 export default function MarketplacePage() {
+  const { token } = useAuth();
   const [category,     setCategory]     = useState("All");
   const [conditions,   setConditions]   = useState([]);
   const [maxPrice,     setMaxPrice]     = useState(100000);
@@ -1415,12 +1341,15 @@ export default function MarketplacePage() {
   const [collapsed,    setCollapsed]    = useState({});
   const [filterOpen,   setFilterOpen]   = useState(true);
   const [authGate,     setAuthGate]     = useState(false);
+  const [listings,     setListings]     = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState("");
 
   const navigate = useNavigate();
 
   const openPostItem = () => {
-    if (getSession()) { navigate("/post-item"); }
-    else              { setAuthGate(true);      }
+    if (token) { navigate("/post-item"); }
+    else       { setAuthGate(true);      }
   };
   const toggleSection = (key) => setCollapsed(p => ({ ...p, [key]: !p[key] }));
   const sortRef = useRef(null);
@@ -1428,8 +1357,78 @@ export default function MarketplacePage() {
   const PRICE_PRESETS = [{label:"< 5K",val:5000},{label:"< 20K",val:20000},{label:"< 50K",val:50000},{label:"All",val:100000}];
 
   const toggleCond = (l) => setConditions(p => p.includes(l) ? p.filter(c=>c!==l) : [...p,l]);
-  const toggleSave = (id) => setSaved(p => { const n=new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
+  const toggleSave = async (id) => {
+    if (!token) {
+      setAuthGate(true);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/listings/${id}/save`, {
+        method: "POST",
+        headers: { "x-auth-token": token },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.msg || "Unable to update saved item.");
+
+      setSaved(p => {
+        const n = new Set(p);
+        if (data.saved === true) n.add(id);
+        else if (data.saved === false) n.delete(id);
+        else n.has(id) ? n.delete(id) : n.add(id);
+        return n;
+      });
+    } catch (err) {
+      setError(err.message || "Unable to update saved item.");
+    }
+  };
   const reset = () => { setCategory("All");setConditions([]);setMaxPrice(100000);setLocation("All Areas");setMinRating(0);setOnlyNeg(false);setOnlyVerified(false);setOnlyTrade(false);setSearch(""); };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchListings = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/listings`);
+        const data = await response.json().catch(() => []);
+        if (!response.ok) throw new Error(data.msg || "Unable to load listings.");
+        if (!cancelled) setListings(Array.isArray(data) ? data.map(mapListingToItem) : []);
+      } catch (err) {
+        if (!cancelled) setError(err.message || "Unable to load listings.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchListings();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      setSaved(new Set());
+      return;
+    }
+
+    let cancelled = false;
+    const fetchSaved = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/listings/saved`, {
+          headers: { "x-auth-token": token },
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok || !Array.isArray(data)) return;
+        if (!cancelled) setSaved(new Set(data.map(listing => listing._id).filter(Boolean)));
+      } catch {
+        // Saved state is non-critical for browsing.
+      }
+    };
+
+    fetchSaved();
+    return () => { cancelled = true; };
+  }, [token]);
 
   // Outside click for sort
   useEffect(() => {
@@ -1438,8 +1437,12 @@ export default function MarketplacePage() {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  const filtered = MOCK_ITEMS.filter(item => {
-    if (category !== "All" && item.category !== category) return false;
+  const categoryCount = (label) => label === "All"
+    ? listings.length
+    : listings.filter(item => categoryMatches(item.category, label)).length;
+
+  const filtered = listings.filter(item => {
+    if (!categoryMatches(item.category, category)) return false;
     if (conditions.length > 0 && !conditions.includes(item.condition)) return false;
     if (item.price > maxPrice) return false;
     if (location !== "All Areas" && !item.seller.location.toLowerCase().includes(location.toLowerCase())) return false;
@@ -1485,6 +1488,13 @@ export default function MarketplacePage() {
 
   const sortLabel = SORT_OPTIONS.find(o=>o.value===sort)?.label;
   const hasFilters = activeFilters.length > 0;
+  const openItem = (item, mode) => {
+    if (mode === "details") {
+      navigate(`/listings/${item.id}`);
+      return;
+    }
+    setSelected({ item, mode });
+  };
 
   return (
     <div style={{minHeight:"100vh",background:"var(--d2)"}}>
@@ -1562,7 +1572,7 @@ export default function MarketplacePage() {
                     <button key={cat.label} className={`ci${category===cat.label?" act":""}`} onClick={()=>{setCategory(cat.label);setSidebarOpen(false);}}>
                       <div className="cii" style={{background:`${cat.color}18`,color:cat.color}}>{cat.icon}</div>
                       <span className="cin">{cat.label}</span>
-                      <span className="cic">{cat.count}</span>
+                      <span className="cic">{categoryCount(cat.label)}</span>
                     </button>
                   ))}
                 </div>
@@ -1785,7 +1795,7 @@ export default function MarketplacePage() {
                   key={item.id}
                   item={item}
                   view={view==="lv"?"list":"grid"}
-                  onOpen={(item, mode) => setSelected({ item, mode })}
+                  onOpen={openItem}
                   saved={saved.has(item.id)}
                   onSave={toggleSave}
                 />
@@ -1794,8 +1804,8 @@ export default function MarketplacePage() {
           ) : (
             <div className="es">
               <div className="ei">🔍</div>
-              <h3 className="et">No items match</h3>
-              <p className="esub">Try adjusting your filters or search. {MOCK_ITEMS.length} items are available.</p>
+              <h3 className="et">{loading ? "Loading listings..." : error ? "Unable to load listings" : "No items match"}</h3>
+              <p className="esub">{loading ? "Fetching the latest marketplace listings." : error || `Try adjusting your filters or search. ${listings.length} items are available.`}</p>
               <button className="eb" onClick={reset}>Clear all filters</button>
             </div>
           )}

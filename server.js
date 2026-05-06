@@ -3,20 +3,20 @@
 // JWT_SECRET
 // PORT
 // FRONTEND_URL
+// BACKEND_URL
+// SSL_STORE_ID
+// SSL_STORE_PASSWORD
+// SSL_IS_LIVE
 
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-// const mongoSanitize = require('express-mongo-sanitize');
 const passport = require('passport');
 require('dotenv').config();
 
 const app = express();
 
 app.use(express.json());
-// app.use(mongoSanitize({
-//     replaceWith: '_'
-// }));
 
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -31,6 +31,7 @@ app.use('/api/listings', require('./routes/listings'));
 app.use('/api/offers', require('./routes/offers'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/payments', require('./routes/payments'));
 
 app.get('/', (req, res) => {
     res.send('Proti-Binimoy API is active.');

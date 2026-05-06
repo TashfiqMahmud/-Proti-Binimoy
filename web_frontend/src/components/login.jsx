@@ -1,6 +1,7 @@
 ﻿import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
+import { useAuth } from "../context/AuthContext";
 
 /* ══════════════════════════════════════
    MOCK AUTH STORE  (localStorage-backed)
@@ -28,6 +29,29 @@ const seedDemoUsers = () => {
       joinDate: "2024-09-01",
       location: "Dhanmondi, Dhaka",
       bio: "Passionate about sustainable commerce and zero-waste living.",
+      idType: "nid",
+      idValue: "1234567890",
+      avatar: null,
+      rating: 4.8,
+      reviews: 12,
+      totalListings: 7,
+      soldItems: 4,
+      savedItems: 19,
+      verified: true,
+      memberTier: "Gold",
+    };
+    saveMockUsers(users);
+  }
+  if (!users["test@example.com"]) {
+    users["test@example.com"] = {
+      id: "u_test",
+      email: "test@example.com",
+      password: "Test123",
+      name: "Test User",
+      phone: "01812345678",
+      joinDate: "2024-09-01",
+      location: "Dhanmondi, Dhaka",
+      bio: "Testing the mock Proti-Binimoy profile flow.",
       idType: "nid",
       idValue: "1234567890",
       avatar: null,
@@ -281,6 +305,7 @@ const ResendTimer = ({ onResend }) => {
 ══════════════════════════════════════ */
 const LoginPage = () => {
   const navigate    = useNavigate();
+  const { login, token } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [method, setMethod]     = useState("phone");
   const [step, setStep]         = useState(0);
@@ -300,6 +325,12 @@ const LoginPage = () => {
   const [email, setEmail]   = useState("");
   const [password, setPw]   = useState("");
   const [showPw, setShowPw] = useState(false);
+
+  useEffect(() => {
+    if (token) {
+      navigate("/profile", { replace: true });
+    }
+  }, [token, navigate]);
 
   const switchMethod = (m) => {
     setMethod(m); setStep(0); setError("");
@@ -332,7 +363,10 @@ const LoginPage = () => {
       if (otp !== mockOtp) { setError("Incorrect OTP. Please try again."); setLoading(false); return; }
       const users = getMockUsers();
       const user  = Object.values(users).find(u => u.phone === phone.replace(/\D/g, ""));
-      if (user) saveSession(user);
+      if (user) {
+        saveSession(user);
+        login("mock_token", user);
+      }
       setStep(2);
       setLoading(false);
       setTimeout(() => navigate("/profile", { replace: true }), 1600);
@@ -375,6 +409,7 @@ const LoginPage = () => {
         setLoading(false); return;
       }
       saveSession(user);
+      login("mock_token", user);
       setStep(2);
       setLoading(false);
       setTimeout(() => navigate("/profile", { replace: true }), 1600);

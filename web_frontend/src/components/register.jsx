@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
+import { useAuth } from "../context/AuthContext";
 import PageFooter from "./page-footer";
 
 /* ══════════════════════════════════════
@@ -261,6 +262,7 @@ const TermsText = () => (
 ══════════════════════════════════════ */
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [step, setStep]         = useState(0);
   const [loading, setLoading]   = useState(false);
@@ -365,6 +367,7 @@ const RegisterPage = () => {
       users[emailKey] = newUser;
       saveMockUsers(users);
       saveSession(newUser);
+      login("mock_token", newUser);
 
       setSuccess("Account created successfully!");
       setLoading(false);

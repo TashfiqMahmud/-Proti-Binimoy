@@ -1,74 +1,77 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
 import { useAuth } from "../context/AuthContext";
 
-/* ══════════════════════════════════════
+// --- Firebase ---------------------------------------------------------------
+// Install: npm install firebase
+// Create src/config/firebase.js and initialise your Firebase app there, e.g.:
+//
+//   import { initializeApp } from "firebase/app";
+//   import { getAuth }       from "firebase/auth";
+//   const firebaseConfig = { apiKey: "...", authDomain: "...", ... };
+//   export const app  = initializeApp(firebaseConfig);
+//   export const auth = getAuth(app);
+//
+import { auth } from "../config/firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+
+/* --------------------------------------
    MOCK AUTH STORE  (localStorage-backed)
-══════════════════════════════════════ */
-const MOCK_USERS_KEY = "pb_mock_users";
+-------------------------------------- */
+const MOCK_USERS_KEY  = "pb_mock_users";
 const MOCK_SESSION_KEY = "pb_mock_session";
 
-const getMockUsers = () => {
-  try { return JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || "{}"); }
-  catch { return {}; }
-};
+const getMockUsers  = () => { try { return JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || "{}"); } catch { return {}; } };
 const saveMockUsers = (users) => localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(users));
 const saveSession   = (user)  => localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(user));
+const normalizeMockPhone = (value) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length === 13 && digits.startsWith("88") ? digits.slice(2) : digits;
+};
+const createMockJwt = (user) => `mock_${btoa(JSON.stringify({ id: user.id, role: user.role }))}`;
 
-/* Seed demo user on first load */
+/**
+ * Persist auth state for the session.
+ * Stores the JWT token and the user role so other parts of the app
+ * (route guards, API calls, etc.) can read them without an extra round-trip.
+ */
+const persistAuth = (token, role) => {
+  localStorage.setItem("pb_jwt",       token);
+  localStorage.setItem("pb_user_role", role);
+};
+
+/** Return the dashboard path for a given role. */
+const dashboardFor = () => "/profile";
+
+/* Seed demo users */
 const seedDemoUsers = () => {
   const users = getMockUsers();
-  if (!users["demo@protibi.com"]) {
-    users["demo@protibi.com"] = {
-      id: "u_demo",
-      email: "demo@protibi.com",
-      password: "Demo@1234",
-      name: "Rafiul Hasan",
-      phone: "01712345678",
-      joinDate: "2024-09-01",
-      location: "Dhanmondi, Dhaka",
+  users["demo@protibi.com"] = {
+    ...(users["demo@protibi.com"] || {}),
+      id: "u_demo", email: "demo@protibi.com", password: "Demo@1234",
+      name: "Rafiul Hasan", phone: "01712345678", role: "seller",
+      joinDate: "2024-09-01", location: "Dhanmondi, Dhaka",
       bio: "Passionate about sustainable commerce and zero-waste living.",
-      idType: "nid",
-      idValue: "1234567890",
-      avatar: null,
-      rating: 4.8,
-      reviews: 12,
-      totalListings: 7,
-      soldItems: 4,
-      savedItems: 19,
-      verified: true,
-      memberTier: "Gold",
-    };
-    saveMockUsers(users);
-  }
-  if (!users["test@example.com"]) {
-    users["test@example.com"] = {
-      id: "u_test",
-      email: "test@example.com",
-      password: "Test123",
-      name: "Test User",
-      phone: "01812345678",
-      joinDate: "2024-09-01",
-      location: "Dhanmondi, Dhaka",
+      idType: "nid", idValue: "1234567890", dob: "1990-05-15", avatar: null,
+      rating: 4.8, reviews: 12, totalListings: 7, soldItems: 4,
+      savedItems: 19, verified: true, memberTier: "Gold",
+  };
+  users["test@example.com"] = {
+    ...(users["test@example.com"] || {}),
+      id: "u_test", email: "test@example.com", password: "Test123",
+      name: "Test User", phone: "01812345678", role: "buyer",
+      joinDate: "2024-09-01", location: "Dhanmondi, Dhaka",
       bio: "Testing the mock Proti-Binimoy profile flow.",
-      idType: "nid",
-      idValue: "1234567890",
-      avatar: null,
-      rating: 4.8,
-      reviews: 12,
-      totalListings: 7,
-      soldItems: 4,
-      savedItems: 19,
-      verified: true,
-      memberTier: "Gold",
-    };
-    saveMockUsers(users);
-  }
+      idType: "nid", idValue: "1234567890", dob: "1995-03-20", avatar: null,
+      rating: 4.8, reviews: 12, totalListings: 7, soldItems: 4,
+      savedItems: 19, verified: true, memberTier: "Gold",
+  };
+  saveMockUsers(users);
 };
 seedDemoUsers();
 
-/* ─── Global Styles ─── */
+/* --- Global Styles --- */
 const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -157,6 +160,19 @@ const GlobalStyles = () => (
     .lp-btn-link:hover { color:#0d3322; }
     .lp-btn-link:disabled { color:#9ca3af; cursor:not-allowed; }
 
+    /* Google button */
+    .lp-btn-google { width:100%; padding:13px; border-radius:13px; border:1.5px solid #e5e7eb; cursor:pointer; background:#fff; color:#111827; font-size:15px; font-weight:600; font-family:inherit; transition:border-color 0.2s, box-shadow 0.2s, background 0.2s; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+    .lp-btn-google:hover:not(:disabled) { border-color:#9ca3af; background:#f9fafb; box-shadow:0 3px 10px rgba(0,0,0,0.10); }
+    .lp-btn-google:disabled { opacity:0.55; cursor:not-allowed; }
+
+    /* Role picker modal */
+    .lp-role-overlay { position:fixed; inset:0; background:rgba(8,35,26,0.72); backdrop-filter:blur(6px); z-index:500; display:flex; align-items:center; justify-content:center; padding:20px; animation:lp-fadeUp 0.22s ease; }
+    .lp-role-modal { background:#fff; border-radius:24px; padding:36px 32px; max-width:420px; width:100%; box-shadow:0 32px 80px rgba(0,0,0,0.35); }
+    .lp-role-card { border:2px solid #e5e7eb; border-radius:16px; padding:18px 20px; cursor:pointer; transition:all 0.22s; display:flex; align-items:center; gap:16px; margin-bottom:12px; }
+    .lp-role-card:hover { border-color:#2ec97e; background:#f0fdf4; }
+    .lp-role-card.selected { border-color:#1b7d52; background:#f0fdf4; box-shadow:0 0 0 3px rgba(46,201,126,0.18); }
+    .lp-role-icon { width:46px; height:46px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+
     /* ALERTS */
     .lp-err  { background:#fef2f2; border:1px solid #fecaca; border-radius:11px; padding:10px 14px; font-size:12px; font-weight:500; color:#dc2626; display:flex; align-items:center; gap:7px; }
     .lp-info { background:rgba(46,201,126,0.07); border:1px solid rgba(46,201,126,0.22); border-radius:11px; padding:10px 14px; font-size:12px; color:#374151; display:flex; align-items:flex-start; gap:7px; }
@@ -172,6 +188,7 @@ const GlobalStyles = () => (
 
     /* MISC */
     .lp-spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:lp-spin 0.7s linear infinite; }
+    .lp-spinner-dark { width:16px; height:16px; border:2px solid rgba(0,0,0,0.12); border-top-color:#1b7d52; border-radius:50%; animation:lp-spin 0.7s linear infinite; }
     .lp-divider { display:flex; align-items:center; gap:12px; margin:20px 0; }
     .lp-div-line { flex:1; height:1px; background:#e5e7eb; }
     .lp-div-txt  { font-size:10px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:#9ca3af; }
@@ -199,9 +216,10 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-/* ── Atoms ── */
-const Sp = () => <div className="lp-spinner" />;
-const Arr = ({ size = 15 }) => (
+/* -- Atoms -- */
+const Sp     = () => <div className="lp-spinner" />;
+const SpDark = () => <div className="lp-spinner-dark" />;
+const Arr  = ({ size = 15 }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: size, height: size }}>
     <path d="M5 12h14M12 5l7 7-7 7" />
   </svg>
@@ -232,7 +250,17 @@ const EyeOff = () => (
   </svg>
 );
 
-/* ── Progress bar ── */
+/* Google "G" SVG */
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+    <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.859-3.048.859-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+    <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+  </svg>
+);
+
+/* -- Progress bar -- */
 const PBar = ({ steps, cur }) => (
   <div className="lp-prog">
     {steps.map((s, i) => (
@@ -244,9 +272,9 @@ const PBar = ({ steps, cur }) => (
   </div>
 );
 
-/* ── OTP cells ── */
+/* -- OTP cells -- */
 const OtpInput = ({ value, onChange }) => {
-  const refs = Array.from({ length: 6 }, () => useRef(null));
+  const refs = React.useMemo(() => Array.from({ length: 6 }, () => React.createRef()), []);
   const cells = value.split("");
   const handleKey = (i, e) => {
     if (e.key === "Backspace") {
@@ -282,7 +310,7 @@ const OtpInput = ({ value, onChange }) => {
   );
 };
 
-/* ── Resend timer ── */
+/* -- Resend timer -- */
 const ResendTimer = ({ onResend }) => {
   const [s, setS] = useState(30);
   useEffect(() => {
@@ -300,36 +328,123 @@ const ResendTimer = ({ onResend }) => {
   );
 };
 
-/* ══════════════════════════════════════
-   MAIN COMPONENT
-══════════════════════════════════════ */
-const LoginPage = () => {
-  const navigate    = useNavigate();
-  const { login, token } = useAuth();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [method, setMethod]     = useState("phone");
-  const [step, setStep]         = useState(0);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+/* --------------------------------------------------------------------------
+   ROLE PICKER MODAL
+   Shown when a Google-authenticated user has no saved role yet.
+   The user picks Buyer or Seller, then we finish the auth flow.
+-------------------------------------------------------------------------- */
+const RolePickerModal = ({ googleUser, onConfirm, onCancel }) => {
+  const [selected, setSelected] = useState("");
+  const [loading,  setLoading]  = useState(false);
 
-  const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:5000/api/auth/google";
+  const handleConfirm = async () => {
+    if (!selected) return;
+    setLoading(true);
+    await onConfirm(selected);
+    setLoading(false);
   };
 
-  // phone flow
-  const [phone, setPhone]   = useState("");
-  const [otp, setOtp]       = useState("");
-  const [mockOtp, setMockOtp] = useState(""); // displayed hint OTP
+  return (
+    <div className="lp-role-overlay">
+      <div className="lp-role-modal">
+        {/* Avatar */}
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          {googleUser.photoURL
+            ? <img src={googleUser.photoURL} alt="" style={{ width: 60, height: 60, borderRadius: "50%", border: "3px solid #2ec97e", marginBottom: 10 }} />
+            : <div style={{ width: 60, height: 60, borderRadius: "50%", background: "linear-gradient(135deg,#2ec97e,#1b7d52)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 10, fontSize: 24, color: "#fff" }}>
+                {(googleUser.displayName || googleUser.email || "?")[0].toUpperCase()}
+              </div>
+          }
+          <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 700, color: "#0d1f16" }}>
+            Welcome, {googleUser.displayName?.split(" ")[0] || "there"}!
+          </p>
+          <p style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+            How will you use Proti-Binimoy?
+          </p>
+        </div>
 
-  // email flow
-  const [email, setEmail]   = useState("");
+        {/* Role cards */}
+        <div
+          className={`lp-role-card ${selected === "buyer" ? "selected" : ""}`}
+          onClick={() => setSelected("buyer")}
+          role="button"
+        >
+          <div className="lp-role-icon" style={{ background: "#eff6ff" }}>???</div>
+          <div>
+            <p style={{ fontWeight: 700, fontSize: 15, color: "#0d1f16" }}>I'm a Buyer</p>
+            <p style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>Browse listings, make offers, find great deals</p>
+          </div>
+          {selected === "buyer" && (
+            <div style={{ marginLeft: "auto", width: 22, height: 22, borderRadius: "50%", background: "#1b7d52", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}><path d="M7 12.5l3.2 3.2L17.5 8.5" /></svg>
+            </div>
+          )}
+        </div>
+
+        <div
+          className={`lp-role-card ${selected === "seller" ? "selected" : ""}`}
+          onClick={() => setSelected("seller")}
+          role="button"
+        >
+          <div className="lp-role-icon" style={{ background: "#f0fdf4" }}>??</div>
+          <div>
+            <p style={{ fontWeight: 700, fontSize: 15, color: "#0d1f16" }}>I'm a Seller</p>
+            <p style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>List items, manage inventory, reach buyers</p>
+          </div>
+          {selected === "seller" && (
+            <div style={{ marginLeft: "auto", width: 22, height: 22, borderRadius: "50%", background: "#1b7d52", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}><path d="M7 12.5l3.2 3.2L17.5 8.5" /></svg>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={handleConfirm}
+          disabled={!selected || loading}
+          className="lp-btn-submit"
+          style={{ marginTop: 8 }}
+        >
+          {loading ? <><SpDark style={{ borderTopColor: "#fff" }} /> Setting up...</> : <>Continue as {selected || "..."} <Arr /></>}
+        </button>
+        <button onClick={onCancel} className="lp-btn-back" style={{ marginTop: 10, width: "100%", justifyContent: "center" }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* --------------------------------------------------------------------------
+   MAIN COMPONENT
+-------------------------------------------------------------------------- */
+const LoginPage = () => {
+  const navigate        = useNavigate();
+  const { login, token, user: authUser, logout } = useAuth();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [method,   setMethod]   = useState("phone");
+  const [step,     setStep]     = useState(0);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
+
+  // Google role picker
+  const [googleUser,      setGoogleUser]      = useState(null); // Firebase user object
+  const [googleFirebaseToken, setGoogleFirebaseToken] = useState("");
+  const [showRolePicker,  setShowRolePicker]  = useState(false);
+
+  // Phone flow
+  const [phone,   setPhone]   = useState("");
+  const [otp,     setOtp]     = useState("");
+  const [mockOtp, setMockOtp] = useState("");
+
+  // Email flow
+  const [email,  setEmail]  = useState("");
   const [password, setPw]   = useState("");
   const [showPw, setShowPw] = useState(false);
 
+  // Redirect if already logged in
   useEffect(() => {
-    if (token) {
-      navigate("/profile", { replace: true });
-    }
+    if (token) navigate("/profile", { replace: true });
   }, [token, navigate]);
 
   const switchMethod = (m) => {
@@ -337,7 +452,113 @@ const LoginPage = () => {
     setPhone(""); setOtp(""); setEmail(""); setPw(""); setShowPw(false); setMockOtp("");
   };
 
-  /* ── MOCK: Phone step 0 ── */
+  /* --------------------------------------------------------------------
+     GOOGLE AUTH  (Firebase popup ? get ID token ? optional role pick
+     ? store JWT + role ? redirect)
+  -------------------------------------------------------------------- */
+  const handleGoogleLogin = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+
+      const result   = await signInWithPopup(auth, provider);
+      const fbUser   = result.user;
+      const idToken  = await fbUser.getIdToken(); // Firebase ID token (acts as JWT)
+
+      // -- Option A: Send to your backend, receive a real JWT back ------
+      // Uncomment and adapt when your backend is ready:
+      //
+      // const res = await fetch("/api/auth/google/firebase", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ idToken }),
+      // });
+      // const { token: jwtToken, user } = await res.json();
+      // finishGoogleAuth(jwtToken, user);
+      // return;
+
+      // -- Option B: Mock flow (no backend yet) -------------------------
+      // Check if this Google user already has a mock profile with a role.
+      const users       = getMockUsers();
+      const existingUser = Object.values(users).find(
+        (u) => u.email?.toLowerCase() === fbUser.email?.toLowerCase()
+      );
+
+      if (existingUser?.role) {
+        // Known user - sign them in immediately.
+        finishGoogleAuth(idToken, existingUser);
+      } else {
+        // New Google user - ask them to pick a role.
+        setGoogleFirebaseToken(idToken);
+        setGoogleUser(fbUser);
+        setShowRolePicker(true);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Google sign-in error:", err);
+      if (err.code !== "auth/popup-closed-by-user") {
+        setError("Google sign-in failed. Please try again.");
+      }
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Called after role is chosen (new user) or immediately for returning users.
+   * Stores JWT + role in localStorage, calls AuthContext login, then redirects.
+   */
+  const finishGoogleAuth = (jwtToken, user) => {
+    // Persist JWT and role for the whole app
+    persistAuth(jwtToken, user.role);
+    saveSession(user);
+    login(jwtToken, user);
+    setStep(2);
+    setTimeout(() => navigate(dashboardFor(user.role), { replace: true }), 1600);
+  };
+
+  /** Role picker confirmation for brand-new Google users */
+  const handleRoleConfirm = async (role) => {
+    const fbUser = googleUser;
+
+    // Build a mock user profile; replace with a real backend call in production.
+    const newUser = {
+      id:           `u_google_${Date.now()}`,
+      email:        fbUser.email,
+      name:         fbUser.displayName || fbUser.email?.split("@")[0] || "User",
+      avatar:       fbUser.photoURL || null,
+      phone:        "",
+      role,
+      joinDate:     new Date().toISOString().slice(0, 10),
+      location:     "",
+      bio:          "",
+      verified:     fbUser.emailVerified,
+      memberTier:   "Standard",
+      rating:       0,
+      reviews:      0,
+      totalListings: 0,
+      soldItems:    0,
+      savedItems:   0,
+    };
+
+    // Save to mock store
+    const users = getMockUsers();
+    users[fbUser.email.toLowerCase()] = newUser;
+    saveMockUsers(users);
+
+    setShowRolePicker(false);
+    finishGoogleAuth(googleFirebaseToken, newUser);
+  };
+
+  const handleRoleCancel = () => {
+    setShowRolePicker(false);
+    setGoogleUser(null);
+    setGoogleFirebaseToken("");
+    setLoading(false);
+  };
+
+  /* -- MOCK: Phone step 0 -- */
   const handlePhoneCheck = (e) => {
     e.preventDefault(); setError("");
     const d = phone.replace(/\D/g, "");
@@ -345,7 +566,7 @@ const LoginPage = () => {
     setLoading(true);
     setTimeout(() => {
       const users = getMockUsers();
-      const found = Object.values(users).find(u => u.phone === d);
+      const found = Object.values(users).find(u => normalizeMockPhone(u.phone) === d);
       if (!found) { setError("This number is not registered. Please create an account first."); setLoading(false); return; }
       const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
       setMockOtp(generatedOtp);
@@ -354,7 +575,7 @@ const LoginPage = () => {
     }, 700);
   };
 
-  /* ── MOCK: Phone step 1 ── */
+  /* -- MOCK: Phone step 1 -- */
   const handleOtpVerify = (e) => {
     e?.preventDefault(); setError("");
     if (otp.length < 6) { setError("Enter the full 6-digit OTP."); return; }
@@ -362,25 +583,25 @@ const LoginPage = () => {
     setTimeout(() => {
       if (otp !== mockOtp) { setError("Incorrect OTP. Please try again."); setLoading(false); return; }
       const users = getMockUsers();
-      const user  = Object.values(users).find(u => u.phone === phone.replace(/\D/g, ""));
+      const user  = Object.values(users).find(u => normalizeMockPhone(u.phone) === phone.replace(/\D/g, ""));
       if (user) {
+        const mockJwt = createMockJwt(user);
+        persistAuth(mockJwt, user.role);
         saveSession(user);
-        login("mock_token", user);
+        login(mockJwt, user);
       }
       setStep(2);
       setLoading(false);
-      setTimeout(() => navigate("/profile", { replace: true }), 1600);
+      setTimeout(() => navigate(dashboardFor(user?.role), { replace: true }), 1600);
     }, 800);
   };
 
   const handleOtpResend = () => {
-    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    setMockOtp(generatedOtp);
-    setOtp("");
-    setError("");
+    setMockOtp(Math.floor(100000 + Math.random() * 900000).toString());
+    setOtp(""); setError("");
   };
 
-  /* ── MOCK: Email step 0 ── */
+  /* -- MOCK: Email step 0 -- */
   const handleEmailCheck = (e) => {
     e.preventDefault(); setError("");
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError("Enter a valid email address."); return; }
@@ -396,7 +617,7 @@ const LoginPage = () => {
     }, 600);
   };
 
-  /* ── MOCK: Email step 1 ── */
+  /* -- MOCK: Email step 1 -- */
   const handlePasswordCheck = (e) => {
     e.preventDefault(); setError("");
     if (!password) { setError("Enter your password."); return; }
@@ -408,11 +629,13 @@ const LoginPage = () => {
         setError("Invalid email or password.");
         setLoading(false); return;
       }
+      const mockJwt = createMockJwt(user);
+      persistAuth(mockJwt, user.role);
       saveSession(user);
-      login("mock_token", user);
+      login(mockJwt, user);
       setStep(2);
       setLoading(false);
-      setTimeout(() => navigate("/profile", { replace: true }), 1600);
+      setTimeout(() => navigate(dashboardFor(user.role), { replace: true }), 1600);
     }, 800);
   };
 
@@ -422,7 +645,7 @@ const LoginPage = () => {
     "Built for sustainable buying, selling, and barter",
   ];
 
-  /* ── Card content ── */
+  /* -- Card content -- */
   const renderCard = () => {
     // SUCCESS
     if (step === 2) return (
@@ -433,7 +656,7 @@ const LoginPage = () => {
           </svg>
         </div>
         <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 700, color: "#0d1f16", marginBottom: 10 }}>You're in!</h3>
-        <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>Redirecting to your profile…</p>
+        <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>Redirecting to your profile...</p>
         <div style={{ height: 4, borderRadius: 100, background: "#f3f4f6", overflow: "hidden" }}>
           <div style={{ height: "100%", background: "linear-gradient(to right,#2ec97e,#1b7d52)", borderRadius: 100, animation: "lp-bar 1.5s linear forwards" }} />
         </div>
@@ -445,10 +668,9 @@ const LoginPage = () => {
       if (step === 0) return (
         <div className="lp-slide" key="ph0">
           <PBar steps={["Phone", "OTP", "Done"]} cur={0} />
-          {/* Demo hint */}
           <div className="lp-demo-box">
-            <strong>🧪 Demo Account</strong>
-            Phone: <code>01812345678</code> — Use any 6-digit OTP shown after submitting.
+            <strong>Demo Accounts</strong>
+            Seller: <code>01712345678</code> &nbsp;|&nbsp; Buyer: <code>01812345678</code> - Use any 6-digit OTP shown after submitting.
           </div>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 1 of 2</p>
           <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,28px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter your phone</h2>
@@ -457,7 +679,7 @@ const LoginPage = () => {
             <div>
               <label className="lp-label">Phone Number</label>
               <div className="lp-input-wrap">
-                <div className="lp-phone-pre">🇧🇩 +88</div>
+                <div className="lp-phone-pre">+880</div>
                 <input type="tel" inputMode="numeric" placeholder="01XXXXXXXXX" value={phone}
                   onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                   className="lp-input lp-phl" autoFocus />
@@ -465,7 +687,7 @@ const LoginPage = () => {
             </div>
             {error && <div className="lp-err"><ErrIcon />{error}</div>}
             <button type="submit" disabled={loading} className="lp-btn-submit">
-              {loading ? <><Sp /> Checking…</> : <>Send OTP <Arr /></>}
+              {loading ? <><Sp /> Checking...</> : <>Send OTP <Arr /></>}
             </button>
           </form>
         </div>
@@ -476,7 +698,7 @@ const LoginPage = () => {
           <PBar steps={["Phone", "OTP", "Done"]} cur={1} />
           {mockOtp && (
             <div className="lp-demo-box">
-              <strong>🔑 Your mock OTP</strong>
+              <strong>Demo Accounts</strong>
               Enter this code: <code style={{ fontSize: 16, fontWeight: 800, letterSpacing: 2 }}>{mockOtp}</code>
             </div>
           )}
@@ -488,7 +710,7 @@ const LoginPage = () => {
           <OtpInput value={otp} onChange={setOtp} />
           {error && <div className="lp-err" style={{ marginTop: 12 }}><ErrIcon />{error}</div>}
           <button onClick={handleOtpVerify} disabled={loading || otp.length < 6} className="lp-btn-submit" style={{ marginTop: 16 }}>
-            {loading ? <><Sp /> Verifying…</> : <>Verify & Sign In <Arr /></>}
+            {loading ? <><Sp /> Verifying...</> : <>Verify & Sign In <Arr /></>}
           </button>
           <ResendTimer onResend={handleOtpResend} />
           <button className="lp-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(0); setOtp(""); setError(""); setMockOtp(""); }}>
@@ -504,8 +726,9 @@ const LoginPage = () => {
         <div className="lp-slide" key="em0">
           <PBar steps={["Email", "Password", "Done"]} cur={0} />
           <div className="lp-demo-box">
-            <strong>🧪 Demo Account</strong>
-            Email: <code>test@example.com</code> &nbsp;/&nbsp; Password: <code>Test123</code>
+            <strong>Demo Accounts</strong>
+            <span style={{ display: "block" }}>Seller: <code>demo@protibi.com</code> / <code>Demo@1234</code></span>
+            <span>Buyer: <code>test@example.com</code> / <code>Test123</code></span>
           </div>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 6 }}>Step 1 of 2</p>
           <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,2.3vw,28px)", fontWeight: 700, color: "#0d1f16", marginBottom: 6 }}>Enter your email</h2>
@@ -522,7 +745,7 @@ const LoginPage = () => {
             </div>
             {error && <div className="lp-err"><ErrIcon />{error}</div>}
             <button type="submit" disabled={loading} className="lp-btn-submit">
-              {loading ? <><Sp /> Checking…</> : <>Continue <Arr /></>}
+              {loading ? <><Sp /> Checking...</> : <>Continue <Arr /></>}
             </button>
           </form>
         </div>
@@ -558,7 +781,7 @@ const LoginPage = () => {
             </div>
             {error && <div className="lp-err"><ErrIcon />{error}</div>}
             <button type="submit" disabled={loading} className="lp-btn-submit">
-              {loading ? <><Sp /> Signing In…</> : <>Sign In <Arr /></>}
+              {loading ? <><Sp /> Signing In...</> : <>Sign In <Arr /></>}
             </button>
           </form>
           <button className="lp-btn-back" style={{ marginTop: 14 }} onClick={() => { setStep(0); setPw(""); setError(""); }}>
@@ -573,6 +796,15 @@ const LoginPage = () => {
     <div style={{ fontFamily: "'DM Sans',sans-serif", overflowX: "hidden", minHeight: "100vh" }}>
       <GlobalStyles />
 
+      {/* Role picker modal (shown for new Google users) */}
+      {showRolePicker && googleUser && (
+        <RolePickerModal
+          googleUser={googleUser}
+          onConfirm={handleRoleConfirm}
+          onCancel={handleRoleCancel}
+        />
+      )}
+
       {/* NAV */}
       <nav className="lp-nav">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -585,8 +817,34 @@ const LoginPage = () => {
         <div className="lp-nav-links">
           <Link to="/" className="lp-nav-link">Home</Link>
           <Link to="/about" className="lp-nav-link">About</Link>
-          <Link to="/signin" className="lp-nav-link lp-nav-active">Sign In</Link>
-          <Link to="/register" className="lp-nav-cta">Register →</Link>
+          {token && authUser ? (
+            <>
+              <button
+                onClick={() => { logout(); }}
+                style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.7)", fontSize:14, fontWeight:500, fontFamily:"inherit" }}
+              >Sign Out</button>
+              <Link to="/profile" style={{ textDecoration:"none", display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{
+                  width:36, height:36, borderRadius:"50%",
+                  background:"linear-gradient(135deg,#2ec97e,#1b7d52)",
+                  border:"2px solid rgba(46,201,126,0.5)",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  overflow:"hidden", flexShrink:0, cursor:"pointer",
+                  fontSize:14, fontWeight:700, color:"#fff"
+                }}>
+                  {authUser.avatar
+                    ? <img src={authUser.avatar} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                    : (authUser.name?.[0] || "?").toUpperCase()
+                  }
+                </div>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/signin" className="lp-nav-link lp-nav-active">Sign In</Link>
+              <Link to="/register" className="lp-nav-cta">Register</Link>
+            </>
+          )}
         </div>
         <button className="lp-hamburger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
           <span style={menuOpen ? { transform: "rotate(45deg) translate(5px,5px)" } : {}} />
@@ -597,7 +855,14 @@ const LoginPage = () => {
       <div className={`lp-mobile-menu ${menuOpen ? "open" : ""}`}>
         <Link to="/" className="lp-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
         <Link to="/about" className="lp-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
-        <Link to="/register" className="lp-mobile-cta" onClick={() => setMenuOpen(false)}>Create Account →</Link>
+        {token && authUser ? (
+          <>
+            <Link to="/profile" className="lp-mobile-link" onClick={() => setMenuOpen(false)}>My Profile</Link>
+            <button onClick={() => { logout(); setMenuOpen(false); }} className="lp-mobile-link" style={{background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",color:"#ef4444",fontWeight:600,fontSize:17,padding:"14px 0",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>Sign Out</button>
+          </>
+        ) : (
+          <Link to="/register" className="lp-mobile-cta" onClick={() => setMenuOpen(false)}>Create Account {"->"}</Link>
+        )}
       </div>
 
       {/* HERO */}
@@ -607,9 +872,9 @@ const LoginPage = () => {
         <div style={{ position: "absolute", top: -80, left: -80, width: 400, height: 400, background: "radial-gradient(circle,rgba(46,201,126,0.18) 0%,transparent 65%)", borderRadius: "50%" }} />
         <div style={{ position: "absolute", bottom: -60, right: -60, width: 340, height: 340, background: "radial-gradient(circle,rgba(27,125,82,0.15) 0%,transparent 65%)", borderRadius: "50%" }} />
 
-        <div className="lp-deco" style={{ width: 88, height: 88, top: "18%", left: "3%", animation: "lp-float 5s ease-in-out infinite" }}><span style={{ fontSize: 34 }}>📷</span></div>
-        <div className="lp-deco" style={{ width: 68, height: 68, top: "62%", left: "6%", animation: "lp-float 7s ease-in-out infinite 1s" }}><span style={{ fontSize: 26 }}>👟</span></div>
-        <div className="lp-deco" style={{ width: 56, height: 56, top: "38%", left: "1%", animation: "lp-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize: 21 }}>🎧</span></div>
+        <div className="lp-deco" style={{ width: 88, height: 88, top: "18%", left: "3%", animation: "lp-float 5s ease-in-out infinite" }}><span style={{ fontSize: 34 }}>??</span></div>
+        <div className="lp-deco" style={{ width: 68, height: 68, top: "62%", left: "6%", animation: "lp-float 7s ease-in-out infinite 1s" }}><span style={{ fontSize: 26 }}>??</span></div>
+        <div className="lp-deco" style={{ width: 56, height: 56, top: "38%", left: "1%", animation: "lp-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize: 21 }}>??</span></div>
 
         <div className="lp-grid" style={{ position: "relative", zIndex: 10 }}>
           {/* LEFT: copy */}
@@ -638,7 +903,7 @@ const LoginPage = () => {
             </div>
             <p className="lp-fade lp-d5" style={{ marginTop: 26, fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
               No account?{" "}
-              <Link to="/register" style={{ color: "#2ec97e", fontWeight: 600, textDecoration: "none" }}>Create one for free →</Link>
+              <Link to="/register" style={{ color: "#2ec97e", fontWeight: 600, textDecoration: "none" }}>Create one for free ?</Link>
             </p>
           </div>
 
@@ -661,22 +926,27 @@ const LoginPage = () => {
 
                 {renderCard()}
 
+                {/* -- Google sign-in -- */}
                 {step === 0 && (
-                  <div style={{ marginTop: 20 }}>
+                  <>
+                    <div className="lp-divider" style={{ marginTop: 20 }}>
+                      <div className="lp-div-line" />
+                      <span className="lp-div-txt">or</span>
+                      <div className="lp-div-line" />
+                    </div>
+
                     <button
                       type="button"
                       onClick={handleGoogleLogin}
-                      className="lp-btn-submit"
-                      style={{
-                        background: "#ffffff",
-                        color: "#111827",
-                        border: "1px solid #d1d5db",
-                        boxShadow: "none"
-                      }}
+                      disabled={loading}
+                      className="lp-btn-google"
                     >
-                      Continue with Google
+                      {loading
+                        ? <><SpDark /> Connecting...</>
+                        : <><GoogleIcon /> Continue with Google</>
+                      }
                     </button>
-                  </div>
+                  </>
                 )}
 
                 {step === 0 && (

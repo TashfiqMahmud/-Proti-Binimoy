@@ -171,7 +171,7 @@ const MakeOfferModal = ({ listing, onClose, onSuccess }) => {
               {needsCash && (
                 <div>
                   <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 6 }}>
-                    Your Offer (BDT ৳)
+                    Your Offer (BDT BDT )
                   </label>
                   <input
                     type="number"

@@ -4,12 +4,14 @@ import websiteBackground from "../assets/web_bg.png";
 import MouseEffects from "./mouse-effects";
 import PageFooter from "./page-footer";
 import { BD_LOCATIONS } from "../config/locations";
-import { API_BASE_URL } from "../config/api";
+// Backend connection is intentionally commented for mock-data testing.
+// import { API_BASE_URL } from "../config/api";
 import { useAuth } from "../context/AuthContext";
+import { createMockListing } from "../utils/mockData";
 
-/* ════════════════════════════════════════════════════════════
+/* 
    GLOBAL STYLES
-════════════════════════════════════════════════════════════ */
+ */
 const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -34,7 +36,7 @@ const GlobalStyles = () => (
     .pi-pop { animation:pi-pop 0.44s cubic-bezier(0.34,1.56,0.64,1) forwards; }
     .pi-slide { opacity:0; animation:pi-slideIn 0.34s cubic-bezier(0.22,1,0.36,1) forwards; }
 
-    /* ── NAV ── */
+    /*  NAV  */
     .pi-nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 200;
       display: flex; align-items: center; justify-content: space-between;
@@ -73,7 +75,7 @@ const GlobalStyles = () => (
     .pi-mobile-link { text-decoration:none; color:rgba(255,255,255,0.8); font-size:17px; font-weight:500; padding:14px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
     .pi-mobile-cta  { text-decoration:none; display:block; text-align:center; margin-top:20px; background:linear-gradient(135deg,#2ec97e,#1b7d52); color:#fff; font-size:16px; font-weight:600; padding:15px; border-radius:14px; }
 
-    /* ── PAGE LAYOUT ── */
+    /*  PAGE LAYOUT  */
     .pi-page {
       min-height: 100vh;
       padding-top: 61px;
@@ -81,7 +83,7 @@ const GlobalStyles = () => (
       position: relative;
     }
 
-    /* ── HERO BANNER ── */
+    /*  HERO BANNER  */
     .pi-banner {
       background: linear-gradient(135deg, #08231a 0%, #0d3322 50%, #162b1e 100%);
       padding: 56px 48px 48px;
@@ -104,7 +106,7 @@ const GlobalStyles = () => (
     .pi-banner-title { font-family:'Playfair Display',serif; font-size:clamp(28px,3.5vw,48px); font-weight:700; color:#fff; line-height:1.1; margin-bottom:12px; }
     .pi-banner-sub   { font-size:clamp(14px,1.6vw,16px); color:rgba(255,255,255,0.48); font-weight:300; max-width:520px; line-height:1.7; }
 
-    /* ── STEP INDICATOR ── */
+    /*  STEP INDICATOR  */
     .pi-steps-row { display:flex; align-items:center; gap:0; margin-top:36px; }
     .pi-step-item { display:flex; align-items:center; gap:10px; }
     .pi-step-dot  {
@@ -122,10 +124,10 @@ const GlobalStyles = () => (
     .pi-step-line { width:40px; height:1px; background:rgba(255,255,255,0.12); margin:0 10px; flex-shrink:0; transition:background 0.3s; }
     .pi-step-line.done { background:rgba(46,201,126,0.5); }
 
-    /* ── MAIN CONTENT AREA ── */
+    /*  MAIN CONTENT AREA  */
     .pi-content { max-width:1180px; margin:0 auto; padding:40px 48px 80px; display:grid; grid-template-columns:1fr 380px; gap:32px; align-items:start; }
 
-    /* ── FORM CARD ── */
+    /*  FORM CARD  */
     .pi-form-card {
       background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09);
       border-radius:24px; overflow:hidden;
@@ -144,7 +146,7 @@ const GlobalStyles = () => (
     .pi-section-sub   { font-size:12px; color:rgba(255,255,255,0.38); margin-top:2px; }
     .pi-form-body     { padding:28px; display:flex; flex-direction:column; gap:22px; }
 
-    /* ── LABEL & INPUTS ── */
+    /*  LABEL & INPUTS  */
     .pi-label { display:block; font-size:11.5px; font-weight:700; color:rgba(255,255,255,0.5); margin-bottom:8px; letter-spacing:0.06em; text-transform:uppercase; }
     .pi-required { color:#2ec97e; margin-left:3px; }
     .pi-input {
@@ -167,7 +169,7 @@ const GlobalStyles = () => (
     .pi-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
     .pi-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
 
-    /* ── CATEGORY PICKER ── */
+    /*  CATEGORY PICKER  */
     .pi-cat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
     .pi-cat-btn {
       display:flex; flex-direction:column; align-items:center; gap:6px;
@@ -182,7 +184,7 @@ const GlobalStyles = () => (
     .pi-cat-btn.active .pi-cat-name { color:#2ec97e; }
     .pi-cat-btn:hover .pi-cat-name  { color:rgba(255,255,255,0.85); }
 
-    /* ── CONDITION PICKER ── */
+    /*  CONDITION PICKER  */
     .pi-cond-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
     .pi-cond-btn {
       padding:12px 8px; border-radius:12px; border:1.5px solid transparent;
@@ -190,7 +192,7 @@ const GlobalStyles = () => (
       text-align:center; transition:all 0.22s; line-height:1.35;
     }
 
-    /* ── PRICE PREFIX ── */
+    /*  PRICE PREFIX  */
     .pi-price-wrap { position:relative; }
     .pi-price-pre {
       position:absolute; left:0; top:0; bottom:0;
@@ -201,7 +203,7 @@ const GlobalStyles = () => (
     }
     .pi-price-input { padding-left:52px; }
 
-    /* ── NEGOTIABLE TOGGLE ── */
+    /*  NEGOTIABLE TOGGLE  */
     .pi-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; }
     .pi-toggle-info { flex:1; }
     .pi-toggle-lbl  { font-size:14px; font-weight:500; color:rgba(255,255,255,0.8); }
@@ -221,7 +223,7 @@ const GlobalStyles = () => (
     input:checked + .pi-switch-track { background:rgba(46,201,126,0.3); border-color:rgba(46,201,126,0.6); }
     input:checked + .pi-switch-track::after { transform:translateX(20px); opacity:1; background:#2ec97e; box-shadow:0 2px 8px rgba(46,201,126,0.55); }
 
-    /* ── PHOTO UPLOAD ── */
+    /*  PHOTO UPLOAD  */
     .pi-photo-zone {
       border:2px dashed rgba(255,255,255,0.12); border-radius:16px;
       padding:32px 24px; text-align:center; cursor:pointer;
@@ -255,7 +257,7 @@ const GlobalStyles = () => (
     .pi-photo-add:hover { border-color:rgba(46,201,126,0.35); color:#2ec97e; background:rgba(46,201,126,0.05); }
     .pi-photo-main-badge { position:absolute; bottom:5px; left:5px; font-size:9px; font-weight:700; background:rgba(46,201,126,0.9); color:#fff; padding:2px 7px; border-radius:100px; letter-spacing:0.05em; text-transform:uppercase; }
 
-    /* ── TAGS ── */
+    /*  TAGS  */
     .pi-tag-wrap { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
     .pi-tag {
       display:inline-flex; align-items:center; gap:5px;
@@ -274,14 +276,14 @@ const GlobalStyles = () => (
     }
     .pi-tag-add-btn:hover { background:rgba(46,201,126,0.18); }
 
-    /* ── SIDEBAR CARD ── */
+    /*  SIDEBAR CARD  */
     .pi-sidebar { display:flex; flex-direction:column; gap:16px; position:sticky; top:81px; }
     .pi-side-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); border-radius:20px; overflow:hidden; }
     .pi-side-head { padding:18px 22px; border-bottom:1px solid rgba(255,255,255,0.07); }
     .pi-side-title { font-size:13px; font-weight:700; color:rgba(255,255,255,0.7); letter-spacing:0.04em; text-transform:uppercase; }
     .pi-side-body  { padding:18px 22px; }
 
-    /* ── PREVIEW CARD ── */
+    /*  PREVIEW CARD  */
     .pi-preview {
       border-radius:16px; overflow:hidden;
       background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08);
@@ -301,14 +303,14 @@ const GlobalStyles = () => (
     .pi-preview-av    { width:26px; height:26px; border-radius:50%; background:linear-gradient(135deg,#2ec97e,#1b7d52); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; flex-shrink:0; }
     .pi-preview-sname { font-size:11.5px; color:rgba(255,255,255,0.55); }
 
-    /* ── TIPS LIST ── */
+    /*  TIPS LIST  */
     .pi-tip { display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
     .pi-tip:last-child { border-bottom:none; }
     .pi-tip-icon { width:26px; height:26px; border-radius:8px; background:rgba(46,201,126,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:13px; margin-top:1px; }
     .pi-tip-text { font-size:12.5px; color:rgba(255,255,255,0.5); line-height:1.6; }
     .pi-tip-text strong { color:rgba(255,255,255,0.8); font-weight:600; }
 
-    /* ── SUBMIT BUTTON ── */
+    /*  SUBMIT BUTTON  */
     .pi-submit {
       width:100%; padding:16px; border-radius:14px; border:none; cursor:pointer;
       background:linear-gradient(135deg,#2ec97e,#1b7d52); color:#fff;
@@ -321,7 +323,7 @@ const GlobalStyles = () => (
     .pi-submit:disabled { opacity:0.45; cursor:not-allowed; transform:none; }
     .pi-spinner { width:17px; height:17px; border:2.5px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:pi-spin 0.7s linear infinite; }
 
-    /* ── SUCCESS STATE ── */
+    /*  SUCCESS STATE  */
     .pi-success-wrap { min-height:60vh; display:flex; align-items:center; justify-content:center; padding:40px 20px; }
     .pi-success-card {
       max-width:480px; width:100%;
@@ -361,17 +363,17 @@ const GlobalStyles = () => (
     }
     .pi-success-ghost:hover { border-color:rgba(255,255,255,0.32); color:#fff; }
 
-    /* ── ERROR ── */
+    /*  ERROR  */
     .pi-err-msg { display:flex; align-items:flex-start; gap:8px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.22); border-radius:11px; padding:10px 14px; font-size:12.5px; color:#f87171; }
 
-    /* ── CHAR COUNT ── */
+    /*  CHAR COUNT  */
     .pi-char-count { font-size:11px; color:rgba(255,255,255,0.25); text-align:right; margin-top:5px; }
     .pi-char-count.warn { color:rgba(245,158,11,0.7); }
 
-    /* ── DIVIDER ── */
+    /*  DIVIDER  */
     .pi-divider { height:1px; background:rgba(255,255,255,0.06); margin:4px 0; }
 
-    /* ── RESPONSIVE ── */
+    /*  RESPONSIVE  */
     @media (max-width: 1100px) {
       .pi-content { grid-template-columns:1fr; padding:32px 32px 64px; }
       .pi-sidebar  { position:static; }
@@ -406,18 +408,18 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-/* ════════════════════════════════════════════════════════════
+/* 
    DATA
-════════════════════════════════════════════════════════════ */
+ */
 const CATEGORIES = [
-  { id:"electronics", icon:"📱", label:"Electronics" },
-  { id:"furniture",   icon:"🪑", label:"Furniture"   },
-  { id:"clothing",    icon:"👕", label:"Clothing"    },
-  { id:"books",       icon:"📚", label:"Books"       },
-  { id:"sports",      icon:"🚲", label:"Sports"      },
-  { id:"vehicles",    icon:"🚗", label:"Vehicles"    },
-  { id:"tools",       icon:"🔧", label:"Tools"       },
-  { id:"other",       icon:"📦", label:"Other"       },
+  { id:"electronics", icon:"", label:"Electronics" },
+  { id:"furniture",   icon:"", label:"Furniture"   },
+  { id:"clothing",    icon:"", label:"Clothing"    },
+  { id:"books",       icon:"", label:"Books"       },
+  { id:"sports",      icon:"", label:"Sports"      },
+  { id:"vehicles",    icon:"", label:"Vehicles"    },
+  { id:"tools",       icon:"", label:"Tools"       },
+  { id:"other",       icon:"", label:"Other"       },
 ];
 
 const CONDITIONS = [
@@ -429,29 +431,17 @@ const CONDITIONS = [
 
 const LOCATIONS = BD_LOCATIONS;
 
-const DELIVERY_OPTIONS = [
-  { id:"pickup",   label:"Local Pickup" },
-  { id:"delivery", label:"Delivery Available" },
-  { id:"courier",  label:"Courier Service" },
-];
-
-const PAYMENT_OPTIONS = [
-  { id:"cash",     label:"Cash" },
-  { id:"bkash",    label:"bKash" },
-  { id:"nagad",    label:"Nagad" },
-  { id:"bank",     label:"Bank Transfer" },
-];
 
 const TIPS = [
-  { icon:"📸", text: <><strong>Add clear photos.</strong> Items with 4+ photos get 3× more views.</> },
-  { icon:"✍️", text: <><strong>Write a detailed description.</strong> Mention brand, model, age, and any flaws.</> },
-  { icon:"💰", text: <><strong>Price it right.</strong> Check similar listings. Enable negotiable for faster sales.</> },
-  { icon:"📍", text: <><strong>Set your exact area.</strong> Buyers prefer sellers nearby.</> },
+  { icon:"", text: <><strong>Add clear photos.</strong> Items with 4+ photos get 3x more views.</> },
+  { icon:"", text: <><strong>Write a detailed description.</strong> Mention brand, model, age, and any flaws.</> },
+  { icon:"", text: <><strong>Price it right.</strong> Check similar listings. Enable negotiable for faster sales.</> },
+  { icon:"", text: <><strong>Set your exact area.</strong> Buyers prefer sellers nearby.</> },
 ];
 
-/* ════════════════════════════════════════════════════════════
+/* 
    HELPERS
-════════════════════════════════════════════════════════════ */
+ */
 const fmt = (n) => new Intl.NumberFormat("en-BD").format(n);
 const CATEGORY_API_MAP = {
   electronics: "Electronics",
@@ -479,9 +469,9 @@ const fileToDataUrl = (file) => new Promise((resolve, reject) => {
 
 const STEPS = ["Item Details", "Pricing & Contact", "Review & Post"];
 
-/* ════════════════════════════════════════════════════════════
+/* 
    SECTION HEADER
-════════════════════════════════════════════════════════════ */
+ */
 const SectionHead = ({ icon, title, sub }) => (
   <div className="pi-section-head">
     <div className="pi-section-icon">{icon}</div>
@@ -492,9 +482,9 @@ const SectionHead = ({ icon, title, sub }) => (
   </div>
 );
 
-/* ════════════════════════════════════════════════════════════
+/* 
    MAIN PAGE COMPONENT
-════════════════════════════════════════════════════════════ */
+ */
 const PostItemPage = () => {
   const navigate = useNavigate();
   const { token, user: authUser } = useAuth();
@@ -524,19 +514,11 @@ const PostItemPage = () => {
     tradeOffer:  "",
     location:    "",
     phone:       "",
-    delivery:    [],
-    payment:     [],
     tags:        [],
     photos:      [],
   });
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
-  const toggleArr = (k, v) =>
-    setForm(p => ({
-      ...p,
-      [k]: p[k].includes(v) ? p[k].filter(x => x !== v) : [...p[k], v],
-    }));
 
   const handlePhotoChange = async (e) => {
     const files = Array.from(e.target.files).slice(0, 8 - form.photos.length);
@@ -578,8 +560,6 @@ const PostItemPage = () => {
         form.price && Number(form.price) > 0 &&
         form.location &&
         form.phone.trim().length >= 9 &&
-        form.payment.length > 0 &&
-        form.delivery.length > 0 &&
         (form.tradeOffer === "open" || form.tradeOffer === "no")
       );
     }
@@ -620,6 +600,18 @@ const PostItemPage = () => {
     };
 
     try {
+      const listing = createMockListing({
+        ...payload,
+        negotiable: form.negotiable,
+        tradeOffer: form.tradeOffer,
+        phone: form.phone,
+        tags: form.tags,
+        photos: form.photos,
+      }, authUser);
+      navigate("/marketplace", { state: { mockListingId: listing._id } });
+
+      /*
+      BACKEND CONNECTION (commented out for mock-data testing)
       const response = await fetch(`${API_BASE_URL}/api/listings`, {
         method: "POST",
         headers: {
@@ -633,6 +625,7 @@ const PostItemPage = () => {
 
       const listingId = data._id || data.listing?._id;
       navigate(listingId ? `/listings/${listingId}` : "/listings");
+      */
     } catch (err) {
       setError(err.message || "Unable to create listing.");
     } finally {
@@ -643,7 +636,7 @@ const PostItemPage = () => {
   const categoryObj   = CATEGORIES.find(c => c.id === form.category);
   const conditionObj  = CONDITIONS.find(c => c.id === form.condition);
 
-  // ── Nav ──
+  //  Nav 
   const Nav = () => (
     <>
       <nav className="pi-nav">
@@ -673,7 +666,7 @@ const PostItemPage = () => {
     </>
   );
 
-  // ── Success Screen ──
+  //  Success Screen 
   return (
     <div className="pi-page" style={{ backgroundImage: `url(${websiteBackground})`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
       <GlobalStyles />
@@ -685,7 +678,7 @@ const PostItemPage = () => {
       <div style={{ position: "relative", zIndex: 1 }}>
         <Nav />
 
-        {/* ── BANNER ── */}
+        {/*  BANNER  */}
         <div className="pi-banner pi-fade">
           <div className="pi-banner-glow1" />
           <div className="pi-banner-glow2" />
@@ -693,9 +686,9 @@ const PostItemPage = () => {
             {/* Breadcrumb */}
             <div className="pi-breadcrumb">
               <Link to="/">Home</Link>
-              <span className="pi-breadcrumb-sep">›</span>
+              <span className="pi-breadcrumb-sep"></span>
               <Link to="/marketplace">Marketplace</Link>
-              <span className="pi-breadcrumb-sep">›</span>
+              <span className="pi-breadcrumb-sep"></span>
               <span style={{ color: "rgba(255,255,255,0.65)" }}>Post an Item</span>
             </div>
 
@@ -712,7 +705,7 @@ const PostItemPage = () => {
               <em style={{ fontStyle: "italic", color: "#2ec97e" }}>reach thousands.</em>
             </h1>
             <p className="pi-banner-sub pi-d2">
-              List any item for free and connect with verified buyers across Dhaka and beyond.
+              List any item for free and connect with verified buyers across Bangladesh.
               Takes less than 3 minutes.
             </p>
 
@@ -738,13 +731,13 @@ const PostItemPage = () => {
           </div>
         </div>
 
-        {/* ── CONTENT ── */}
+        {/*  CONTENT  */}
         <div className="pi-content">
 
-          {/* ════════ LEFT: FORM ════════ */}
+          {/*  LEFT: FORM  */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-            {/* ───── STEP 0: Item Details ───── */}
+            {/*  STEP 0: Item Details  */}
             {step === 0 && (
               <>
                 {/* Photos */}
@@ -752,7 +745,7 @@ const PostItemPage = () => {
                   <SectionHead
                     icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 20, height: 20 }}><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>}
                     title="Photos"
-                    sub="Upload up to 8 images — first photo is the cover (required)"
+                    sub="Upload up to 8 images - first photo is the cover (required)"
                   />
                   <div className="pi-form-body">
                     <div className={`pi-photo-zone${dragging ? " dragging" : ""}`} style={{ borderColor: form.photos.length === 0 ? '#EF4444' : undefined }}
@@ -787,7 +780,7 @@ const PostItemPage = () => {
                           <div key={i} className="pi-photo-thumb">
                             <img src={p.preview || (typeof p === 'string' ? p : undefined)} alt={`Photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                             {i === 0 && <span className="pi-photo-main-badge">Cover</span>}
-                            <button className="pi-photo-del" onClick={e => { e.stopPropagation(); removePhoto(i); }}>✕</button>
+                            <button className="pi-photo-del" onClick={e => { e.stopPropagation(); removePhoto(i); }}></button>
                           </div>
                         ))}
                         {form.photos.length < 8 && (
@@ -796,7 +789,7 @@ const PostItemPage = () => {
                       </div>
                     )}
                     <div className="pi-field-note" style={{ color: form.photos.length === 0 ? '#EF4444' : undefined }}>
-                      {form.photos.length === 0 ? 'At least one image is required.' : '💡 Items with clear, well-lit photos get up to 3× more inquiries'}
+                      {form.photos.length === 0 ? 'At least one image is required.' : ' Items with clear, well-lit photos get up to 3x more inquiries'}
                     </div>
                   </div>
                 </div>
@@ -814,7 +807,7 @@ const PostItemPage = () => {
                       <label className="pi-label">Item Title <span className="pi-required">*</span></label>
                       <input
                         className={`pi-input${form.title.length > 0 && form.title.trim().length < 5 ? " error" : form.title.trim().length >= 5 ? " valid" : ""}`}
-                        placeholder="e.g. Samsung Galaxy S23 Ultra 256GB — Midnight Black"
+                        placeholder="e.g. Samsung Galaxy S23 Ultra 256GB - Midnight Black"
                         value={form.title}
                         onChange={e => set("title", e.target.value)}
                         maxLength={100}
@@ -866,11 +859,11 @@ const PostItemPage = () => {
                     <div className="pi-row-2">
                       <div>
                         <label className="pi-label">Brand</label>
-                        <input className="pi-input" placeholder="e.g. Samsung, Apple, Otobi…" value={form.brand} onChange={e => set("brand", e.target.value)} />
+                        <input className="pi-input" placeholder="e.g. Samsung, Apple, Otobi..." value={form.brand} onChange={e => set("brand", e.target.value)} />
                       </div>
                       <div>
                         <label className="pi-label">Model</label>
-                        <input className="pi-input" placeholder="e.g. Galaxy S23, iPhone 13…" value={form.model} onChange={e => set("model", e.target.value)} />
+                        <input className="pi-input" placeholder="e.g. Galaxy S23, iPhone 13..." value={form.model} onChange={e => set("model", e.target.value)} />
                       </div>
                     </div>
                   </div>
@@ -888,7 +881,7 @@ const PostItemPage = () => {
                       <label className="pi-label">Description <span className="pi-required">*</span></label>
                       <textarea
                         className={`pi-input pi-textarea${form.description.trim().length > 0 && form.description.trim().length < 20 ? " error" : form.description.trim().length >= 20 ? " valid" : ""}`}
-                        placeholder="Describe your item in detail — condition, age, what's included, any defects, reason for selling…"
+                        placeholder="Describe your item in detail - condition, age, what's included, any defects, reason for selling..."
                         value={form.description}
                         onChange={e => set("description", e.target.value)}
                         maxLength={1200}
@@ -906,7 +899,7 @@ const PostItemPage = () => {
                       <div className="pi-tag-input-row">
                         <input
                           className="pi-input"
-                          placeholder="Add a tag (e.g. iphone, laptop, shimano)…"
+                          placeholder="Add a tag (e.g. iphone, laptop, shimano)..."
                           value={tagInput}
                           onChange={e => setTagInput(e.target.value)}
                           onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
@@ -918,19 +911,19 @@ const PostItemPage = () => {
                         <div className="pi-tag-wrap">
                           {form.tags.map(t => (
                             <span key={t} className="pi-tag" onClick={() => removeTag(t)}>
-                              #{t} <span className="pi-tag-x">✕</span>
+                              #{t} <span className="pi-tag-x"></span>
                             </span>
                           ))}
                         </div>
                       )}
-                      <div className="pi-field-note">Up to 8 tags · Tags help buyers find your item faster</div>
+                      <div className="pi-field-note">Up to 8 tags  -  Tags help buyers find your item faster</div>
                     </div>
                   </div>
                 </div>
               </>
             )}
 
-            {/* ───── STEP 1: Pricing & Contact ───── */}
+            {/*  STEP 1: Pricing & Contact  */}
             {step === 1 && (
               <>
                 {/* Pricing */}
@@ -944,7 +937,7 @@ const PostItemPage = () => {
                     <div>
                       <label className="pi-label">Asking Price (BDT) <span className="pi-required">*</span></label>
                       <div className="pi-price-wrap">
-                        <span className="pi-price-pre">৳</span>
+                        <span className="pi-price-pre">BDT </span>
                         <input
                           type="number"
                           className={`pi-input pi-price-input${form.price && Number(form.price) > 0 ? " valid" : ""}`}
@@ -956,7 +949,7 @@ const PostItemPage = () => {
                       </div>
                       {form.price && Number(form.price) > 0 && (
                         <div className="pi-field-note" style={{ color: "rgba(46,201,126,0.7)" }}>
-                          ৳{fmt(Number(form.price))} BDT
+                          BDT {fmt(Number(form.price))} BDT
                         </div>
                       )}
                     </div>
@@ -980,60 +973,18 @@ const PostItemPage = () => {
                     <div>
                       <label className="pi-label">Location <span className="pi-required">*</span></label>
                       <select className={`pi-input pi-select${form.location ? " valid" : ""}`} value={form.location} onChange={e => set("location", e.target.value)}>
-                        <option value="">Select area…</option>
+                        <option value="">Select area...</option>
                         {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                     </div>
 
-                    {/* Delivery options */}
-                    <div>
-                      <label className="pi-label">Delivery / Pickup <span className="pi-required">*</span></label>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 4 }}>
-                        {DELIVERY_OPTIONS.map(o => (
-                          <button
-                            key={o.id}
-                            onClick={() => toggleArr("delivery", o.id)}
-                            style={{
-                              padding: "8px 16px", borderRadius: 100, fontSize: 13, fontWeight: 500,
-                              border: "1.5px solid", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-                              borderColor: form.delivery.includes(o.id) ? "rgba(46,201,126,0.55)" : "rgba(255,255,255,0.12)",
-                              background:  form.delivery.includes(o.id) ? "rgba(46,201,126,0.12)" : "rgba(255,255,255,0.04)",
-                              color:       form.delivery.includes(o.id) ? "#2ec97e" : "rgba(255,255,255,0.5)",
-                            }}
-                          >{o.label}</button>
-                        ))}
-                      </div>
-                      {form.delivery.length === 0 && <div className="pi-field-note" style={{ color: '#EF4444' }}>At least one delivery option is required.</div>}
-                    </div>
-
-                    {/* Payment methods */}
-                    <div>
-                      <label className="pi-label">Accepted Payment <span className="pi-required">*</span></label>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 4 }}>
-                        {PAYMENT_OPTIONS.map(o => (
-                          <button
-                            key={o.id}
-                            onClick={() => toggleArr("payment", o.id)}
-                            style={{
-                              padding: "8px 16px", borderRadius: 100, fontSize: 13, fontWeight: 500,
-                              border: "1.5px solid", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-                              borderColor: form.payment.includes(o.id) ? "rgba(46,201,126,0.55)" : "rgba(255,255,255,0.12)",
-                              background:  form.payment.includes(o.id) ? "rgba(46,201,126,0.12)" : "rgba(255,255,255,0.04)",
-                              color:       form.payment.includes(o.id) ? "#2ec97e" : "rgba(255,255,255,0.5)",
-                            }}
-                          >{o.label}</button>
-                        ))}
-                      </div>
-                      {form.payment.length === 0 && <div className="pi-field-note" style={{ color: '#EF4444' }}>At least one payment method is required.</div>}
-                    </div>
-
-                    {/* Trade / Barter — pill chips */}
+                    {/* Trade / Barter - pill chips */}
                     <div>
                       <label className="pi-label">Trade / Barter <span className="pi-required">*</span></label>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 4 }}>
                         {[
-                          { id: "open", label: "🔄 Open to Trade" },
-                          { id: "no",   label: "🚫 Not Accepting Trades" },
+                          { id: "open", label: " Open to Trade" },
+                          { id: "no",   label: " Not Accepting Trades" },
                         ].map(o => (
                           <button
                             key={o.id}
@@ -1064,7 +1015,7 @@ const PostItemPage = () => {
                     <div>
                       <label className="pi-label">Phone Number <span className="pi-required">*</span></label>
                       <div className="pi-input-wrap">
-                        <span className="pi-icon-left" style={{ fontSize: 13 }}>🇧🇩</span>
+                        <span className="pi-icon-left" style={{ fontSize: 13 }}></span>
                         <input
                           className={`pi-input pi-pl${form.phone.length > 8 ? " valid" : form.phone.length > 0 ? " error" : ""}`}
                           placeholder="+880 1xxx-xxxxxx"
@@ -1073,14 +1024,14 @@ const PostItemPage = () => {
                           type="tel"
                         />
                       </div>
-                      <div className="pi-field-note">Visible only to serious buyers</div>
+                      <div className="pi-field-note">Visible only to buyers</div>
                     </div>
                   </div>
                 </div>
               </>
             )}
 
-            {/* ───── STEP 2: Review ───── */}
+            {/*  STEP 2: Review  */}
             {step === 2 && (
               <div className="pi-form-card pi-fade pi-d1">
                 <SectionHead
@@ -1091,15 +1042,13 @@ const PostItemPage = () => {
                 <div className="pi-form-body">
                   {/* Summary rows */}
                   {[
-                    { label: "Title",       val: form.title || "—" },
-                    { label: "Category",    val: categoryObj ? `${categoryObj.icon} ${categoryObj.label}` : "—" },
-                    { label: "Condition",   val: conditionObj?.label || "—" },
-                    { label: "Brand",       val: [form.brand, form.model].filter(Boolean).join(" · ") || "Not specified" },
-                    { label: "Price",       val: form.price ? `৳${fmt(Number(form.price))} BDT${form.negotiable ? " · Negotiable" : ""}` : "—" },
-                    { label: "Trade",       val: form.tradeOffer === "open" ? "Open to trade / barter" : form.tradeOffer === "no" ? "Not accepting trades" : "—" },
-                    { label: "Location",    val: form.location || "—" },
-                    { label: "Delivery",    val: form.delivery.length ? form.delivery.map(d => DELIVERY_OPTIONS.find(o => o.id === d)?.label).join(", ") : "Not specified" },
-                    { label: "Payment",     val: form.payment.length ? form.payment.map(d => PAYMENT_OPTIONS.find(o => o.id === d)?.label).join(", ") : "Not specified" },
+                    { label: "Title",       val: form.title || "-" },
+                    { label: "Category",    val: categoryObj ? `${categoryObj.icon} ${categoryObj.label}` : "-" },
+                    { label: "Condition",   val: conditionObj?.label || "-" },
+                    { label: "Brand",       val: [form.brand, form.model].filter(Boolean).join("  -  ") || "Not specified" },
+                    { label: "Price",       val: form.price ? `BDT ${fmt(Number(form.price))} BDT${form.negotiable ? "  -  Negotiable" : ""}` : "-" },
+                    { label: "Trade",       val: form.tradeOffer === "open" ? "Open to trade / barter" : form.tradeOffer === "no" ? "Not accepting trades" : "-" },
+                    { label: "Location",    val: form.location || "-" },
                     { label: "Photos",      val: `${form.photos.length} photo${form.photos.length !== 1 ? "s" : ""}` },
                     { label: "Tags",        val: form.tags.length ? form.tags.map(t => `#${t}`).join("  ") : "None added" },
                   ].map(r => (
@@ -1113,7 +1062,7 @@ const PostItemPage = () => {
                   <div style={{ marginTop: 8 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>Description</div>
                     <div style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", lineHeight: 1.75, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px" }}>
-                      {form.description || "—"}
+                      {form.description || "-"}
                     </div>
                   </div>
 
@@ -1126,7 +1075,7 @@ const PostItemPage = () => {
               </div>
             )}
 
-            {/* ── Navigation Buttons ── */}
+            {/*  Navigation Buttons  */}
             {error && (
               <div className="pi-err-msg pi-fade pi-d3">{error}</div>
             )}
@@ -1165,7 +1114,7 @@ const PostItemPage = () => {
                   onClick={submit}
                 >
                   {loading ? (
-                    <><div className="pi-spinner" /> Publishing…</>
+                    <><div className="pi-spinner" /> Publishing...</>
                   ) : (
                     <>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" style={{ width: 17, height: 17 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -1177,7 +1126,7 @@ const PostItemPage = () => {
             </div>
           </div>
 
-          {/* ════════ RIGHT: SIDEBAR ════════ */}
+          {/*  RIGHT: SIDEBAR  */}
           <aside className="pi-sidebar pi-fade pi-d2">
 
             {/* Live Preview */}
@@ -1197,9 +1146,9 @@ const PostItemPage = () => {
                     )}
                   </div>
                   <div className="pi-preview-body">
-                    <div className="pi-preview-title">{form.title || <span style={{ color: "rgba(255,255,255,0.2)" }}>Your item title…</span>}</div>
+                    <div className="pi-preview-title">{form.title || <span style={{ color: "rgba(255,255,255,0.2)" }}>Your item title...</span>}</div>
                     <div style={{ marginTop: 4 }}>
-                      <span className="pi-preview-price">{form.price ? `৳${fmt(Number(form.price))}` : <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 16 }}>Price…</span>}</span>
+                      <span className="pi-preview-price">{form.price ? `BDT ${fmt(Number(form.price))}` : <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 16 }}>Price...</span>}</span>
                       {form.negotiable && <span className="pi-preview-neg">Neg.</span>}
                     </div>
                     {conditionObj && (
@@ -1211,7 +1160,7 @@ const PostItemPage = () => {
                     )}
                     <div className="pi-preview-seller">
                       <div className="pi-preview-av">{user.initials}</div>
-                      <span className="pi-preview-sname">{user.name} · {form.location || "Location…"}</span>
+                      <span className="pi-preview-sname">{user.name}  -  {form.location || "Location..."}</span>
                     </div>
                   </div>
                 </div>
@@ -1237,9 +1186,9 @@ const PostItemPage = () => {
             <div className="pi-side-card">
               <div className="pi-side-body">
                 {[
-                  { icon: "🔒", t: "Free & Secure Listing", s: "Your data stays private" },
-                  { icon: "✅", t: "Reach Verified Buyers",  s: "Thousands active daily" },
-                  { icon: "⚡", t: "Live in Minutes",        s: "No approval delay" },
+                  { icon: "", t: "Free & Secure Listing", s: "Your data stays private" },
+                  { icon: "", t: "Reach Verified Buyers",  s: "Thousands active daily" },
+                  { icon: "", t: "Live in Minutes",        s: "No approval delay" },
                 ].map(b => (
                   <div key={b.t} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                     <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(46,201,126,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{b.icon}</div>

@@ -59,7 +59,7 @@ const ResetPasswordPage = () => {
         return;
       }
 
-      setSuccess("Password reset! Redirecting to sign in…");
+      setSuccess("Password reset! Redirecting to sign in...");
       setTimeout(() => {
         navigate("/signin", { replace: true });
       }, 1500);

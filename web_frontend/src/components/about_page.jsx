@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 
-/* ─── Scroll-reveal hook ─── */
+/*  Scroll-reveal hook  */
 const useInView = (threshold = 0.15) => {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -16,7 +16,7 @@ const useInView = (threshold = 0.15) => {
   return [ref, visible];
 };
 
-/* ─── Animated counter ─── */
+/*  Animated counter  */
 const Counter = ({ target, suffix = "", duration = 1800 }) => {
   const [count, setCount] = useState(0);
   const [ref, visible] = useInView(0.3);
@@ -34,7 +34,7 @@ const Counter = ({ target, suffix = "", duration = 1800 }) => {
   return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 };
 
-/* ─── Section wrapper with reveal ─── */
+/*  Section wrapper with reveal  */
 const Reveal = ({ children, delay = 0, className = "" }) => {
   const [ref, visible] = useInView();
   return (
@@ -73,7 +73,7 @@ const GlobalStyles = () => (
     .ab-d1{animation-delay:0.1s} .ab-d2{animation-delay:0.25s} .ab-d3{animation-delay:0.4s}
     .ab-d4{animation-delay:0.55s} .ab-d5{animation-delay:0.7s} .ab-d6{animation-delay:0.85s}
 
-    /* ── NAV ── */
+    /*  NAV  */
     .ab-nav {
       position:fixed; top:0; left:0; right:0; z-index:300;
       display:flex; align-items:center; justify-content:space-between;
@@ -94,7 +94,7 @@ const GlobalStyles = () => (
     .ab-mobile-link { text-decoration:none; color:rgba(255,255,255,0.8); font-size:17px; font-weight:500; padding:14px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
     .ab-mobile-cta { text-decoration:none; display:block; text-align:center; margin-top:20px; background:linear-gradient(135deg,#2ec97e,#1b7d52); color:#fff; font-size:16px; font-weight:600; padding:15px; border-radius:14px; }
 
-    /* ── HERO ── */
+    /*  HERO  */
     .ab-hero {
       min-height:100vh; padding-top:61px;
       background:linear-gradient(160deg,#08231a 0%,#0f3d28 50%,#061910 100%);
@@ -106,7 +106,7 @@ const GlobalStyles = () => (
       text-align:center; position:relative; z-index:2;
     }
 
-    /* ── STATS BAND ── */
+    /*  STATS BAND  */
     .ab-stats-grid {
       display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
       background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.08);
@@ -118,7 +118,7 @@ const GlobalStyles = () => (
     }
     .ab-stat-cell:hover { background:#0d2e1f; }
 
-    /* ── MISSION ── */
+    /*  MISSION  */
     .ab-mission-grid {
       display:grid; grid-template-columns:1fr 1fr; gap:64px;
       align-items:center;
@@ -131,7 +131,7 @@ const GlobalStyles = () => (
       display:flex; align-items:center; justify-content:center;
     }
 
-    /* ── VALUES GRID ── */
+    /*  VALUES GRID  */
     .ab-values-grid {
       display:grid; grid-template-columns:repeat(3,1fr); gap:24px;
     }
@@ -148,7 +148,7 @@ const GlobalStyles = () => (
       background:linear-gradient(to right,var(--accent),transparent);
     }
 
-    /* ── TIMELINE ── */
+    /*  TIMELINE  */
     .ab-timeline { position:relative; padding-left:40px; }
     .ab-timeline::before {
       content:""; position:absolute; left:11px; top:8px; bottom:8px; width:2px;
@@ -165,7 +165,7 @@ const GlobalStyles = () => (
       content:""; width:8px; height:8px; border-radius:50%; background:#2ec97e;
     }
 
-    /* ── TEAM GRID ── */
+    /*  TEAM GRID  */
     .ab-team-grid {
       display:grid; grid-template-columns:repeat(2,1fr); gap:28px;
     }
@@ -185,10 +185,10 @@ const GlobalStyles = () => (
       font-size:32px; font-family:'Playfair Display',serif; font-weight:700; color:#0d3322;
     }
 
-    /* ── MARQUEE ── */
+    /*  MARQUEE  */
     .ab-marquee-track { display:flex; white-space:nowrap; animation:ab-marquee 28s linear infinite; width:max-content; }
 
-    /* ── CTA SECTION ── */
+    /*  CTA SECTION  */
     .ab-cta-btns { display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:center; }
     .ab-btn-primary {
       display:inline-flex; align-items:center; gap:10px;
@@ -208,7 +208,7 @@ const GlobalStyles = () => (
     }
     .ab-btn-ghost:hover { border-color:rgba(255,255,255,0.5); background:rgba(255,255,255,0.07); }
 
-    /* ── IMPACT ── */
+    /*  IMPACT  */
     .ab-impact-row {
       display:grid; grid-template-columns:repeat(2,1fr); gap:24px;
     }
@@ -221,7 +221,7 @@ const GlobalStyles = () => (
     }
     .ab-impact-card:hover { border-color:rgba(46,201,126,0.35); background:rgba(46,201,126,0.06); }
 
-    /* ── TESTIMONIALS ── */
+    /*  TESTIMONIALS  */
     .ab-testimonials { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
     .ab-testi-card {
       background:#fff; border-radius:20px; padding:28px;
@@ -230,7 +230,7 @@ const GlobalStyles = () => (
     }
     .ab-testi-card:hover { transform:translateY(-4px); }
 
-    /* ── RESPONSIVE ── */
+    /*  RESPONSIVE  */
     @media(max-width:900px) {
       .ab-nav { padding:14px 24px; }
       .ab-nav-links { display:none; }
@@ -253,40 +253,40 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-/* ══ DATA ══ */
+/*  DATA  */
 const VALUES = [
   {
-    icon: "🤝",
+    icon: "",
     title: "Trust First",
-    desc: "Every member is a real person. We verify identities so you can trade with confidence — no anonymous listings, no hidden agendas.",
+    desc: "Every member is a real person. We verify identities so you can trade with confidence - no anonymous listings, no hidden agendas.",
     accent: "#2ec97e",
   },
   {
-    icon: "🌱",
+    icon: "",
     title: "Sustainability",
-    desc: "Each trade extends a product's life by years. We believe the most sustainable product is one that already exists — give it a second chapter.",
+    desc: "Each trade extends a product's life by years. We believe the most sustainable product is one that already exists - give it a second chapter.",
     accent: "#c49a3c",
   },
   {
-    icon: "🏘️",
+    icon: "",
     title: "Community",
-    desc: "We're building neighbourhoods that talk to each other. Local exchange means local connection — Dhaka, Chittagong, Sylhet and beyond.",
+    desc: "We're building neighbourhoods that talk to each other. Local exchange means local connection - Dhaka, Chittagong, Sylhet and beyond.",
     accent: "#06B6D4",
   },
   {
-    icon: "🔐",
+    icon: "",
     title: "Privacy & Safety",
     desc: "Your data stays yours. Encrypted communications, secure payments, and in-app messaging keep every interaction protected.",
     accent: "#8B5CF6",
   },
   {
-    icon: "⚡",
+    icon: "",
     title: "Simplicity",
     desc: "Post in under two minutes. Browse in seconds. We obsess over removing friction so you spend time trading, not navigating.",
     accent: "#EF4444",
   },
   {
-    icon: "🎯",
+    icon: "",
     title: "Fairness",
     desc: "No auction wars, no bidding pressure. Transparent pricing and an open negotiation culture makes every deal feel honest.",
     accent: "#F59E0B",
@@ -294,7 +294,7 @@ const VALUES = [
 ];
 
 const TIMELINE = [
-  { year: "2022", label: "The Idea", desc: "Three university friends in Dhaka frustrated by unsafe, cluttered Facebook groups for second-hand goods — they began sketching an alternative." },
+  { year: "2022", label: "The Idea", desc: "Three university friends in Dhaka frustrated by unsafe, cluttered Facebook groups for second-hand goods - they began sketching an alternative." },
   { year: "2023", label: "First Build", desc: "A small beta launched to 200 users in Dhanmondi. Within a month, 1,400 items were listed and 380 trades were completed." },
   { year: "2024", label: "City-Wide Launch", desc: "Expanded to all of Dhaka with identity verification, in-app messaging, and bKash payment integration. Crossed 10,000 members." },
   { year: "2025", label: "National Scale", desc: "Proti-Binimoy connects buyers and sellers across Bangladesh. 50,000+ listings. A community built on trust." },
@@ -311,17 +311,17 @@ const TEAM = [
 const TESTIMONIALS = [
   { quote: "I sold my old camera in 48 hours and the buyer became a friend. That's what Proti-Binimoy feels like.", name: "Mehedi H.", city: "Mohammadpur", stars: 5 },
   { quote: "Finally a marketplace where I trust the seller is real. The verification badge changes everything.", name: "Nadia C.", city: "Gulshan", stars: 5 },
-  { quote: "I furnished my entire dorm room for ৳8,000. Sustainable and budget-friendly — I'm a convert for life.", name: "Arif B.", city: "Uttara", stars: 5 },
+  { quote: "I furnished my entire dorm room for BDT 8,000. Sustainable and budget-friendly - I'm a convert for life.", name: "Arif B.", city: "Uttara", stars: 5 },
 ];
 
 const IMPACT = [
-  { emoji: "♻️", label: "CO₂ saved this year", value: "42 tonnes", sub: "by keeping items out of landfill" },
-  { emoji: "📦", label: "Average item lifespan extended", value: "+3.4 yrs", sub: "through second-hand trading" },
-  { emoji: "💚", label: "Trees planted from profits", value: "1,200+", sub: "in partnership with GreenBD" },
-  { emoji: "🏙️", label: "Cities & towns active", value: "34", sub: "and growing every month" },
+  { emoji: "", label: "CO saved this year", value: "42 tonnes", sub: "by keeping items out of landfill" },
+  { emoji: "", label: "Average item lifespan extended", value: "+3.4 yrs", sub: "through second-hand trading" },
+  { emoji: "", label: "Trees planted from profits", value: "1,200+", sub: "in partnership with GreenBD" },
+  { emoji: "", label: "Cities & towns active", value: "34", sub: "and growing every month" },
 ];
 
-/* ══ MAIN COMPONENT ══ */
+/*  MAIN COMPONENT  */
 const AboutPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -329,7 +329,7 @@ const AboutPage = () => {
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#f7f8f6", color: "#0d1f16" }}>
       <GlobalStyles />
 
-      {/* ── NAV ── */}
+      {/*  NAV  */}
       <nav className="ab-nav">
         <Link to="/" style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: "#fff", textDecoration: "none", letterSpacing: "-0.01em" }}>
           Proti<span style={{ color: "#2ec97e" }}>-</span>Binimoy
@@ -349,10 +349,10 @@ const AboutPage = () => {
         <Link to="/"            className="ab-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
         <Link to="/marketplace" className="ab-mobile-link" onClick={() => setMenuOpen(false)}>Marketplace</Link>
         <Link to="/about"       className="ab-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
-        <Link to="/signin"      className="ab-mobile-cta"  onClick={() => setMenuOpen(false)}>Sign In →</Link>
+        <Link to="/signin"      className="ab-mobile-cta"  onClick={() => setMenuOpen(false)}>Sign In {"->"}</Link>
       </div>
 
-      {/* ════ HERO ════ */}
+      {/*  HERO  */}
       <section className="ab-hero">
         {/* Background orbs */}
         <div style={{ position:"absolute", top:-100, right:-100, width:560, height:560, borderRadius:"50%", background:"radial-gradient(circle,rgba(46,201,126,0.14),transparent 65%)", animation:"ab-orb 12s ease-in-out infinite" }} />
@@ -374,7 +374,7 @@ const AboutPage = () => {
           <p className="ab-fade ab-d3" style={{ fontSize:"clamp(16px,1.8vw,20px)", color:"rgba(255,255,255,0.58)", lineHeight:1.8, fontWeight:300, maxWidth:620, margin:"0 auto 48px" }}>
             Proti-Binimoy was born from a simple belief: that every object deserves a second life,
             and every transaction should begin with trust. We're Bangladesh's marketplace for
-            people — not just products.
+            people - not just products.
           </p>
 
           <div className="ab-fade ab-d4 ab-cta-btns">
@@ -382,17 +382,17 @@ const AboutPage = () => {
               Explore the Marketplace
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{width:17,height:17}}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </Link>
-            <a href="#mission" className="ab-btn-ghost">Our Mission ↓</a>
+            <a href="#mission" className="ab-btn-ghost">Our Mission down</a>
           </div>
 
           {/* Floating emoji bubbles */}
-          <div className="ab-fade ab-d5" style={{ position:"absolute", top:"15%", right:"6%", width:88, height:88, borderRadius:24, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", backdropFilter:"blur(12px)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, animation:"ab-float1 6s ease-in-out infinite" }}>♻️</div>
-          <div className="ab-fade ab-d5" style={{ position:"absolute", bottom:"20%", right:"10%", width:68, height:68, borderRadius:20, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", backdropFilter:"blur(12px)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, animation:"ab-float2 7s ease-in-out infinite 1s" }}>🤝</div>
-          <div className="ab-fade ab-d5" style={{ position:"absolute", top:"28%", left:"4%", width:72, height:72, borderRadius:22, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", backdropFilter:"blur(12px)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, animation:"ab-float1 8s ease-in-out infinite 2s" }}>🌱</div>
+          <div className="ab-fade ab-d5" style={{ position:"absolute", top:"15%", right:"6%", width:88, height:88, borderRadius:24, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", backdropFilter:"blur(12px)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, animation:"ab-float1 6s ease-in-out infinite" }}></div>
+          <div className="ab-fade ab-d5" style={{ position:"absolute", bottom:"20%", right:"10%", width:68, height:68, borderRadius:20, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", backdropFilter:"blur(12px)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, animation:"ab-float2 7s ease-in-out infinite 1s" }}></div>
+          <div className="ab-fade ab-d5" style={{ position:"absolute", top:"28%", left:"4%", width:72, height:72, borderRadius:22, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", backdropFilter:"blur(12px)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, animation:"ab-float1 8s ease-in-out infinite 2s" }}></div>
         </div>
       </section>
 
-      {/* ════ STATS BAND ════ */}
+      {/*  STATS BAND  */}
       <section style={{ background:"#08231a", padding:"0 48px" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <Reveal>
@@ -401,7 +401,7 @@ const AboutPage = () => {
                 { val:50000, suffix:"+", label:"Active Listings" },
                 { val:34,    suffix:"",  label:"Cities & Towns" },
                 { val:98,    suffix:"%", label:"Verified Members" },
-                { val:4.9,   suffix:"★", label:"Average Rating", noCount: true },
+                { val:4.9,   suffix:"", label:"Average Rating", noCount: true },
               ].map((s, i) => (
                 <div key={i} className="ab-stat-cell">
                   <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(32px,3.5vw,52px)", fontWeight:900, color:"#fff", lineHeight:1, marginBottom:8 }}>
@@ -415,7 +415,7 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* ════ MARQUEE ════ */}
+      {/*  MARQUEE  */}
       <div style={{ background:"#2ec97e", padding:"14px 0", overflow:"hidden" }}>
         <div className="ab-marquee-track">
           {[...Array(2)].flatMap(() =>
@@ -428,7 +428,7 @@ const AboutPage = () => {
         </div>
       </div>
 
-      {/* ════ MISSION ════ */}
+      {/*  MISSION  */}
       <section id="mission" style={{ background:"#0d3322", padding:"120px 48px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:-200, right:-200, width:600, height:600, background:"radial-gradient(circle,rgba(46,201,126,0.1),transparent 65%)", borderRadius:"50%" }} />
         <div style={{ maxWidth:1100, margin:"0 auto", position:"relative" }}>
@@ -437,12 +437,12 @@ const AboutPage = () => {
               <Reveal>
                 <p style={{ fontSize:11, fontWeight:600, letterSpacing:"0.38em", textTransform:"uppercase", color:"#2ec97e", marginBottom:18 }}>Our Mission</p>
                 <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(30px,3.8vw,54px)", fontWeight:900, color:"#fff", lineHeight:1.1, marginBottom:24 }}>
-                  To make sustainable commerce the <em style={{ fontStyle:"italic", color:"#2ec97e" }}>default</em> — not the exception.
+                  To make sustainable commerce the <em style={{ fontStyle:"italic", color:"#2ec97e" }}>default</em> - not the exception.
                 </h2>
               </Reveal>
               <Reveal delay={0.1}>
                 <p style={{ fontSize:17, color:"rgba(255,255,255,0.55)", lineHeight:1.85, fontWeight:300, marginBottom:24 }}>
-                  Millions of perfectly usable goods end up discarded every year across Bangladesh — not because they've stopped working, but because people had no trusted place to pass them on.
+                  Millions of perfectly usable goods end up discarded every year across Bangladesh - not because they've stopped working, but because people had no trusted place to pass them on.
                 </p>
                 <p style={{ fontSize:17, color:"rgba(255,255,255,0.55)", lineHeight:1.85, fontWeight:300, marginBottom:40 }}>
                   Proti-Binimoy fills that gap. We believe in a circular economy where your unused laptop finds a student who needs it, your old bicycle finds a commuter who'd love it, and every home becomes a potential marketplace.
@@ -461,16 +461,16 @@ const AboutPage = () => {
               <div className="ab-mission-visual">
                 {/* Decorative visual */}
                 <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(circle at 1px 1px,rgba(255,255,255,0.05) 1px,transparent 0)", backgroundSize:"28px 28px" }} />
-                <div style={{ position:"absolute", top:20, right:20, width:100, height:100, borderRadius:20, background:"rgba(46,201,126,0.12)", border:"1px solid rgba(46,201,126,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:40 }}>🌍</div>
-                <div style={{ position:"absolute", bottom:20, left:20, width:80, height:80, borderRadius:16, background:"rgba(196,154,60,0.12)", border:"1px solid rgba(196,154,60,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:32 }}>♻️</div>
+                <div style={{ position:"absolute", top:20, right:20, width:100, height:100, borderRadius:20, background:"rgba(46,201,126,0.12)", border:"1px solid rgba(46,201,126,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:40 }}></div>
+                <div style={{ position:"absolute", bottom:20, left:20, width:80, height:80, borderRadius:16, background:"rgba(196,154,60,0.12)", border:"1px solid rgba(196,154,60,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:32 }}></div>
                 <div style={{ position:"relative", zIndex:2, textAlign:"center", padding:40 }}>
                   <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(52px,6vw,88px)", fontWeight:900, color:"#fff", lineHeight:1, marginBottom:12 }}>
-                    প্রতি<span style={{ color:"#2ec97e" }}>-</span><br/>বিনিময়
+                    <span style={{ color:"#2ec97e" }}>-</span><br/>
                   </div>
                   <div style={{ fontSize:14, color:"rgba(255,255,255,0.4)", letterSpacing:"0.12em", textTransform:"uppercase", fontWeight:500 }}>Every Exchange Matters</div>
                   <div style={{ marginTop:24, height:2, background:"linear-gradient(to right,transparent,#2ec97e,transparent)", borderRadius:2 }} />
                   <div style={{ marginTop:16, fontSize:13, color:"rgba(255,255,255,0.35)", fontWeight:300, lineHeight:1.6, maxWidth:280, margin:"16px auto 0" }}>
-                    "প্রতি-বিনিময়" translates to "Every Exchange" — reflecting our belief that each trade, big or small, has meaning.
+                    "-" translates to "Every Exchange" - reflecting our belief that each trade, big or small, has meaning.
                   </div>
                 </div>
               </div>
@@ -479,7 +479,7 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* ════ VALUES ════ */}
+      {/*  VALUES  */}
       <section style={{ background:"#f3edd8", padding:"120px 48px", position:"relative" }}>
         <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:"linear-gradient(to right,#2ec97e,#c49a3c,transparent)" }} />
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
@@ -490,7 +490,7 @@ const AboutPage = () => {
                 Six values that guide every decision.
               </h2>
               <p style={{ fontSize:17, color:"rgba(8,35,26,0.5)", fontWeight:300, maxWidth:500, margin:"0 auto", lineHeight:1.8 }}>
-                From product features to company culture — these principles are non-negotiable.
+                From product features to company culture - these principles are non-negotiable.
               </p>
             </div>
           </Reveal>
@@ -509,7 +509,7 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* ════ TIMELINE / STORY ════ */}
+      {/*  TIMELINE / STORY  */}
       <section style={{ background:"#08231a", padding:"120px 48px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", bottom:-150, left:-150, width:500, height:500, background:"radial-gradient(circle,rgba(196,154,60,0.08),transparent 65%)", borderRadius:"50%" }} />
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
@@ -546,7 +546,7 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* ════ IMPACT ════ */}
+      {/*  IMPACT  */}
       <section style={{ background:"#0d3322", padding:"120px 48px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:-100, right:-100, width:480, height:480, background:"radial-gradient(circle,rgba(46,201,126,0.12),transparent 65%)", borderRadius:"50%" }} />
         <div style={{ maxWidth:1100, margin:"0 auto", position:"relative" }}>
@@ -577,7 +577,7 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* ════ TEAM ════ */}
+      {/*  TEAM  */}
       <section style={{ background:"#faf8f2", padding:"120px 48px" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <Reveal>
@@ -609,7 +609,7 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* ════ TESTIMONIALS ════ */}
+      {/*  TESTIMONIALS  */}
       <section style={{ background:"#f3edd8", padding:"100px 48px", position:"relative" }}>
         <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:"linear-gradient(to right,#c49a3c,#2ec97e,transparent)" }} />
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
@@ -626,13 +626,13 @@ const AboutPage = () => {
             {TESTIMONIALS.map((t, i) => (
               <Reveal key={i} delay={i * 0.1}>
                 <div className="ab-testi-card">
-                  <div style={{ fontSize:20, color:"#c49a3c", marginBottom:16, letterSpacing:2 }}>{"★".repeat(t.stars)}</div>
+                  <div style={{ fontSize:20, color:"#c49a3c", marginBottom:16, letterSpacing:2 }}>{"".repeat(t.stars)}</div>
                   <p style={{ fontSize:16, color:"#0d1f16", lineHeight:1.8, fontWeight:300, fontStyle:"italic", marginBottom:24 }}>"{t.quote}"</p>
                   <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                     <div style={{ width:38, height:38, borderRadius:50, background:"linear-gradient(135deg,#2ec97e,#0d3322)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:14, fontWeight:700, flexShrink:0 }}>{t.name[0]}</div>
                     <div>
                       <div style={{ fontSize:14, fontWeight:600, color:"#0d1f16" }}>{t.name}</div>
-                      <div style={{ fontSize:12, color:"rgba(13,31,22,0.45)" }}>📍 {t.city}</div>
+                      <div style={{ fontSize:12, color:"rgba(13,31,22,0.45)" }}> {t.city}</div>
                     </div>
                   </div>
                 </div>
@@ -642,7 +642,7 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* ════ CTA ════ */}
+      {/*  CTA  */}
       <section style={{ background:"linear-gradient(135deg,#08231a 0%,#0f3d28 50%,#1a6040 100%)", padding:"120px 48px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:-100, right:-100, width:500, height:500, background:"radial-gradient(circle,rgba(46,201,126,0.18),transparent 65%)", borderRadius:"50%" }} />
         <div style={{ position:"absolute", bottom:-80, left:-80, width:400, height:400, background:"radial-gradient(circle,rgba(196,154,60,0.1),transparent 65%)", borderRadius:"50%" }} />
@@ -670,10 +670,10 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* ════ FOOTER ════ */}
+      {/*  FOOTER  */}
       <footer style={{ background:"#08231a", padding:"36px 48px", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
         <div style={{ maxWidth:1100, margin:"0 auto", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:16 }}>
-          <p style={{ fontSize:13, color:"rgba(255,255,255,0.3)", letterSpacing:"0.03em" }}>© 2026 Proti-Binimoy. All rights reserved.</p>
+          <p style={{ fontSize:13, color:"rgba(255,255,255,0.3)", letterSpacing:"0.03em" }}> 2026 Proti-Binimoy. All rights reserved.</p>
           <div style={{ display:"flex", gap:28 }}>
             {["Privacy","Terms","Contact","Help"].map(l => (
               <a key={l} href="#" style={{ fontSize:13, color:"rgba(255,255,255,0.35)", textDecoration:"none" }}>{l}</a>

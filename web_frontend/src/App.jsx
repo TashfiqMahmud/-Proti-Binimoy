@@ -20,6 +20,8 @@ import DashboardPage from "./pages/DashboardPage";
 import OffersPage from "./pages/OffersPage";
 import MessageThreadPage from "./pages/MessageThreadPage";
 import SavedListingsPage from "./pages/SavedListingsPage";
+import CheckoutPage from "./components/checkout_page";
+
 
 const App = () => {
   return (
@@ -46,8 +48,10 @@ const App = () => {
           <Route path="/messages/:offerId" element={<MessageThreadPage />} />
           <Route path="/saved" element={<SavedListingsPage />} />
         </Route>
+        <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      
     </>
   );
 };

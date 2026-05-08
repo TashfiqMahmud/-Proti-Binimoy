@@ -308,7 +308,7 @@ const OffersPage = () => {
                           </p>
                           {Number(offer.cashAmount) > 0 && (
                             <p style={{ fontSize: 13, color: "#1b7d52", fontWeight: 700, marginBottom: 4 }}>
-                              Cash Offer: ৳ {Number(offer.cashAmount).toLocaleString()}
+                              Cash Offer: BDT  {Number(offer.cashAmount).toLocaleString()}
                             </p>
                           )}
                           {offer.barterItem && (

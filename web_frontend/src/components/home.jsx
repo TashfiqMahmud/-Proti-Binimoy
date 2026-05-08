@@ -1,8 +1,9 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import websiteBackground from "../assets/web_bg.png";
 
-/* ─── Injected global CSS + all media queries ─── */
+/*  Injected global CSS + all media queries  */
 const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -22,7 +23,7 @@ const GlobalStyles = () => (
     .pb-d1{animation-delay:0.1s} .pb-d2{animation-delay:0.25s} .pb-d3{animation-delay:0.4s}
     .pb-d4{animation-delay:0.55s} .pb-d5{animation-delay:0.7s}
 
-    /* ── NAV ── */
+    /*  NAV  */
     .pb-nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 200;
       display: flex; align-items: center; justify-content: space-between;
@@ -77,7 +78,7 @@ const GlobalStyles = () => (
       font-size: 16px; font-weight: 600; padding: 15px; border-radius: 14px;
     }
 
-    /* ── HERO ── */
+    /*  HERO  */
     .pb-hero-inner {
       position: relative; z-index: 10;
       display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
@@ -95,13 +96,13 @@ const GlobalStyles = () => (
       background: radial-gradient(circle,rgba(46,201,126,0.2),transparent 70%); border-radius: 50%;
     }
 
-    /* ── STATS ── */
+    /*  STATS  */
     .pb-stats { display: flex; gap: 36px; margin-top: 48px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); }
 
-    /* ── HERO ACTIONS ── */
+    /*  HERO ACTIONS  */
     .pb-hero-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 
-    /* ── BUTTONS ── */
+    /*  BUTTONS  */
     .pb-btn-primary {
       display: inline-flex; align-items: center; gap: 8px;
       background: linear-gradient(135deg,#2ec97e,#1b7d52);
@@ -119,7 +120,7 @@ const GlobalStyles = () => (
     }
     .pb-btn-ghost:hover { border-color: rgba(255,255,255,0.45); color: #fff; background: rgba(255,255,255,0.06); }
 
-    /* ── FEATURE CARDS ── */
+    /*  FEATURE CARDS  */
     .pb-cards-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
     .pb-card {
       background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
@@ -128,10 +129,10 @@ const GlobalStyles = () => (
     }
     .pb-card:hover { transform: translateY(-6px); border-color: rgba(46,201,126,0.3); background: rgba(255,255,255,0.07); }
 
-    /* ── FEATURES HEADER ── */
+    /*  FEATURES HEADER  */
     .pb-features-header { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: end; margin-bottom: 72px; }
 
-    /* ── HOW IT WORKS ── */
+    /*  HOW IT WORKS  */
     .pb-steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 48px; position: relative; }
     .pb-steps-line {
       position: absolute; top: 56px; left: calc(16.666% + 20px); right: calc(16.666% + 20px);
@@ -144,7 +145,7 @@ const GlobalStyles = () => (
       margin: 0 auto 28px;
     }
 
-    /* ── CATEGORIES ── */
+    /*  CATEGORIES  */
     .pb-cats-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; }
     .pb-cats-grid { display: flex; flex-wrap: wrap; gap: 12px; }
     .pb-cat-pill {
@@ -154,15 +155,15 @@ const GlobalStyles = () => (
     }
     .pb-cat-pill:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
 
-    /* ── CTA ACTIONS ── */
+    /*  CTA ACTIONS  */
     .pb-cta-actions { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
 
-    /* ── FOOTER ── */
+    /*  FOOTER  */
     .pb-footer-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
 
-    /* ════════════════════════════════════════
-       RESPONSIVE — Tablet (≤ 1024px)
-    ════════════════════════════════════════ */
+    /* 
+       RESPONSIVE - Tablet (<= 1024px)
+     */
     @media (max-width: 1024px) {
       .pb-nav { padding: 14px 28px; }
       .pb-hero-inner { grid-template-columns: 1fr; padding: 120px 28px 64px; gap: 40px; }
@@ -173,9 +174,9 @@ const GlobalStyles = () => (
       .pb-steps-line { display: none; }
     }
 
-    /* ════════════════════════════════════════
-       RESPONSIVE — Mobile (≤ 640px)
-    ════════════════════════════════════════ */
+    /* 
+       RESPONSIVE - Mobile (<= 640px)
+     */
     @media (max-width: 640px) {
       /* Nav */
       .pb-nav { padding: 14px 20px; }
@@ -216,7 +217,7 @@ const GlobalStyles = () => (
       .pb-footer-inner { flex-direction: column; gap: 20px; text-align: center; }
     }
 
-    /* ── FOOTER MODALS ── */
+    /*  FOOTER MODALS  */
     @keyframes pb-modalIn { from{opacity:0;transform:translateY(24px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
     @keyframes pb-backdropIn { from{opacity:0} to{opacity:1} }
 
@@ -290,7 +291,7 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-/* ─── Data ─── */
+/*  Data  */
 const featureCards = [
   {
     icon: (
@@ -322,7 +323,7 @@ const featureCards = [
       </svg>
     ),
     title: "Community First",
-    description: "Build genuine local connections while discovering items that still hold real value — within your neighbourhood.",
+    description: "Build genuine local connections while discovering items that still hold real value - within your neighbourhood.",
   },
 ];
 
@@ -339,7 +340,7 @@ const steps = [
   },
   {
     num: "02", title: "Connect & Negotiate",
-    desc: "Chat directly with buyers or sellers. Agree on price, trade, or barter — on your terms.",
+    desc: "Chat directly with buyers or sellers. Agree on price, trade, or barter - on your terms.",
     gradient: "linear-gradient(135deg,#c49a3c,#a07820)", shadow: "0 12px 40px rgba(196,154,60,0.4)",
   },
   {
@@ -349,24 +350,13 @@ const steps = [
   },
 ];
 
-const categories = [
-  { icon: "📱", label: "Electronics",        color: "rgba(27,125,82,0.3)",   text: "#1b7d52",  bg: "rgba(27,125,82,0.06)"  },
-  { icon: "👕", label: "Clothing & Fashion", color: "rgba(196,154,60,0.3)",  text: "#9a7520",  bg: "rgba(196,154,60,0.07)" },
-  { icon: "📚", label: "Books & Education",  color: "rgba(46,150,201,0.3)",  text: "#1a6a99",  bg: "rgba(46,150,201,0.07)" },
-  { icon: "🪑", label: "Home & Furniture",   color: "rgba(201,46,100,0.3)",  text: "#a01840",  bg: "rgba(201,46,100,0.07)" },
-  { icon: "🚲", label: "Sports & Hobbies",   color: "rgba(100,46,201,0.3)",  text: "#5a18a0",  bg: "rgba(100,46,201,0.07)" },
-  { icon: "🔧", label: "Tools & Hardware",   color: "rgba(201,100,46,0.3)",  text: "#a04510",  bg: "rgba(201,100,46,0.07)" },
-  { icon: "🎮", label: "Games & Toys",       color: "rgba(27,125,82,0.3)",   text: "#1b7d52",  bg: "rgba(27,125,82,0.06)"  },
-  { icon: "🌿", label: "Plants & Garden",    color: "rgba(196,154,60,0.3)",  text: "#9a7520",  bg: "rgba(196,154,60,0.07)" },
-];
-
 const stats = [
   { num: "12k", suffix: "+", label: "Items Listed"  },
   { num: "8k",  suffix: "+", label: "Active Users"  },
   { num: "64",  suffix: "",  label: "Cities"        },
 ];
 
-/* ─── Footer Modal ─── */
+/*  Footer Modal  */
 const FooterModal = ({ type, onClose }) => {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [sent, setSent] = useState(false);
@@ -380,9 +370,9 @@ const FooterModal = ({ type, onClose }) => {
 
   const CONTENT = {
     Privacy: {
-      emoji: "🔐", label: "Privacy Policy", updated: "Last updated: January 2026",
+      emoji: "", label: "Privacy Policy", updated: "Last updated: January 2026",
       sections: [
-        { title: "Information We Collect", body: "We collect information you provide directly — such as your name, email address, phone number, and profile details when you register. We also collect information about how you use our platform, including listings you view, items you save, and messages you send through our in-app system." },
+        { title: "Information We Collect", body: "We collect information you provide directly - such as your name, email address, phone number, and profile details when you register. We also collect information about how you use our platform, including listings you view, items you save, and messages you send through our in-app system." },
         { title: "How We Use Your Information", items: ["To create and manage your account", "To connect buyers and sellers safely", "To send important service notifications", "To improve platform features and user experience", "To detect and prevent fraud or misuse"] },
         { title: "Information Sharing", body: "We do not sell your personal data to third parties. Your contact information is only shared with other users when you choose to initiate a trade or exchange. We may share anonymised, aggregated data for analytics purposes." },
         { title: "Data Security", body: "All data is encrypted in transit using TLS. Passwords are hashed and never stored in plain text. We conduct regular security audits and follow industry best practices to keep your information safe." },
@@ -391,7 +381,7 @@ const FooterModal = ({ type, onClose }) => {
       ],
     },
     Terms: {
-      emoji: "📋", label: "Terms of Service", updated: "Last updated: January 2026",
+      emoji: "", label: "Terms of Service", updated: "Last updated: January 2026",
       sections: [
         { title: "Acceptance of Terms", body: "By accessing or using Proti-Binimoy, you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree, please do not use the platform." },
         { title: "Eligibility", body: "You must be at least 16 years old to use Proti-Binimoy. By creating an account, you confirm that you are of eligible age and that the information you provide is accurate and truthful." },
@@ -413,7 +403,7 @@ const FooterModal = ({ type, onClose }) => {
         <div className="pb-modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,rgba(46,201,126,0.15),rgba(27,125,82,0.25))", border: "1px solid rgba(46,201,126,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
-              {type === "Privacy" ? "🔐" : type === "Terms" ? "📋" : "✉️"}
+              {type === "Privacy" ? "" : type === "Terms" ? "" : ""}
             </div>
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, color: "#1b7d52", letterSpacing: "0.08em", textTransform: "uppercase" }}>Proti-Binimoy</p>
@@ -422,7 +412,7 @@ const FooterModal = ({ type, onClose }) => {
               </h2>
             </div>
           </div>
-          <button className="pb-modal-close" onClick={onClose}>✕</button>
+          <button className="pb-modal-close" onClick={onClose}></button>
         </div>
 
         {/* Body */}
@@ -449,15 +439,15 @@ const FooterModal = ({ type, onClose }) => {
           {type === "Contact" && (
             sent ? (
               <div className="pb-contact-success">
-                <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                <div style={{ fontSize: 48, marginBottom: 16 }}></div>
                 <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 700, color: "#0d1f16", marginBottom: 8 }}>Message Sent!</h3>
-                <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.7 }}>Thanks for reaching out, <strong>{form.name}</strong>. Our team will get back to you at <strong>{form.email}</strong> within 24–48 hours.</p>
+                <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.7 }}>Thanks for reaching out, <strong>{form.name}</strong>. Our team will get back to you at <strong>{form.email}</strong> within 24-48 hours.</p>
               </div>
             ) : (
               <>
                 <div style={{ marginBottom: 24, padding: "16px 18px", borderRadius: 14, background: "rgba(46,201,126,0.07)", border: "1px solid rgba(46,201,126,0.2)" }}>
                   <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
-                    Have a question, feedback, or need help with a trade? We're here for you. Fill out the form below and our team will respond within <strong>24–48 hours</strong>.
+                    Have a question, feedback, or need help with a trade? We're here for you. Fill out the form below and our team will respond within <strong>24-48 hours</strong>.
                   </p>
                 </div>
 
@@ -475,7 +465,7 @@ const FooterModal = ({ type, onClose }) => {
                 <div style={{ marginBottom: 14 }}>
                   <label className="pb-contact-label">Subject</label>
                   <select className="pb-contact-input" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} style={{ cursor: "pointer" }}>
-                    <option value="">Select a topic…</option>
+                    <option value="">Select a topic...</option>
                     <option>General Enquiry</option>
                     <option>Report a Problem</option>
                     <option>Account & Security</option>
@@ -487,18 +477,18 @@ const FooterModal = ({ type, onClose }) => {
 
                 <div style={{ marginBottom: 20 }}>
                   <label className="pb-contact-label">Message</label>
-                  <textarea className="pb-contact-input" rows={5} placeholder="Tell us how we can help…" value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} style={{ resize: "vertical", minHeight: 110 }} />
+                  <textarea className="pb-contact-input" rows={5} placeholder="Tell us how we can help..." value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} style={{ resize: "vertical", minHeight: 110 }} />
                 </div>
 
                 <button className="pb-contact-submit" onClick={handleSubmit} disabled={sending || !form.name || !form.email || !form.message}>
-                  {sending ? "Sending…" : "Send Message →"}
+                  {sending ? "Sending..." : "Send Message ->"}
                 </button>
 
                 <div style={{ marginTop: 20, display: "flex", gap: 20, flexWrap: "wrap" }}>
                   {[
-                    { icon: "📧", label: "Email", val: "hello@protibi.com" },
-                    { icon: "📍", label: "Location", val: "Dhanmondi, Dhaka" },
-                    { icon: "⏱️", label: "Response", val: "Within 48 hours" },
+                    { icon: "", label: "Email", val: "hello@protibi.com" },
+                    { icon: "", label: "Location", val: "Dhanmondi, Dhaka" },
+                    { icon: "", label: "Response", val: "Within 48 hours" },
                   ].map(({ icon, label, val }) => (
                     <div key={label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 16 }}>{icon}</span>
@@ -518,8 +508,9 @@ const FooterModal = ({ type, onClose }) => {
   );
 };
 
-/* ─── Component ─── */
+/*  Component  */
 const HomePage = () => {
+  const { token, user: authUser } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [modal, setModal] = useState(null); // "Privacy" | "Terms" | "Contact" | null
 
@@ -527,7 +518,7 @@ const HomePage = () => {
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "#faf8f2", color: "#0d1f16", overflowX: "hidden" }}>
       <GlobalStyles />
 
-      {/* ════ NAV ════ */}
+      {/*  NAV  */}
       <nav className="pb-nav">
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -552,12 +543,22 @@ const HomePage = () => {
           <Link to="/"        className="pb-nav-link">Home</Link>
           <Link to="/marketplace"  className="pb-nav-link">Browse</Link>
           <Link to="/about"   className="pb-nav-link">About</Link>
-          <Link to="/profile" className="pb-nav-avatar" aria-label="Profile">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-            </svg>
-          </Link>
-          <Link to="/signin"  className="pb-nav-cta">Sign In →</Link>
+          {token && authUser ? (
+            <Link
+              to="/profile"
+              className="pb-nav-avatar"
+              aria-label="My Profile"
+              title={authUser.name || "My Profile"}
+              style={{ overflow: "hidden", fontWeight: 700, fontSize: 14 }}
+            >
+              {authUser.avatar
+                ? <img src={authUser.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                : (authUser.name?.[0] || "?").toUpperCase()
+              }
+            </Link>
+          ) : (
+            <Link to="/signin" className="pb-nav-cta">Sign In {"->"}</Link>
+          )}
         </div>
 
         {/* Hamburger */}
@@ -573,10 +574,16 @@ const HomePage = () => {
         <Link to="/"        className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
         <Link to="/marketplace"  className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Browse</Link>
         <Link to="/about"   className="pb-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
-        <Link to="/signin"  className="pb-mobile-cta"  onClick={() => setMenuOpen(false)}>Sign In →</Link>
+        {token && authUser ? (
+          <Link to="/profile" className="pb-mobile-cta" onClick={() => setMenuOpen(false)}>
+            {authUser.name ? ` ${authUser.name.split(" ")[0]}` : "My Profile"}
+          </Link>
+        ) : (
+          <Link to="/signin" className="pb-mobile-cta" onClick={() => setMenuOpen(false)}>Sign In {"->"}</Link>
+        )}
       </div>
 
-      {/* ════ HERO ════ */}
+      {/*  HERO  */}
       <section style={{
         position: "relative", minHeight: "100vh", background: "#08231a",
         overflow: "hidden", display: "flex", alignItems: "center",
@@ -620,7 +627,7 @@ const HomePage = () => {
               color: "rgba(255,255,255,0.65)", maxWidth: 480, marginBottom: 36, fontWeight: 300,
             }}>
               Proti-Binimoy connects people across Bangladesh for trusted second-hand
-              buying, selling, and bartering — making sustainable living feel effortless.
+              buying, selling, and bartering - making sustainable living feel effortless.
             </p>
 
             {/* CTA Buttons */}
@@ -649,13 +656,13 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Right — Floating Bubbles (hidden on mobile via CSS) */}
+          {/* Right - Floating Bubbles (hidden on mobile via CSS) */}
           <div className="pb-hero-bubbles pb-fade pb-d3">
             {[
-              { size: 180, top: 30,  right: 60,  anim: "pb-float1 5s ease-in-out infinite",       icon: "📷", fs: 56 },
-              { size: 140, top: 200, right: 220, anim: "pb-float2 6s ease-in-out infinite",       icon: "👟", fs: 42 },
-              { size: 160, top: 310, right: 40,  anim: "pb-float3 7s ease-in-out infinite",       icon: "🪑", fs: 48 },
-              { size: 110, top: 60,  right: 260, anim: "pb-float1 4.5s ease-in-out infinite 1s", icon: "🎧", fs: 34 },
+              { size: 180, top: 30,  right: 60,  anim: "pb-float1 5s ease-in-out infinite",       icon: "", fs: 56 },
+              { size: 140, top: 200, right: 220, anim: "pb-float2 6s ease-in-out infinite",       icon: "", fs: 42 },
+              { size: 160, top: 310, right: 40,  anim: "pb-float3 7s ease-in-out infinite",       icon: "", fs: 48 },
+              { size: 110, top: 60,  right: 260, anim: "pb-float1 4.5s ease-in-out infinite 1s", icon: "", fs: 34 },
             ].map(({ size, top, right, anim, icon, fs }, i) => (
               <div key={i} className="pb-bubble" style={{ width: size, height: size, top, right, animation: anim }}>
                 <div className="pb-bubble-glow" />
@@ -666,7 +673,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ════ MARQUEE ════ */}
+      {/*  MARQUEE  */}
       <div style={{ background: "#2ec97e", padding: "16px 0", overflow: "hidden" }}>
         <div style={{ display: "flex", whiteSpace: "nowrap", animation: "pb-marquee 24s linear infinite", width: "max-content" }}>
           {[...marqueeItems, ...marqueeItems].map((item, i) => (
@@ -678,7 +685,7 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* ════ FEATURES ════ */}
+      {/*  FEATURES  */}
       <section className="pb-section-pad" style={{ background: "#0d3322", padding: "100px 48px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -200, right: -200, width: 560, height: 560, background: "radial-gradient(circle,rgba(46,201,126,0.11),transparent 65%)", borderRadius: "50%" }} />
         <div style={{ maxWidth: 1280, margin: "0 auto", position: "relative" }}>
@@ -692,7 +699,7 @@ const HomePage = () => {
             </div>
             <p style={{ fontSize: "clamp(15px,1.6vw,17px)", lineHeight: 1.8, color: "rgba(255,255,255,0.5)", fontWeight: 300, alignSelf: "end" }}>
               From student essentials to home goods, Proti-Binimoy creates a refined exchange
-              experience — no noise, no clutter, no uncertainty.
+              experience - no noise, no clutter, no uncertainty.
             </p>
           </div>
 
@@ -716,7 +723,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ════ HOW IT WORKS ════ */}
+      {/*  HOW IT WORKS  */}
       <section id="how" className="pb-section-pad" style={{ background: "#f3edd8", padding: "100px 48px", position: "relative" }}>
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: "linear-gradient(to right,#2ec97e,#c49a3c,transparent)" }} />
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -743,7 +750,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ════ CTA ════ */}
+      {/*  CTA  */}
       <section className="pb-section-pad" style={{ background: "linear-gradient(135deg,#08231a 0%,#0f3d28 45%,#1a6040 100%)", padding: "100px 48px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -100, right: -100, width: 480, height: 480, background: "radial-gradient(circle,rgba(46,201,126,0.18),transparent 65%)", borderRadius: "50%" }} />
         <div style={{ position: "absolute", bottom: -100, left: -100, width: 380, height: 380, background: "radial-gradient(circle,rgba(196,154,60,0.11),transparent 65%)", borderRadius: "50%" }} />
@@ -756,7 +763,7 @@ const HomePage = () => {
           </h2>
           <p style={{ fontSize: "clamp(14px,1.6vw,17px)", color: "rgba(255,255,255,0.58)", lineHeight: 1.8, fontWeight: 300, marginBottom: 40 }}>
             Join thousands of Bangladeshis already buying, selling, and bartering through
-            Proti-Binimoy — the marketplace that puts people and planet first.
+            Proti-Binimoy - the marketplace that puts people and planet first.
           </p>
           <div className="pb-cta-actions">
             <Link to="/signin" className="pb-btn-primary" style={{ fontSize: "clamp(15px,1.6vw,17px)", padding: "17px 38px" }}>
@@ -769,10 +776,10 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ════ FOOTER ════ */}
+      {/*  FOOTER  */}
       <footer style={{ background: "#08231a", padding: "40px 48px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="pb-footer-inner">
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.32)", letterSpacing: "0.04em" }}>© 2025 Proti-Binimoy. All rights reserved.</p>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.32)", letterSpacing: "0.04em" }}> 2025 Proti-Binimoy. All rights reserved.</p>
           <div style={{ display: "flex", gap: 28 }}>
             {["Privacy", "Terms", "Contact"].map((l) => (
               <button key={l} onClick={() => setModal(l)} style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", textDecoration: "none", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", transition: "color 0.2s" }}
@@ -785,7 +792,7 @@ const HomePage = () => {
         </div>
       </footer>
 
-      {/* ════ FOOTER MODALS ════ */}
+      {/*  FOOTER MODALS  */}
       {modal && <FooterModal type={modal} onClose={() => setModal(null)} />}
     </div>
   );

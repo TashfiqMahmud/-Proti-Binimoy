@@ -1,18 +1,23 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
 import { useAuth } from "../context/AuthContext";
 import PageFooter from "./page-footer";
 
-/* ══════════════════════════════════════
+/* 
    MOCK AUTH STORE  (localStorage-backed)
-══════════════════════════════════════ */
+ */
 const MOCK_USERS_KEY    = "pb_mock_users";
 const MOCK_SESSION_KEY  = "pb_mock_session";
 
 const getMockUsers  = () => { try { return JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || "{}"); } catch { return {}; } };
 const saveMockUsers = (u) => localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(u));
 const saveSession   = (u) => localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(u));
+const createMockJwt = (user) => `mock_${btoa(JSON.stringify({ id: user.id, role: user.role }))}`;
+const persistAuth = (token, userRole) => {
+  localStorage.setItem("pb_jwt", token);
+  localStorage.setItem("pb_user_role", userRole);
+};
 
 /* Seed demo user */
 const seedDemoUsers = () => {
@@ -20,9 +25,9 @@ const seedDemoUsers = () => {
   if (!users["demo@protibi.com"]) {
     users["demo@protibi.com"] = {
       id: "u_demo", email: "demo@protibi.com", password: "Demo@1234",
-      name: "Rafiul Hasan", phone: "01712345678", joinDate: "2024-09-01",
+      name: "Rafiul Hasan", phone: "01712345678", role: "seller", joinDate: "2024-09-01",
       location: "Dhanmondi, Dhaka", bio: "Passionate about sustainable commerce and zero-waste living.",
-      idType: "nid", idValue: "1234567890", avatar: null,
+      dob: "1990-05-15", idType: "nid", idValue: "1234567890", avatar: null,
       rating: 4.8, reviews: 12, totalListings: 7, soldItems: 4, savedItems: 19,
       verified: true, memberTier: "Gold",
     };
@@ -31,7 +36,7 @@ const seedDemoUsers = () => {
 };
 seedDemoUsers();
 
-/* ─── Global Styles ─── */
+/*  Global Styles  */
 const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -156,7 +161,7 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-/* ── Atoms ── */
+/*  Atoms  */
 const Sp = () => <div className="rp-spinner" />;
 const Arr = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width:15, height:15 }}>
@@ -194,7 +199,7 @@ const InfoSvg = () => (
   </svg>
 );
 
-/* ── Progress Bar ── */
+/*  Progress Bar  */
 const PBar = ({ steps, cur }) => (
   <div className="rp-prog">
     {steps.map((s, i) => (
@@ -206,7 +211,7 @@ const PBar = ({ steps, cur }) => (
   </div>
 );
 
-/* ── Password Strength ── */
+/*  Password Strength  */
 const pwChecks = [
   { key:"len",   label:"8+ chars",  test: p => p.length >= 8 },
   { key:"upper", label:"Uppercase", test: p => /[A-Z]/.test(p) },
@@ -231,7 +236,7 @@ const PwStrength = ({ password }) => {
         <div className="rp-pw-hints">
           {pwChecks.map(c => (
             <span key={c.key} className={`rp-pw-hint ${c.test(password) ? "met" : "unmet"}`}>
-              {c.test(password) ? "✓" : "·"} {c.label}
+              {c.test(password) ? "" : " - "} {c.label}
             </span>
           ))}
         </div>
@@ -241,10 +246,10 @@ const PwStrength = ({ password }) => {
   );
 };
 
-/* ── Terms Text ── */
+/*  Terms Text  */
 const TermsText = () => (
   <>
-    <p style={{ fontWeight:700, marginBottom:8, color:"#0d1f16" }}>Terms & Conditions — Proti-Binimoy</p>
+    <p style={{ fontWeight:700, marginBottom:8, color:"#0d1f16" }}>Terms & Conditions - Proti-Binimoy</p>
     <p style={{ marginBottom:8 }}><strong>1. Eligibility.</strong> You must be 18+ years old and a resident of Bangladesh.</p>
     <p style={{ marginBottom:8 }}><strong>2. Account Responsibility.</strong> You are solely responsible for your credentials and all activity under your account.</p>
     <p style={{ marginBottom:8 }}><strong>3. Verified Listings.</strong> All listings must be accurate. Fraudulent or misleading listings will result in immediate suspension.</p>
@@ -257,30 +262,33 @@ const TermsText = () => (
   </>
 );
 
-/* ══════════════════════════════════════
+/* 
    MAIN COMPONENT
-══════════════════════════════════════ */
+ */
 const RegisterPage = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, token, user: authUser, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [step, setStep]         = useState(0);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [success, setSuccess]   = useState("");
 
-  // Step 0 — Personal
+  // Step 0 - Role
+  const [role, setRole] = useState(""); // "buyer" | "seller"
+
+  // Step 1 - Personal
   const [name, setName]   = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  // Step 1 — Identity
+  // Step 1 - Identity
   const [idType, setIdType]     = useState("nid");
   const [nid, setNid]           = useState("");
   const [dob, setDob]           = useState("");
   const [passport, setPassport] = useState("");
 
-  // Step 2 — Security
+  // Step 2 - Security
   const [password, setPassword]     = useState("");
   const [confirm, setConfirm]       = useState("");
   const [showPw, setShowPw]         = useState(false);
@@ -293,7 +301,7 @@ const RegisterPage = () => {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) setTermsRead(true);
   };
 
-  /* Step 0 — Personal (client-side validation only, no API) */
+  /* Step 0 - Personal (client-side validation only, no API) */
   const handlePersonal = (e) => {
     e.preventDefault(); setError("");
     if (!name.trim() || name.trim().length < 3) { setError("Enter your full name (at least 3 characters)."); return; }
@@ -307,26 +315,25 @@ const RegisterPage = () => {
       setError("This email is already registered. Please sign in instead.");
       return;
     }
-    setStep(1);
+    setStep(2);
   };
-
-  /* Step 1 — Identity */
   const handleIdentity = (e) => {
     e.preventDefault(); setError("");
+    // DOB is always required
+    if (!dob) { setError("Please select your date of birth."); return; }
+    const age = (new Date() - new Date(dob)) / (1000*60*60*24*365.25);
+    if (age < 18) { setError("You must be at least 18 years old to register."); return; }
+    // NID or Passport - one must be provided
     if (idType === "nid") {
       const n = nid.replace(/\D/g,"");
       if (![10,13,17].includes(n.length)) { setError("NID must be 10, 13, or 17 digits."); return; }
-    } else if (idType === "dob") {
-      if (!dob) { setError("Please select your date of birth."); return; }
-      const age = (new Date() - new Date(dob)) / (1000*60*60*24*365.25);
-      if (age < 18) { setError("You must be at least 18 years old to register."); return; }
     } else {
       if (!passport.trim() || passport.trim().length < 6) { setError("Enter a valid passport number (minimum 6 characters)."); return; }
     }
-    setStep(2);
+    setStep(3);
   };
 
-  /* Step 2 — Security: save to mock store */
+  /* Step 3 - Security: save to mock store */
   const handleSecurity = (e) => {
     e.preventDefault(); setError("");
     if (getPwStrength(password) < 4) { setError("Password must have 8+ characters, an uppercase letter, a number, and a symbol."); return; }
@@ -339,9 +346,7 @@ const RegisterPage = () => {
       const emailKey = email.trim().toLowerCase();
 
       const identityValue =
-        idType === "nid"      ? nid.replace(/\D/g,"") :
-        idType === "dob"      ? dob :
-                                passport.trim();
+        idType === "nid" ? nid.replace(/\D/g,"") : passport.trim();
 
       const newUser = {
         id: `u_${Date.now()}`,
@@ -349,9 +354,11 @@ const RegisterPage = () => {
         password,
         name: name.trim(),
         phone: phone.replace(/\D/g,""),
+        role,
         joinDate: new Date().toISOString().split("T")[0],
         location: "",
         bio: "",
+        dob,
         idType,
         idValue: identityValue,
         avatar: null,
@@ -365,43 +372,99 @@ const RegisterPage = () => {
       };
 
       users[emailKey] = newUser;
+      const mockJwt = createMockJwt(newUser);
       saveMockUsers(users);
       saveSession(newUser);
-      login("mock_token", newUser);
+      persistAuth(mockJwt, newUser.role);
+      login(mockJwt, newUser);
 
       setSuccess("Account created successfully!");
       setLoading(false);
-      setStep(3);
+      setStep(4);
       setTimeout(() => navigate("/profile", { replace: true }), 2200);
     }, 900);
   };
 
-  const STEPS = ["Personal","Identity","Security","Done"];
+  const STEPS = ["Role","Personal","Identity","Security","Done"];
 
   const renderCard = () => {
     /* SUCCESS */
-    if (step === 3) return (
+    if (step === 4) return (
       <div className="rp-pop" style={{ textAlign:"center", padding:"12px 0" }}>
         <div style={{ width:72, height:72, borderRadius:"50%", background:"linear-gradient(135deg,#2ec97e,#1b7d52)", display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:18, boxShadow:"0 8px 28px rgba(46,201,126,0.4)", animation:"rp-pulse 1.6s ease-in-out infinite" }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width:30, height:30 }}><path d="M7 12.5l3.2 3.2L17.5 8.5"/></svg>
         </div>
         <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:700, color:"#0d1f16", marginBottom:10 }}>Welcome aboard!</h3>
-        <p style={{ fontSize:14, color:"#6b7280", lineHeight:1.65, marginBottom:20 }}>Your account has been created.<br/>Loading your profile…</p>
+        <p style={{ fontSize:14, color:"#6b7280", lineHeight:1.65, marginBottom:20 }}>Your account has been created.<br/>Loading your {role} profile...</p>
         <div style={{ height:4, borderRadius:100, background:"#f3f4f6", overflow:"hidden" }}>
           <div style={{ height:"100%", background:"linear-gradient(to right,#2ec97e,#1b7d52)", borderRadius:100, animation:"rp-bar 2s linear forwards" }} />
         </div>
       </div>
     );
 
-    /* STEP 0 — Personal */
+    /* STEP 0 - Role Selection */
     if (step === 0) return (
-      <div className="rp-slide" key="s0">
+      <div className="rp-slide" key="s-role">
         <PBar steps={STEPS} cur={0} />
+        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.3em", textTransform:"uppercase", color:"#2ec97e", marginBottom:6 }}>Step 1 of 4</p>
+        <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(20px,2.3vw,27px)", fontWeight:700, color:"#0d1f16", marginBottom:6 }}>I want to join as a...</h2>
+        <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, marginBottom:22, fontWeight:300 }}>Choose your primary role on Proti-Binimoy. You can always update this later.</p>
+
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:20 }}>
+          {[
+            { key:"buyer",  icon:"", title:"Buyer",  desc:"Browse listings, make offers, and discover sustainable deals." },
+            { key:"seller", icon:"", title:"Seller", desc:"List your items, manage inventory, and reach verified buyers." },
+          ].map(r => (
+            <button key={r.key} type="button"
+              onClick={() => { setRole(r.key); setError(""); }}
+              style={{
+                border: role === r.key ? "2px solid #2ec97e" : "1.5px solid #e5e7eb",
+                background: role === r.key ? "#f0fdf4" : "#f9fafb",
+                borderRadius:16, padding:"20px 14px", cursor:"pointer", fontFamily:"inherit",
+                textAlign:"center", transition:"all 0.22s",
+                boxShadow: role === r.key ? "0 0 0 4px rgba(46,201,126,0.12)" : "none",
+              }}>
+              <div style={{ fontSize:36, marginBottom:10 }}>{r.icon}</div>
+              <p style={{ fontSize:15, fontWeight:700, color: role === r.key ? "#1b7d52" : "#0d1f16", marginBottom:6 }}>{r.title}</p>
+              <p style={{ fontSize:12, color:"#6b7280", lineHeight:1.5, fontWeight:300 }}>{r.desc}</p>
+              {role === r.key && (
+                <div style={{ marginTop:10, display:"inline-flex", alignItems:"center", gap:5, background:"#2ec97e", borderRadius:100, padding:"3px 10px" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width:11, height:11 }}><path d="M7 12.5l3.2 3.2L17.5 8.5"/></svg>
+                  <span style={{ fontSize:10, fontWeight:700, color:"#fff" }}>Selected</span>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {error && <div className="rp-err" style={{ marginBottom:12 }}><ErrIcon />{error}</div>}
+
+        <button type="button" disabled={!role} className="rp-btn-submit"
+          onClick={() => { if (!role) { setError("Please select a role to continue."); return; } setError(""); setStep(1); }}>
+          Continue <Arr />
+        </button>
+
+        <div style={{ display:"flex", alignItems:"center", gap:12, margin:"20px 0 0" }}>
+          <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+          <span style={{ fontSize:10, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", color:"#9ca3af" }}>Have an account</span>
+          <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+        </div>
+        <p style={{ textAlign:"center", fontSize:13, color:"#6b7280", marginTop:14 }}>
+          Already registered?{" "}
+          <Link to="/signin" style={{ fontWeight:700, color:"#1b7d52", textDecoration:"none" }}>Sign in here</Link>
+        </p>
+      </div>
+    );
+
+    /* STEP 1 - Personal */
+    if (step === 1) return (
+      <div className="rp-slide" key="s0">
+        <PBar steps={STEPS} cur={1} />
         <div className="rp-demo-box">
-          <strong>🧪 Demo Mode</strong>
+          <strong> Demo Mode</strong>
           A demo account already exists: <code>demo@protibi.com</code>. You can also create your own account here and it will be saved locally.
         </div>
-        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.3em", textTransform:"uppercase", color:"#2ec97e", marginBottom:6 }}>Step 1 of 3</p>
+        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.3em", textTransform:"uppercase", color:"#2ec97e", marginBottom:6 }}>Step 2 of 4</p>
         <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(20px,2.3vw,27px)", fontWeight:700, color:"#0d1f16", marginBottom:6 }}>Personal Information</h2>
         <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, marginBottom:20, fontWeight:300 }}>Let's start with your basic details. All fields are required.</p>
 
@@ -421,7 +484,7 @@ const RegisterPage = () => {
           <div>
             <label className="rp-label">Phone Number</label>
             <div className="rp-input-wrap">
-              <div className="rp-phone-pre">🇧🇩 +88</div>
+              <div className="rp-phone-pre"> +88</div>
               <input type="tel" inputMode="numeric" placeholder="01XXXXXXXXX" value={phone}
                 onChange={e => setPhone(e.target.value.replace(/\D/g,"").slice(0,11))} autoComplete="tel"
                 className={`rp-input rp-phl ${phone.replace(/\D/g,"").length === 11 ? "valid" : ""}`} />
@@ -457,67 +520,81 @@ const RegisterPage = () => {
       </div>
     );
 
-    /* STEP 1 — Identity */
-    if (step === 1) return (
+    /* STEP 2 - Identity */
+    if (step === 2) return (
       <div className="rp-slide" key="s1">
-        <PBar steps={STEPS} cur={1} />
-        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.3em", textTransform:"uppercase", color:"#2ec97e", marginBottom:6 }}>Step 2 of 3</p>
+        <PBar steps={STEPS} cur={2} />
+        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.3em", textTransform:"uppercase", color:"#2ec97e", marginBottom:6 }}>Step 3 of 4</p>
         <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(20px,2.3vw,27px)", fontWeight:700, color:"#0d1f16", marginBottom:6 }}>Identity Verification</h2>
-        <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, marginBottom:16, fontWeight:300 }}>Choose one identity document to verify your account.</p>
+        <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, marginBottom:16, fontWeight:300 }}>
+          Provide your date of birth and <strong style={{ color:"#0d1f16" }}>either</strong> your NID or Passport number.
+        </p>
 
-        <div className="rp-id-tabs">
-          {[
-            { key:"nid", icon:"🪪", label:"NID Number" },
-            { key:"dob", icon:"📅", label:"Date of Birth" },
-            { key:"passport", icon:"🛂", label:"Passport" },
-          ].map(t => (
-            <button key={t.key} type="button"
-              className={`rp-id-tab ${idType === t.key ? "active" : ""}`}
-              onClick={() => { setIdType(t.key); setError(""); }}>
-              {t.icon} {t.label}
-            </button>
-          ))}
-        </div>
+        <form onSubmit={handleIdentity} style={{ display:"flex", flexDirection:"column", gap:16 }}>
 
-        <form onSubmit={handleIdentity} style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          {/* DOB - always required */}
+          <div>
+            <label className="rp-label">
+              Date of Birth <span style={{ color:"#ef4444" }}>*</span>
+            </label>
+            <div className="rp-input-wrap">
+              <div className="rp-icon-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width:15, height:15 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+              <input type="date" value={dob} onChange={e => setDob(e.target.value)}
+                max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]}
+                className={`rp-input rp-pl ${dob ? "valid" : ""}`} autoFocus />
+            </div>
+            <p className="rp-field-note">You must be at least 18 years old to register.</p>
+          </div>
+
+          {/* Divider */}
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+            <span style={{ fontSize:11, fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", color:"#9ca3af", whiteSpace:"nowrap" }}>
+              Provide one of the following
+            </span>
+            <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+          </div>
+
+          {/* NID or Passport tab selector */}
+          <div className="rp-id-tabs">
+            {[
+              { key:"nid",      icon:"", label:"NID Number" },
+              { key:"passport", icon:"", label:"Passport No." },
+            ].map(t => (
+              <button key={t.key} type="button"
+                className={`rp-id-tab ${idType === t.key ? "active" : ""}`}
+                onClick={() => { setIdType(t.key); setError(""); }}>
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+
           {idType === "nid" && (
             <div style={{ animation:"rp-slideIn 0.28s ease forwards" }}>
-              <label className="rp-label">National ID Number</label>
+              <label className="rp-label">National ID Number <span style={{ color:"#ef4444" }}>*</span></label>
               <div className="rp-input-wrap">
                 <div className="rp-icon-left">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width:15, height:15 }}><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                 </div>
                 <input type="text" inputMode="numeric" placeholder="10, 13, or 17 digit NID"
                   value={nid} onChange={e => setNid(e.target.value.replace(/\D/g,"").slice(0,17))}
-                  className={`rp-input rp-pl ${[10,13,17].includes(nid.replace(/\D/g,"").length) ? "valid" : ""}`} autoFocus />
+                  className={`rp-input rp-pl ${[10,13,17].includes(nid.replace(/\D/g,"").length) ? "valid" : ""}`} />
               </div>
               <p className="rp-field-note">Encrypted and used for identity verification only.</p>
             </div>
           )}
-          {idType === "dob" && (
-            <div style={{ animation:"rp-slideIn 0.28s ease forwards" }}>
-              <label className="rp-label">Date of Birth</label>
-              <div className="rp-input-wrap">
-                <div className="rp-icon-left">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width:15, height:15 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                </div>
-                <input type="date" value={dob} onChange={e => setDob(e.target.value)}
-                  max={new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().split("T")[0]}
-                  className={`rp-input rp-pl ${dob ? "valid" : ""}`} autoFocus />
-              </div>
-              <p className="rp-field-note">You must be at least 18 years old to register.</p>
-            </div>
-          )}
           {idType === "passport" && (
             <div style={{ animation:"rp-slideIn 0.28s ease forwards" }}>
-              <label className="rp-label">Passport Number</label>
+              <label className="rp-label">Passport Number <span style={{ color:"#ef4444" }}>*</span></label>
               <div className="rp-input-wrap">
                 <div className="rp-icon-left">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width:15, height:15 }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
                 </div>
                 <input type="text" placeholder="e.g. AB1234567" value={passport}
                   onChange={e => setPassport(e.target.value.toUpperCase().slice(0,12))}
-                  className={`rp-input rp-pl ${passport.trim().length >= 6 ? "valid" : ""}`} autoFocus />
+                  className={`rp-input rp-pl ${passport.trim().length >= 6 ? "valid" : ""}`} />
               </div>
               <p className="rp-field-note">Enter exactly as it appears on your passport.</p>
             </div>
@@ -533,17 +610,17 @@ const RegisterPage = () => {
           {error && <div className="rp-err"><ErrIcon />{error}</div>}
           <button type="submit" className="rp-btn-submit">Continue <Arr /></button>
         </form>
-        <button className="rp-btn-back" style={{ marginTop:14 }} onClick={() => { setStep(0); setError(""); }}>
+        <button className="rp-btn-back" style={{ marginTop:14 }} onClick={() => { setStep(1); setError(""); }}>
           <ArrL /> Back
         </button>
       </div>
     );
 
-    /* STEP 2 — Security */
-    if (step === 2) return (
+    /* STEP 3 - Security */
+    if (step === 3) return (
       <div className="rp-slide" key="s2">
-        <PBar steps={STEPS} cur={2} />
-        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.3em", textTransform:"uppercase", color:"#2ec97e", marginBottom:6 }}>Step 3 of 3</p>
+        <PBar steps={STEPS} cur={3} />
+        <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.3em", textTransform:"uppercase", color:"#2ec97e", marginBottom:6 }}>Step 4 of 4</p>
         <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(20px,2.3vw,27px)", fontWeight:700, color:"#0d1f16", marginBottom:6 }}>Create Password</h2>
         <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, marginBottom:18, fontWeight:300 }}>Choose a strong password and agree to our terms to complete registration.</p>
 
@@ -579,7 +656,7 @@ const RegisterPage = () => {
                 </button>
               </div>
               {confirm && confirm !== password && <p style={{ fontSize:11, color:"#ef4444", marginTop:5, fontWeight:600 }}>Passwords don't match.</p>}
-              {confirm && confirm === password  && <p style={{ fontSize:11, color:"#1b7d52", marginTop:5, fontWeight:600 }}>✓ Passwords match!</p>}
+              {confirm && confirm === password  && <p style={{ fontSize:11, color:"#1b7d52", marginTop:5, fontWeight:600 }}> Passwords match!</p>}
             </div>
           )}
 
@@ -601,17 +678,17 @@ const RegisterPage = () => {
                 </span>
               </div>
             </div>
-            {!termsRead && <p style={{ fontSize:11, color:"#9ca3af", marginTop:5 }}>↑ Scroll through the terms above before agreeing.</p>}
+            {!termsRead && <p style={{ fontSize:11, color:"#9ca3af", marginTop:5 }}>up Scroll through the terms above before agreeing.</p>}
           </div>
 
           {error   && <div className="rp-err"><ErrIcon />{error}</div>}
           {success && <div className="rp-success"><OkIcon />{success}</div>}
 
           <button type="submit" disabled={loading || !termsAgree} className="rp-btn-submit">
-            {loading ? <><Sp /> Creating Account…</> : <>Create Account <Arr /></>}
+            {loading ? <><Sp /> Creating Account...</> : <>Create Account <Arr /></>}
           </button>
         </form>
-        <button className="rp-btn-back" style={{ marginTop:14 }} onClick={() => { setStep(1); setError(""); }}>
+        <button className="rp-btn-back" style={{ marginTop:14 }} onClick={() => { setStep(2); setError(""); }}>
           <ArrL /> Back to Identity
         </button>
       </div>
@@ -632,10 +709,36 @@ const RegisterPage = () => {
           </div>
         </div>
         <div className="rp-nav-links">
-          <Link to="/"       className="rp-nav-link">Home</Link>
-          <Link to="/about"  className="rp-nav-link">About</Link>
-          <Link to="/signin" className="rp-nav-link">Sign In</Link>
-          <Link to="/register" className="rp-nav-cta">Register →</Link>
+          <Link to="/"      className="rp-nav-link">Home</Link>
+          <Link to="/about" className="rp-nav-link">About</Link>
+          {token && authUser ? (
+            <>
+              <button
+                onClick={() => logout()}
+                style={{background:"none",border:"none",cursor:"pointer",color:"rgba(255,255,255,0.7)",fontSize:14,fontWeight:500,fontFamily:"inherit"}}
+              >Sign Out</button>
+              <Link to="/profile" style={{textDecoration:"none"}}>
+                <div style={{
+                  width:36, height:36, borderRadius:"50%",
+                  background:"linear-gradient(135deg,#2ec97e,#1b7d52)",
+                  border:"2px solid rgba(46,201,126,0.5)",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  overflow:"hidden", flexShrink:0, cursor:"pointer",
+                  fontSize:14, fontWeight:700, color:"#fff"
+                }}>
+                  {authUser.avatar
+                    ? <img src={authUser.avatar} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                    : (authUser.name?.[0] || "?").toUpperCase()
+                  }
+                </div>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/signin"   className="rp-nav-link">Sign In</Link>
+              <Link to="/register" className="rp-nav-cta">Register {"->"}</Link>
+            </>
+          )}
         </div>
         <button className="rp-hamburger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
           <span style={menuOpen ? { transform:"rotate(45deg) translate(5px,5px)" } : {}} />
@@ -644,9 +747,16 @@ const RegisterPage = () => {
         </button>
       </nav>
       <div className={`rp-mobile-menu ${menuOpen ? "open" : ""}`}>
-        <Link to="/"       className="rp-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
-        <Link to="/about"  className="rp-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
-        <Link to="/signin" className="rp-mobile-link" onClick={() => setMenuOpen(false)}>Sign In</Link>
+        <Link to="/"      className="rp-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
+        <Link to="/about" className="rp-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
+        {token && authUser ? (
+          <>
+            <Link to="/profile" className="rp-mobile-link" onClick={() => setMenuOpen(false)}>My Profile</Link>
+            <button onClick={() => { logout(); setMenuOpen(false); }} className="rp-mobile-link" style={{background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",color:"#ef4444",fontWeight:600,fontSize:17,padding:"14px 0",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>Sign Out</button>
+          </>
+        ) : (
+          <Link to="/signin" className="rp-mobile-link" onClick={() => setMenuOpen(false)}>Sign In</Link>
+        )}
       </div>
 
       {/* PAGE */}
@@ -656,10 +766,10 @@ const RegisterPage = () => {
         <div style={{ position:"absolute", top:-80, right:-60, width:420, height:420, background:"radial-gradient(circle,rgba(46,201,126,0.15) 0%,transparent 65%)", borderRadius:"50%" }} />
         <div style={{ position:"absolute", bottom:-80, left:-60, width:360, height:360, background:"radial-gradient(circle,rgba(27,125,82,0.12) 0%,transparent 65%)", borderRadius:"50%" }} />
 
-        <div className="rp-deco" style={{ width:82, height:82, top:"18%", left:"4%", animation:"rp-float 5.5s ease-in-out infinite" }}><span style={{ fontSize:30 }}>🌱</span></div>
-        <div className="rp-deco" style={{ width:66, height:66, top:"65%", left:"6%", animation:"rp-float 7s ease-in-out infinite 1.2s" }}><span style={{ fontSize:24 }}>📦</span></div>
-        <div className="rp-deco" style={{ width:58, height:58, top:"38%", right:"4%", animation:"rp-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize:22 }}>🤝</span></div>
-        <div className="rp-deco" style={{ width:50, height:50, top:"74%", right:"7%", animation:"rp-float 8s ease-in-out infinite 2s" }}><span style={{ fontSize:18 }}>♻️</span></div>
+        <div className="rp-deco" style={{ width:82, height:82, top:"18%", left:"4%", animation:"rp-float 5.5s ease-in-out infinite" }}><span style={{ fontSize:30 }}></span></div>
+        <div className="rp-deco" style={{ width:66, height:66, top:"65%", left:"6%", animation:"rp-float 7s ease-in-out infinite 1.2s" }}><span style={{ fontSize:24 }}></span></div>
+        <div className="rp-deco" style={{ width:58, height:58, top:"38%", right:"4%", animation:"rp-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize:22 }}></span></div>
+        <div className="rp-deco" style={{ width:50, height:50, top:"74%", right:"7%", animation:"rp-float 8s ease-in-out infinite 2s" }}><span style={{ fontSize:18 }}></span></div>
 
         <div style={{ position:"relative", zIndex:10, maxWidth:640, margin:"0 auto", padding:"108px 24px 60px", width:"100%" }}>
           <div className="rp-fade rp-d1" style={{ display:"flex", justifyContent:"center", marginBottom:22 }}>
@@ -682,12 +792,12 @@ const RegisterPage = () => {
             </div>
           </div>
 
-          {step < 3 && (
+          {step < 4 && (
             <div className="rp-fade rp-d5 rp-trust-row">
               {[
-                { icon:"🔒", title:"Secure & Private",   text:"End-to-end encryption"  },
-                { icon:"✅", title:"Verified Community", text:"Safe marketplace"        },
-                { icon:"♻️", title:"Sustainable",        text:"Eco-friendly exchanges"  },
+                { icon:"", title:"Secure & Private",   text:"End-to-end encryption"  },
+                { icon:"", title:"Verified Community", text:"Safe marketplace"        },
+                { icon:"", title:"Sustainable",        text:"Eco-friendly exchanges"  },
               ].map((t, i) => (
                 <div key={i} className="rp-trust-item">
                   <div className="rp-trust-icon"><span style={{ fontSize:15 }}>{t.icon}</span></div>

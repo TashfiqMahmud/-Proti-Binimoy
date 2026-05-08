@@ -335,7 +335,7 @@ const ListingDetailPage = () => {
                   Listing not found
                 </h2>
                 <Link to="/listings" style={{ color: "#1b7d52", fontWeight: 600, textDecoration: "none" }}>
-                  ← Back to Listings
+                   Back to Listings
                 </Link>
               </div>
             </div>
@@ -441,7 +441,7 @@ const ListingDetailPage = () => {
                     {listing?.title}
                   </h1>
                   <p style={{ color: "#1b7d52", fontWeight: 700, fontSize: 32, marginBottom: 16 }}>
-                    ৳ {Number(listing?.price).toLocaleString()}
+                    BDT  {Number(listing?.price).toLocaleString()}
                   </p>
 
                   <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, marginBottom: 8 }}>Description</h3>
@@ -546,14 +546,14 @@ const ListingDetailPage = () => {
                           opacity: saveLoading ? 0.7 : 1,
                         }}
                       >
-                        {isSaved ? "♥ Saved" : "♡ Save"}
+                        {isSaved ? " Saved" : " Save"}
                       </button>
                     </div>
                   )}
 
                   <div>
                     <Link to="/listings" style={{ textDecoration: "none", color: "#1b7d52", fontWeight: 600 }}>
-                      ← Back to Listings
+                       Back to Listings
                     </Link>
                   </div>
                 </div>

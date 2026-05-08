@@ -220,7 +220,7 @@ const SavedListingsPage = () => {
                     </h3>
 
                     <p style={{ fontSize: 22, fontWeight: 700, color: "#1b7d52", marginBottom: 10 }}>
-                      ৳ {Number(listing.price).toLocaleString()}
+                      BDT  {Number(listing.price).toLocaleString()}
                     </p>
 
                     <p style={{ fontSize: 13, color: "#4b5563", marginBottom: 14 }}>
@@ -258,7 +258,7 @@ const SavedListingsPage = () => {
                           cursor: "pointer",
                         }}
                       >
-                        ♥ Unsave
+                         Unsave
                       </button>
                     </div>
                   </div>

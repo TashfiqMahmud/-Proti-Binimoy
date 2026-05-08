@@ -5,7 +5,7 @@ import websiteBackground from "../assets/web_bg.png";
 import { API_BASE_URL } from "../config/api";
 import PageFooter from "./page-footer";
 
-/* ─── Global Styles ─── */
+/*  Global Styles  */
 const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -22,7 +22,7 @@ const GlobalStyles = () => (
     .fp-fade { opacity:0; animation:fp-fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards; }
     .fp-d1{animation-delay:0.08s} .fp-d2{animation-delay:0.18s} .fp-d3{animation-delay:0.28s} .fp-d4{animation-delay:0.4s}
 
-    /* ── NAV ── */
+    /*  NAV  */
     .fp-nav {
       position:fixed; top:0; left:0; right:0; z-index:100;
       display:flex; align-items:center; justify-content:space-between;
@@ -42,7 +42,7 @@ const GlobalStyles = () => (
     .fp-mobile-link { text-decoration:none; color:rgba(255,255,255,0.8); font-size:17px; font-weight:500; padding:14px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
     .fp-mobile-cta  { text-decoration:none; display:block; text-align:center; margin-top:20px; background:linear-gradient(135deg,#2ec97e,#1b7d52); color:#fff; font-size:16px; font-weight:600; padding:15px; border-radius:14px; }
 
-    /* ── CARD ── */
+    /*  CARD  */
     .fp-card-outer {
       background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.13);
       border-radius:28px; padding:6px;
@@ -51,7 +51,7 @@ const GlobalStyles = () => (
     }
     .fp-card { background:#fff; border-radius:22px; padding:40px 44px; color:#0d1f16; }
 
-    /* ── INPUT ── */
+    /*  INPUT  */
     .fp-label { display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:8px; }
     .fp-input {
       width:100%; border:1.5px solid #e5e7eb; background:#f9fafb;
@@ -64,7 +64,7 @@ const GlobalStyles = () => (
     .fp-input-wrap { position:relative; }
     .fp-input-icon { position:absolute; left:16px; top:50%; transform:translateY(-50%); color:#9ca3af; pointer-events:none; }
 
-    /* ── BUTTONS ── */
+    /*  BUTTONS  */
     .fp-submit {
       width:100%; padding:16px; border-radius:14px; border:none; cursor:pointer;
       background:linear-gradient(135deg,#0d3322,#1b7d52); color:#fff;
@@ -85,14 +85,14 @@ const GlobalStyles = () => (
 
     .fp-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:fp-spin 0.7s linear infinite; }
 
-    /* ── SUCCESS STATE ── */
+    /*  SUCCESS STATE  */
     .fp-success-icon { animation:fp-checkIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards; }
     .fp-success-pulse { animation:fp-pulse 2s ease-in-out infinite; }
 
-    /* ── DECO ── */
+    /*  DECO  */
     .fp-deco { position:absolute; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.11); display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); }
 
-    /* ── RESPONSIVE ── */
+    /*  RESPONSIVE  */
     @media (max-width: 1024px) {
       .fp-nav  { padding:14px 28px; }
       .fp-card { padding:32px 28px; }
@@ -144,7 +144,7 @@ const ForgotPasswordPage = () => {
     <div style={{ fontFamily: "'DM Sans',sans-serif", overflowX: "hidden", minHeight: "100vh" }}>
       <GlobalStyles />
 
-      {/* ── NAV ── */}
+      {/*  NAV  */}
       <nav className="fp-nav">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 42, height: 42, flexShrink: 0, background: "linear-gradient(135deg,#2ec97e,#1b7d52)", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display',serif", fontWeight: 900, fontSize: 19, color: "#fff" }}>P</div>
@@ -157,7 +157,7 @@ const ForgotPasswordPage = () => {
           <Link to="/"       className="fp-nav-link">Home</Link>
           <Link to="/about"  className="fp-nav-link">About</Link>
           <Link to="/signin" className="fp-nav-link">Sign In</Link>
-          <Link to="/register" className="fp-nav-cta">Register →</Link>
+          <Link to="/register" className="fp-nav-cta">Register {"->"}</Link>
         </div>
         <button className="fp-hamburger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
           <span style={menuOpen ? { transform: "rotate(45deg) translate(5px,5px)" } : {}} />
@@ -169,10 +169,10 @@ const ForgotPasswordPage = () => {
         <Link to="/"        className="fp-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
         <Link to="/about"   className="fp-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
         <Link to="/signin"  className="fp-mobile-link" onClick={() => setMenuOpen(false)}>Sign In</Link>
-        <Link to="/register" className="fp-mobile-cta" onClick={() => setMenuOpen(false)}>Create Account →</Link>
+        <Link to="/register" className="fp-mobile-cta" onClick={() => setMenuOpen(false)}>Create Account {"->"}</Link>
       </div>
 
-      {/* ── HERO BG ── */}
+      {/*  HERO BG  */}
       <section style={{ position: "relative", minHeight: "100vh", backgroundImage: `url(${websiteBackground})`, backgroundSize: "cover", backgroundPosition: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(120deg,rgba(8,35,26,0.93) 0%,rgba(8,35,26,0.8) 50%,rgba(8,35,26,0.6) 100%)" }} />
         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)", backgroundSize: "56px 56px" }} />
@@ -180,9 +180,9 @@ const ForgotPasswordPage = () => {
         <div style={{ position: "absolute", bottom: -80, left: -60, width: 380, height: 380, background: "radial-gradient(circle,rgba(27,125,82,0.13) 0%,transparent 65%)", borderRadius: "50%" }} />
 
         {/* Deco bubbles */}
-        <div className="fp-deco" style={{ width: 88, height: 88, top: "22%", left: "5%", animation: "fp-float 6s ease-in-out infinite" }}><span style={{ fontSize: 32 }}>🔑</span></div>
-        <div className="fp-deco" style={{ width: 64, height: 64, top: "60%", left: "7%", animation: "fp-float 8s ease-in-out infinite 1.2s" }}><span style={{ fontSize: 24 }}>📧</span></div>
-        <div className="fp-deco" style={{ width: 72, height: 72, top: "38%", right: "5%", animation: "fp-float 5.5s ease-in-out infinite 0.6s" }}><span style={{ fontSize: 28 }}>🛡️</span></div>
+        <div className="fp-deco" style={{ width: 88, height: 88, top: "22%", left: "5%", animation: "fp-float 6s ease-in-out infinite" }}><span style={{ fontSize: 32 }}></span></div>
+        <div className="fp-deco" style={{ width: 64, height: 64, top: "60%", left: "7%", animation: "fp-float 8s ease-in-out infinite 1.2s" }}><span style={{ fontSize: 24 }}></span></div>
+        <div className="fp-deco" style={{ width: 72, height: 72, top: "38%", right: "5%", animation: "fp-float 5.5s ease-in-out infinite 0.6s" }}><span style={{ fontSize: 28 }}></span></div>
 
         {/* Content */}
         <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 24px 60px", width: "100%", maxWidth: 640 }}>
@@ -240,7 +240,7 @@ const ForgotPasswordPage = () => {
 
                     <button type="submit" disabled={loading} className="fp-submit">
                       {loading ? (
-                        <><div className="fp-spinner" /> Sending Link…</>
+                        <><div className="fp-spinner" /> Sending Link...</>
                       ) : (
                         <>Send Reset Link <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}><path d="M5 12h14M12 5l7 7-7 7"/></svg></>
                       )}
@@ -280,7 +280,7 @@ const ForgotPasswordPage = () => {
                   </div>
                 </>
               ) : (
-                /* ── SUCCESS STATE ── */
+                /*  SUCCESS STATE  */
                 <div style={{ textAlign: "center", padding: "12px 0" }}>
                   <div className="fp-success-pulse" style={{ display: "inline-flex", width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg,#2ec97e,#1b7d52)", alignItems: "center", justifyContent: "center", marginBottom: 24, boxShadow: "0 8px 32px rgba(46,201,126,0.4)" }}>
                     <svg className="fp-success-icon" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 36, height: 36 }}>

@@ -317,7 +317,7 @@ const DashboardPage = () => {
                         <td style={{ padding: "10px 8px", color: "#111827", fontSize: 13, fontWeight: 600 }}>{listing.title}</td>
                         <td style={{ padding: "10px 8px", color: "#374151", fontSize: 13 }}>{listing.category}</td>
                         <td style={{ padding: "10px 8px", color: "#374151", fontSize: 13 }}>{listing.condition}</td>
-                        <td style={{ padding: "10px 8px", color: "#1b7d52", fontSize: 13, fontWeight: 700 }}>৳ {Number(listing.price).toLocaleString()}</td>
+                        <td style={{ padding: "10px 8px", color: "#1b7d52", fontSize: 13, fontWeight: 700 }}>BDT  {Number(listing.price).toLocaleString()}</td>
                         <td style={{ padding: "10px 8px" }}>
                           <span
                             style={{

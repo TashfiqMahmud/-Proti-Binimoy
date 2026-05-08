@@ -365,7 +365,7 @@ const EditListingPage = () => {
 
                   <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))" }}>
                     <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 6 }}>Price (BDT ৳) *</label>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 6 }}>Price (BDT BDT ) *</label>
                       <input
                         type="number"
                         min="0"

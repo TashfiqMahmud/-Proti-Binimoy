@@ -1,27 +1,36 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PageFooter from "./page-footer";
 import { BD_LOCATIONS, BD_LOCATIONS_ALL } from "../config/locations";
-import { API_BASE_URL } from "../config/api";
+// Backend connection is intentionally commented for mock-data testing.
+// import { API_BASE_URL } from "../config/api";
 import { useAuth } from "../context/AuthContext";
+import {
+  addMockTradeRequest,
+  getMockListings,
+  getMockSavedListingIds,
+  seedMockData,
+  toggleMockSavedListing,
+} from "../utils/mockData";
+
 const CATEGORIES = [
-  { label: "All",         icon: "◈", count: 8,  color: "#2ec97e" },
-  { label: "Electronics", icon: "⚡", count: 4,  color: "#06B6D4" },
-  { label: "Furniture",   icon: "🪑", count: 3,  color: "#C49A3C" },
-  { label: "Sports",      icon: "🏃", count: 1,  color: "#EF4444" },
-  { label: "Clothing",    icon: "👗", count: 0,  color: "#8B5CF6" },
-  { label: "Books",       icon: "📚", count: 0,  color: "#F59E0B" },
-  { label: "Vehicles",    icon: "🚗", count: 0,  color: "#10B981" },
+  { label: "All",         icon: "", count: 8,  color: "#2ec97e" },
+  { label: "Electronics", icon: "", count: 4,  color: "#06B6D4" },
+  { label: "Furniture",   icon: "", count: 3,  color: "#C49A3C" },
+  { label: "Sports",      icon: "", count: 1,  color: "#EF4444" },
+  { label: "Clothing",    icon: "", count: 0,  color: "#8B5CF6" },
+  { label: "Books",       icon: "", count: 0,  color: "#F59E0B" },
+  { label: "Vehicles",    icon: "", count: 0,  color: "#10B981" },
 ];
 
 const LOCATIONS = BD_LOCATIONS_ALL;
 const SORT_OPTIONS = [
-  { value: "newest",     label: "Newest First",      icon: "🕐" },
-  { value: "price_asc",  label: "Price: Low → High",  icon: "↑" },
-  { value: "price_desc", label: "Price: High → Low",  icon: "↓" },
-  { value: "popular",    label: "Most Viewed",        icon: "🔥" },
-  { value: "rating",     label: "Top Rated",          icon: "⭐" },
-  { value: "most_saved", label: "Most Saved",         icon: "❤️" },
+  { value: "newest",     label: "Newest First",      icon: "" },
+  { value: "price_asc",  label: "Price: Low -> High",  icon: "up" },
+  { value: "price_desc", label: "Price: High -> Low",  icon: "down" },
+  { value: "popular",    label: "Most Viewed",        icon: "" },
+  { value: "rating",     label: "Top Rated",          icon: "" },
+  { value: "most_saved", label: "Most Saved",         icon: "" },
 ];
 const CONDITIONS = [
   { label: "New",      score: 5, color: "#2ec97e", bg: "rgba(46,201,126,0.13)" },
@@ -30,7 +39,7 @@ const CONDITIONS = [
   { label: "For Parts",score: 1, color: "#EF4444", bg: "rgba(239,68,68,0.13)" },
 ];
 
-/* ─── Helpers ─── */
+/*  Helpers  */
 const fmt    = (n) => new Intl.NumberFormat("en-BD").format(n);
 const cInfo  = (l) => CONDITIONS.find(c => c.label === l) || { color:"#888", bg:"#1a1a1a" };
 const dAgo   = (d) => Math.floor((Date.now() - new Date(d)) / 86400000);
@@ -80,7 +89,7 @@ const mapListingToItem = (listing) => {
       reviews: Number(listing.seller?.totalReviews) || 0,
       location: sellerLocation,
       verified: Boolean(listing.seller?.isVerified),
-      responseTime: "—"
+      responseTime: "-"
     },
     tags: [listing.category, listing.condition].filter(Boolean),
     shipping: "Contact seller",
@@ -89,17 +98,17 @@ const mapListingToItem = (listing) => {
     views: 0,
     saves: 0,
     status: listing.status || "active",
-    emoji: "📦",
+    emoji: "",
     accentColor: color,
     badge: listing.seller?.isVerified ? "Verified" : null,
-    tradeOffer: true,
+    tradeOffer: listing.tradeOffer === true || listing.tradeOffer === "open",
     image: Array.isArray(listing.images) ? listing.images.find(Boolean) || "" : ""
   };
 };
 
-/* ══════════════════════════════════════════════
+/* 
    GLOBAL STYLES
-══════════════════════════════════════════════ */
+ */
 const G = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Sora:wght@300;400;500;600;700&display=swap');
@@ -521,12 +530,85 @@ const G = () => (
     .pm-err{font-size:11px;color:#f87171;margin-top:4px}
     .pm-note{font-size:11px;color:rgba(255,255,255,.3);margin-top:5px}
     .pm-divider{height:1px;background:rgba(255,255,255,.06)}
+
+    /*  OFFER TRADE MODAL  */
+    .ot-overlay{position:fixed;inset:0;z-index:600;background:rgba(4,10,8,.82);backdrop-filter:blur(18px) saturate(160%);display:flex;align-items:center;justify-content:center;padding:16px;animation:fiA .22s ease}
+    .ot-panel{background:linear-gradient(160deg,#0d1f18 0%,#0a1a12 60%,#081410 100%);border:1px solid rgba(46,201,126,.18);border-radius:24px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 32px 80px rgba(0,0,0,.65),0 0 0 1px rgba(46,201,126,.06);animation:pI .32s cubic-bezier(.34,1.56,.64,1)}
+    .ot-panel::-webkit-scrollbar{width:4px}
+    .ot-panel::-webkit-scrollbar-thumb{background:rgba(46,201,126,.2);border-radius:4px}
+    .ot-header{padding:24px 28px 20px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+    .ot-header-icon{width:44px;height:44px;border-radius:14px;flex-shrink:0;background:linear-gradient(135deg,rgba(46,201,126,.18),rgba(27,125,82,.28));border:1.5px solid rgba(46,201,126,.28);display:flex;align-items:center;justify-content:center;font-size:20px}
+    .ot-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#fff;line-height:1.2}
+    .ot-title em{font-style:italic;color:#2ec97e}
+    .ot-subtitle{font-size:12.5px;color:rgba(255,255,255,.4);margin-top:4px;line-height:1.5}
+    .ot-close{width:32px;height:32px;border-radius:9px;flex-shrink:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;font-family:inherit}
+    .ot-close:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#f87171}
+    .ot-requested{margin:20px 28px 0;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:14px}
+    .ot-req-img{width:56px;height:56px;border-radius:10px;flex-shrink:0;background:rgba(46,201,126,.1);border:1px solid rgba(46,201,126,.15);display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
+    .ot-req-img img{width:100%;height:100%;object-fit:cover}
+    .ot-req-label{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(46,201,126,.7);margin-bottom:3px}
+    .ot-req-title{font-size:14px;font-weight:600;color:#fff;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ot-req-price{font-size:12px;color:rgba(255,255,255,.45);margin-top:3px}
+    .ot-swap-icon{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:rgba(46,201,126,.12);border:1px solid rgba(46,201,126,.22);display:flex;align-items:center;justify-content:center;color:#2ec97e;font-size:14px}
+    .ot-body{padding:20px 28px 28px;display:flex;flex-direction:column;gap:20px}
+    .ot-sec-label{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+    .ot-field-label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);display:block;margin-bottom:6px}
+    .ot-req-star{color:#2ec97e;margin-left:2px}
+    .ot-photo-zone{border:2px dashed rgba(255,255,255,.13);border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;transition:all .22s;background:rgba(255,255,255,.02)}
+    .ot-photo-zone:hover,.ot-photo-zone.drag{border-color:rgba(46,201,126,.5);background:rgba(46,201,126,.04)}
+    .ot-photo-zone.has-photo{border-style:solid;border-color:rgba(46,201,126,.3);padding:12px}
+    .ot-photo-zone.err-zone{border-color:rgba(239,68,68,.5)}
+    .ot-photo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+    .ot-photo-thumb{aspect-ratio:1;border-radius:10px;overflow:hidden;position:relative;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09)}
+    .ot-photo-thumb img{width:100%;height:100%;object-fit:cover}
+    .ot-photo-del{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.75);border:none;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;font-family:inherit}
+    .ot-photo-thumb:hover .ot-photo-del{opacity:1}
+    .ot-photo-cover{position:absolute;bottom:4px;left:4px;font-size:7.5px;font-weight:700;background:rgba(46,201,126,.9);color:#fff;padding:2px 6px;border-radius:100px;text-transform:uppercase;letter-spacing:.05em}
+    .ot-photo-add{aspect-ratio:1;border-radius:10px;border:1.5px dashed rgba(255,255,255,.13);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.25);font-size:20px;transition:all .2s}
+    .ot-photo-add:hover{border-color:rgba(46,201,126,.4);color:#2ec97e;background:rgba(46,201,126,.05)}
+    .ot-input{width:100%;padding:11px 14px;border-radius:11px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);color:#fff;font-family:inherit;font-size:13.5px;outline:none;transition:border-color .22s,background .22s;resize:none}
+    .ot-input::placeholder{color:rgba(255,255,255,.28)}
+    .ot-input:focus{border-color:rgba(46,201,126,.45);background:rgba(46,201,126,.04)}
+    .ot-input.err{border-color:rgba(239,68,68,.5)!important}
+    .ot-input.ok{border-color:rgba(46,201,126,.45);background:rgba(46,201,126,.04)}
+    .ot-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .ot-err-text{font-size:11px;color:#f87171;margin-top:4px}
+    .ot-char-count{font-size:10.5px;color:rgba(255,255,255,.25);margin-top:4px;text-align:right}
+    .ot-chips{display:flex;flex-wrap:wrap;gap:7px}
+    .ot-chip{padding:7px 14px;border-radius:100px;font-size:12px;font-weight:600;border:1.5px solid rgba(255,255,255,.12);cursor:pointer;font-family:inherit;background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);transition:all .2s}
+    .ot-chip:hover{border-color:rgba(46,201,126,.35);color:rgba(46,201,126,.8)}
+    .ot-chip.on{border-color:rgba(46,201,126,.55);background:rgba(46,201,126,.12);color:#2ec97e}
+    .ot-chip.err-chip{border-color:rgba(239,68,68,.45)}
+    .ot-divider{height:1px;background:rgba(255,255,255,.07)}
+    .ot-submit{width:100%;padding:15px;border-radius:13px;background:linear-gradient(135deg,#2ec97e,#1b7d52);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.02em;box-shadow:0 6px 26px rgba(46,201,126,.38);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:9px;position:relative;overflow:hidden}
+    .ot-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 34px rgba(46,201,126,.52)}
+    .ot-submit:disabled{opacity:.42;cursor:not-allowed;transform:none}
+    @keyframes ot-spin{to{transform:rotate(360deg)}}
+    .ot-spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:ot-spin .7s linear infinite}
+    .ot-auth-gate{display:flex;flex-direction:column;align-items:center;padding:48px 32px 40px;text-align:center}
+    .ot-success{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 32px;text-align:center}
+    .ot-success-ring{width:80px;height:80px;border-radius:50%;margin-bottom:24px;background:linear-gradient(135deg,rgba(46,201,126,.2),rgba(27,125,82,.3));border:2px solid rgba(46,201,126,.4);display:flex;align-items:center;justify-content:center;font-size:36px;animation:pI .4s cubic-bezier(.34,1.56,.64,1)}
+    .ot-success-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:#fff;line-height:1.2;margin-bottom:10px}
+    .ot-success-sub{font-size:13.5px;color:rgba(255,255,255,.45);line-height:1.7;max-width:320px}
+    .ot-success-btn{margin-top:28px;padding:12px 28px;border-radius:11px;background:rgba(46,201,126,.12);border:1.5px solid rgba(46,201,126,.3);color:#2ec97e;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+    .ot-success-btn:hover{background:rgba(46,201,126,.2)}
+    .ot-card-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;border-radius:9px;border:1.5px solid rgba(46,201,126,.35);background:rgba(46,201,126,.08);color:#2ec97e;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;flex:1}
+    .ot-card-btn:hover{background:rgba(46,201,126,.16);border-color:rgba(46,201,126,.55);transform:translateY(-1px);box-shadow:0 4px 14px rgba(46,201,126,.22)}
+    @media(max-width:520px){
+      .ot-panel{border-radius:20px}
+      .ot-header{padding:20px 20px 16px}
+      .ot-body{padding:16px 20px 24px}
+      .ot-requested{margin:16px 20px 0}
+      .ot-row{grid-template-columns:1fr}
+      .ot-photo-grid{grid-template-columns:repeat(3,1fr)}
+      .ot-auth-gate{padding:36px 24px 32px}
+    }
   `}</style>
 );
 
-/* ══════════════════════════════════════════════
+/* 
    CONDITION SCORE BAR
-══════════════════════════════════════════════ */
+ */
 const CondBar = ({ score, color }) => (
   <div className="csbar">
     {[1,2,3,4,5].map(i => (
@@ -535,18 +617,19 @@ const CondBar = ({ score, color }) => (
   </div>
 );
 
-/* ══════════════════════════════════════════════
+/* 
    NOTIFICATION TOAST SYSTEM
-══════════════════════════════════════════════ */
+ */
 let _toastId = 0;
 const toastBus = { listeners: [], emit(t){ this.listeners.forEach(fn=>fn(t)); } };
 const pushNotification = (type, title, msg) => toastBus.emit({ id: ++_toastId, type, title, msg });
 
 const TOAST_ICONS = {
-  message: { icon:"💬", color:"#1D4ED8", bg:"rgba(29,78,216,.18)" },
-  email:   { icon:"✉️", color:"#7C3AED", bg:"rgba(124,58,237,.18)" },
-  phone:   { icon:"📞", color:"#2ec97e", bg:"rgba(46,201,126,.18)" },
-  post:    { icon:"✦",  color:"#F59E0B", bg:"rgba(245,158,11,.18)" },
+  message: { icon:"", color:"#1D4ED8", bg:"rgba(29,78,216,.18)" },
+  email:   { icon:"", color:"#7C3AED", bg:"rgba(124,58,237,.18)" },
+  phone:   { icon:"", color:"#2ec97e", bg:"rgba(46,201,126,.18)" },
+  post:    { icon:"",  color:"#F59E0B", bg:"rgba(245,158,11,.18)" },
+  trade:   { icon:"", color:"#2ec97e", bg:"rgba(46,201,126,.18)" },
 };
 
 const NotificationToasts = () => {
@@ -573,7 +656,7 @@ const NotificationToasts = () => {
               <div className="nttitle">{t.title}</div>
               <div className="ntmsg">{t.msg}</div>
             </div>
-            <button className="ntclose" onClick={()=>setToasts(p=>p.filter(x=>x.id!==t.id))}>✕</button>
+            <button className="ntclose" onClick={()=>setToasts(p=>p.filter(x=>x.id!==t.id))}></button>
             <div className="ntbar" style={{background:color}}/>
           </div>
         );
@@ -582,80 +665,34 @@ const NotificationToasts = () => {
   );
 };
 
-/* ══════════════════════════════════════════════
-   SESSION HELPER
-══════════════════════════════════════════════ */
-/* ══════════════════════════════════════════════
+/* 
    AUTH GATE MODAL  (shown when not signed in)
-══════════════════════════════════════════════ */
+ */
 const AuthGateModal = ({ onClose }) => {
   const goTo = (path) => { onClose(); window.location.href = path; };
   return (
     <div className="pmo" onClick={onClose}>
       <div className="pmb" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
-        <button className="mc" onClick={onClose}>✕</button>
-
+        <button className="mc" onClick={onClose}></button>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"48px 32px 36px", textAlign:"center" }}>
-          {/* Lock icon */}
-          <div style={{
-            width:72, height:72, borderRadius:20, marginBottom:24,
-            background:"linear-gradient(135deg,rgba(46,201,126,0.15),rgba(27,125,82,0.25))",
-            border:"1.5px solid rgba(46,201,126,0.3)",
-            display:"flex", alignItems:"center", justifyContent:"center", fontSize:32,
-          }}>🔒</div>
-
-          {/* Badge */}
-          <div style={{
-            display:"inline-flex", alignItems:"center", gap:7,
-            background:"rgba(46,201,126,0.1)", border:"1px solid rgba(46,201,126,0.28)",
-            borderRadius:100, padding:"5px 14px", marginBottom:18,
-          }}>
+          <div style={{ width:72, height:72, borderRadius:20, marginBottom:24, background:"linear-gradient(135deg,rgba(46,201,126,0.15),rgba(27,125,82,0.25))", border:"1.5px solid rgba(46,201,126,0.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:32 }}></div>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:7, background:"rgba(46,201,126,0.1)", border:"1px solid rgba(46,201,126,0.28)", borderRadius:100, padding:"5px 14px", marginBottom:18 }}>
             <div style={{ width:7, height:7, borderRadius:"50%", background:"#2ec97e" }} />
             <span style={{ fontSize:11, fontWeight:600, color:"#2ec97e", letterSpacing:"0.06em" }}>Sign-in Required</span>
           </div>
-
-          <h2 style={{
-            fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:900,
-            color:"var(--t)", lineHeight:1.2, marginBottom:10,
-          }}>
+          <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:900, color:"var(--t)", lineHeight:1.2, marginBottom:10 }}>
             Sign in to <em style={{ fontStyle:"italic", color:"#2ec97e" }}>post an item</em>
           </h2>
           <p style={{ fontSize:14, color:"var(--td)", lineHeight:1.7, marginBottom:32, maxWidth:300 }}>
             You need an account to list items on Proti-Binimoy. Sign in or create a free account to get started.
           </p>
-
-          {/* Buttons */}
           <div style={{ display:"flex", flexDirection:"column", gap:10, width:"100%" }}>
-            <button
-              onClick={() => goTo("/signin")}
-              style={{
-                width:"100%", padding:"14px", borderRadius:13, border:"none", cursor:"pointer",
-                background:"linear-gradient(135deg,#2ec97e,#1b7d52)", color:"#fff",
-                fontSize:15, fontWeight:700, fontFamily:"inherit",
-                boxShadow:"0 6px 24px rgba(46,201,126,0.35)",
-                display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-                transition:"opacity 0.2s, transform 0.15s",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.opacity="0.88"; e.currentTarget.style.transform="translateY(-1px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity="1"; e.currentTarget.style.transform="none"; }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{width:16,height:16}}>
-                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/>
-              </svg>
+            <button onClick={() => goTo("/signin")} style={{ width:"100%", padding:"14px", borderRadius:13, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#2ec97e,#1b7d52)", color:"#fff", fontSize:15, fontWeight:700, fontFamily:"inherit", boxShadow:"0 6px 24px rgba(46,201,126,0.35)", display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"opacity 0.2s, transform 0.15s" }} onMouseEnter={e => { e.currentTarget.style.opacity="0.88"; e.currentTarget.style.transform="translateY(-1px)"; }} onMouseLeave={e => { e.currentTarget.style.opacity="1"; e.currentTarget.style.transform="none"; }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{width:16,height:16}}><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
               Sign In to Your Account
             </button>
-            <button
-              onClick={() => goTo("/register")}
-              style={{
-                width:"100%", padding:"13px", borderRadius:13, cursor:"pointer",
-                background:"rgba(255,255,255,0.05)", border:"1.5px solid rgba(255,255,255,0.14)",
-                color:"var(--tm)", fontSize:14, fontWeight:600, fontFamily:"inherit",
-                transition:"background 0.2s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.1)"}
-              onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.05)"}
-            >
-              New here? Create a free account →
+            <button onClick={() => goTo("/register")} style={{ width:"100%", padding:"13px", borderRadius:13, cursor:"pointer", background:"rgba(255,255,255,0.05)", border:"1.5px solid rgba(255,255,255,0.14)", color:"var(--tm)", fontSize:14, fontWeight:600, fontFamily:"inherit", transition:"background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.1)"} onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.05)"}>
+              New here? Create a free account {"->"}
             </button>
           </div>
         </div>
@@ -664,9 +701,110 @@ const AuthGateModal = ({ onClose }) => {
   );
 };
 
-/* ══════════════════════════════════════════════
+/* 
+   BUYER AUTH GATE MODAL
+ */
+const BuyerAuthGateModal = ({ onClose, isSeller }) => {
+  const goTo = (path) => { onClose(); window.location.href = path; };
+  return (
+    <div className="pmo" onClick={onClose}>
+      <div className="pmb" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+        <button className="mc" onClick={onClose}></button>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"48px 32px 36px", textAlign:"center" }}>
+
+          {/* Icon */}
+          <div style={{ width:72, height:72, borderRadius:20, marginBottom:24,
+            background: isSeller
+              ? "linear-gradient(135deg,rgba(239,68,68,0.15),rgba(185,28,28,0.25))"
+              : "linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.25))",
+            border: isSeller ? "1.5px solid rgba(239,68,68,0.3)" : "1.5px solid rgba(245,158,11,0.3)",
+            display:"flex", alignItems:"center", justifyContent:"center", fontSize:32 }}>
+            {isSeller ? "" : ""}
+          </div>
+
+          {/* Badge */}
+          <div style={{ display:"inline-flex", alignItems:"center", gap:7,
+            background: isSeller ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)",
+            border: isSeller ? "1px solid rgba(239,68,68,0.28)" : "1px solid rgba(245,158,11,0.28)",
+            borderRadius:100, padding:"5px 14px", marginBottom:18 }}>
+            <div style={{ width:7, height:7, borderRadius:"50%", background: isSeller ? "#ef4444" : "#f59e0b" }} />
+            <span style={{ fontSize:11, fontWeight:600, color: isSeller ? "#ef4444" : "#f59e0b", letterSpacing:"0.06em" }}>
+              {isSeller ? "Seller Account Detected" : "Buyer Account Required"}
+            </span>
+          </div>
+
+          {/* Heading */}
+          <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:24, fontWeight:900, color:"var(--t)", lineHeight:1.2, marginBottom:10 }}>
+            {isSeller
+              ? <>You're signed in as a <em style={{ fontStyle:"italic", color:"#ef4444" }}>Seller</em></>
+              : <>Sign in to <em style={{ fontStyle:"italic", color:"#f59e0b" }}>buy items</em></>
+            }
+          </h2>
+
+          {/* Body text */}
+          <p style={{ fontSize:14, color:"var(--td)", lineHeight:1.7, marginBottom:32, maxWidth:320 }}>
+            {isSeller
+              ? "Buying and trading require a buyer account. Please sign out and log back in with your buyer account, or register a new buyer account to continue."
+              : "Please log in from your buyer account or register as a buyer to proceed with purchases and trade offers."
+            }
+          </p>
+
+          {/* CTAs */}
+          <div style={{ display:"flex", flexDirection:"column", gap:10, width:"100%" }}>
+            {isSeller ? (
+              <>
+                <button onClick={() => goTo("/signin")}
+                  style={{ width:"100%", padding:"14px", borderRadius:13, border:"none", cursor:"pointer",
+                    background:"linear-gradient(135deg,#f59e0b,#d97706)", color:"#fff", fontSize:15,
+                    fontWeight:700, fontFamily:"inherit", boxShadow:"0 6px 24px rgba(245,158,11,0.35)",
+                    display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"opacity 0.2s, transform 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity="0.88"; e.currentTarget.style.transform="translateY(-1px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity="1"; e.currentTarget.style.transform="none"; }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{width:16,height:16}}><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                  Sign In with a Buyer Account
+                </button>
+                <button onClick={() => goTo("/register")}
+                  style={{ width:"100%", padding:"13px", borderRadius:13, cursor:"pointer",
+                    background:"rgba(255,255,255,0.05)", border:"1.5px solid rgba(255,255,255,0.14)",
+                    color:"var(--tm)", fontSize:14, fontWeight:600, fontFamily:"inherit", transition:"background 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.1)"}
+                  onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.05)"}>
+                  Register as a New Buyer {"->"}
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => goTo("/signin")}
+                  style={{ width:"100%", padding:"14px", borderRadius:13, border:"none", cursor:"pointer",
+                    background:"linear-gradient(135deg,#f59e0b,#d97706)", color:"#fff", fontSize:15,
+                    fontWeight:700, fontFamily:"inherit", boxShadow:"0 6px 24px rgba(245,158,11,0.35)",
+                    display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"opacity 0.2s, transform 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity="0.88"; e.currentTarget.style.transform="translateY(-1px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity="1"; e.currentTarget.style.transform="none"; }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{width:16,height:16}}><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                  Log In as Buyer
+                </button>
+                <button onClick={() => goTo("/register")}
+                  style={{ width:"100%", padding:"13px", borderRadius:13, cursor:"pointer",
+                    background:"rgba(255,255,255,0.05)", border:"1.5px solid rgba(255,255,255,0.14)",
+                    color:"var(--tm)", fontSize:14, fontWeight:600, fontFamily:"inherit", transition:"background 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.1)"}
+                  onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.05)"}>
+                  New here? Register as a Buyer {"->"}
+                </button>
+              </>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* 
    POST ITEM MODAL
-══════════════════════════════════════════════ */
+ */
 const DELIVERY_OPTS = [
   { id:"pickup",   label:"Local Pickup" },
   { id:"delivery", label:"Delivery Available" },
@@ -686,7 +824,6 @@ const PostItemModal = ({ onClose }) => {
   const fileRef   = React.useRef(null);
   const [dragging, setDragging] = React.useState(false);
   const [tried,    setTried]    = React.useState(false);
-
   const [tagInput, setTagInput] = React.useState("");
   const [form, setForm] = React.useState({
     photos:     [],
@@ -755,33 +892,21 @@ const PostItemModal = ({ onClose }) => {
   return (
     <div className="pmo" onClick={onClose}>
       <div className="pmb" onClick={e=>e.stopPropagation()}>
-        {/* Header */}
         <div className="pmhead">
           <div>
-            <div className="pmtitle">✦ Post an Item</div>
-            <div className="pmsub">List for free — reach thousands of buyers in Dhaka</div>
+            <div className="pmtitle"> Post an Item</div>
+            <div className="pmsub">List for free - reach thousands of buyers in Dhaka</div>
           </div>
-          <button className="mc" style={{position:"static"}} onClick={onClose}>✕</button>
+          <button className="mc" style={{position:"static"}} onClick={onClose}></button>
         </div>
-
         <div className="pmbody">
-
-          {/* ── Photos (mandatory) ── */}
           <div>
             <label className="pm-label">Photos <span className="pm-req">*</span></label>
-            <div
-              className={`pm-photo-zone${dragging?" drag":""}${tried&&!valid.photos?" err-zone":""}`}
-              onClick={()=>fileRef.current&&fileRef.current.click()}
-              onDragOver={e=>{e.preventDefault();setDragging(true);}}
-              onDragLeave={()=>setDragging(false)}
-              onDrop={e=>{e.preventDefault();setDragging(false);handleFiles(e.dataTransfer.files);}}
-            >
+            <div className={`pm-photo-zone${dragging?" drag":""}${tried&&!valid.photos?" err-zone":""}`} onClick={()=>fileRef.current&&fileRef.current.click()} onDragOver={e=>{e.preventDefault();setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);handleFiles(e.dataTransfer.files);}}>
               <input ref={fileRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{handleFiles(e.target.files);e.target.value=null;}}/>
-              <div style={{fontSize:24,marginBottom:6}}>📷</div>
-              <div style={{fontSize:13,fontWeight:600,color:"rgba(255,255,255,.75)"}}>
-                {form.photos.length===0 ? "Click or drag & drop photos" : "Add more photos"}
-              </div>
-              <div style={{fontSize:11,color:"rgba(255,255,255,.3)",marginTop:3}}>PNG, JPG up to 10MB · max 8 photos</div>
+              <div style={{fontSize:24,marginBottom:6}}></div>
+              <div style={{fontSize:13,fontWeight:600,color:"rgba(255,255,255,.75)"}}>{form.photos.length===0 ? "Click or drag & drop photos" : "Add more photos"}</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,.3)",marginTop:3}}>PNG, JPG up to 10MB  -  max 8 photos</div>
             </div>
             {tried && !valid.photos && <div className="pm-err">At least one photo is required.</div>}
             {form.photos.length > 0 && (
@@ -790,31 +915,24 @@ const PostItemModal = ({ onClose }) => {
                   <div key={i} className="pm-photo-thumb">
                     <img src={p.preview} alt={`Photo ${i+1}`}/>
                     {i===0 && <span className="pm-cover-badge">Cover</span>}
-                    <button className="pm-photo-del" onClick={e=>{e.stopPropagation();removePhoto(i);}}>✕</button>
+                    <button className="pm-photo-del" onClick={e=>{e.stopPropagation();removePhoto(i);}}></button>
                   </div>
                 ))}
-                {form.photos.length < 8 && (
-                  <button className="pm-photo-add" onClick={e=>{e.stopPropagation();fileRef.current&&fileRef.current.click();}}>+</button>
-                )}
+                {form.photos.length < 8 && <button className="pm-photo-add" onClick={e=>{e.stopPropagation();fileRef.current&&fileRef.current.click();}}>+</button>}
               </div>
             )}
           </div>
-
           <div className="pm-divider"/>
-
-          {/* ── Title ── */}
           <div>
             <label className="pm-label">Item Title <span className="pm-req">*</span></label>
             <input className={`pm-input${ic("title")}`} placeholder="e.g. Samsung Galaxy S23 Ultra 256GB" value={form.title} onChange={e=>set("title",e.target.value)} maxLength={100}/>
             {tried && !valid.title && <div className="pm-err">Title is required (min 3 characters).</div>}
           </div>
-
-          {/* ── Category & Condition ── */}
           <div className="pm-row">
             <div>
               <label className="pm-label">Category <span className="pm-req">*</span></label>
               <select className={`pm-input ls${ic("category")}`} style={{padding:"11px 14px"}} value={form.category} onChange={e=>set("category",e.target.value)}>
-                <option value="">Select…</option>
+                <option value="">Select...</option>
                 {CATEGORIES_PM.map(c=><option key={c}>{c}</option>)}
               </select>
               {tried && !valid.category && <div className="pm-err">Required.</div>}
@@ -822,28 +940,24 @@ const PostItemModal = ({ onClose }) => {
             <div>
               <label className="pm-label">Condition <span className="pm-req">*</span></label>
               <select className={`pm-input ls${ic("condition")}`} style={{padding:"11px 14px"}} value={form.condition} onChange={e=>set("condition",e.target.value)}>
-                <option value="">Select…</option>
+                <option value="">Select...</option>
                 {CONDITIONS_PM.map(c=><option key={c}>{c}</option>)}
               </select>
               {tried && !valid.condition && <div className="pm-err">Required.</div>}
             </div>
           </div>
-
-          {/* ── Brand & Model ── */}
           <div className="pm-row">
             <div>
               <label className="pm-label">Brand <span className="pm-req">*</span></label>
-              <input className={`pm-input${ic("brand")}`} placeholder="e.g. Samsung, Apple, Otobi…" value={form.brand} onChange={e=>set("brand",e.target.value)} maxLength={60}/>
+              <input className={`pm-input${ic("brand")}`} placeholder="e.g. Samsung, Apple, Otobi..." value={form.brand} onChange={e=>set("brand",e.target.value)} maxLength={60}/>
               {tried && !valid.brand && <div className="pm-err">Brand is required.</div>}
             </div>
             <div>
               <label className="pm-label">Model <span className="pm-req">*</span></label>
-              <input className={`pm-input${ic("model")}`} placeholder="e.g. Galaxy S23, iPhone 13…" value={form.model} onChange={e=>set("model",e.target.value)} maxLength={60}/>
+              <input className={`pm-input${ic("model")}`} placeholder="e.g. Galaxy S23, iPhone 13..." value={form.model} onChange={e=>set("model",e.target.value)} maxLength={60}/>
               {tried && !valid.model && <div className="pm-err">Model is required.</div>}
             </div>
           </div>
-
-          {/* ── Price & Phone ── */}
           <div className="pm-row">
             <div>
               <label className="pm-label">Price (BDT) <span className="pm-req">*</span></label>
@@ -856,8 +970,6 @@ const PostItemModal = ({ onClose }) => {
               {tried && !valid.phone && <div className="pm-err">Required (min 9 digits).</div>}
             </div>
           </div>
-
-          {/* ── Negotiable toggle ── */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"4px 2px"}}>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:"rgba(255,255,255,.8)"}}>Price is Negotiable</div>
@@ -865,140 +977,399 @@ const PostItemModal = ({ onClose }) => {
             </div>
             <label style={{position:"relative",width:44,height:24,flexShrink:0,cursor:"pointer"}}>
               <input type="checkbox" checked={form.negotiable} onChange={e=>set("negotiable",e.target.checked)} style={{opacity:0,width:0,height:0,position:"absolute"}}/>
-              <span style={{
-                position:"absolute",inset:0,borderRadius:12,cursor:"pointer",transition:"all .25s",
-                background: form.negotiable ? "rgba(46,201,126,.3)" : "rgba(255,255,255,.12)",
-                border: form.negotiable ? "1px solid rgba(46,201,126,.6)" : "1px solid rgba(255,255,255,.15)"
-              }}>
-                <span style={{
-                  position:"absolute",top:3,left: form.negotiable ? 23 : 3,width:16,height:16,
-                  borderRadius:"50%",transition:"all .25s",
-                  background: form.negotiable ? "#2ec97e" : "rgba(255,255,255,.5)",
-                  boxShadow: form.negotiable ? "0 2px 8px rgba(46,201,126,.55)" : "none"
-                }}/>
+              <span style={{ position:"absolute",inset:0,borderRadius:12,cursor:"pointer",transition:"all .25s", background: form.negotiable ? "rgba(46,201,126,.3)" : "rgba(255,255,255,.12)", border: form.negotiable ? "1px solid rgba(46,201,126,.6)" : "1px solid rgba(255,255,255,.15)" }}>
+                <span style={{ position:"absolute",top:3,left: form.negotiable ? 23 : 3,width:16,height:16, borderRadius:"50%",transition:"all .25s", background: form.negotiable ? "#2ec97e" : "rgba(255,255,255,.5)", boxShadow: form.negotiable ? "0 2px 8px rgba(46,201,126,.55)" : "none" }}/>
               </span>
             </label>
           </div>
-
-          {/* ── Location ── */}
           <div>
             <label className="pm-label">Location <span className="pm-req">*</span></label>
             <select className={`pm-input ls${ic("location")}`} style={{padding:"11px 14px"}} value={form.location} onChange={e=>set("location",e.target.value)}>
-              <option value="">Select area…</option>
+              <option value="">Select area...</option>
               {LOCATIONS_PM.map(l=><option key={l}>{l}</option>)}
             </select>
             {tried && !valid.location && <div className="pm-err">Location is required.</div>}
           </div>
-
           <div className="pm-divider"/>
-
-          {/* ── Delivery Options (mandatory) ── */}
           <div>
             <label className="pm-label">Delivery / Pickup <span className="pm-req">*</span></label>
             <div className="pm-chips">
               {DELIVERY_OPTS.map(o=>(
-                <button
-                  key={o.id}
-                  className={`pm-chip${form.delivery.includes(o.id)?" on":""}${tried&&!valid.delivery&&!form.delivery.includes(o.id)?" err-chip":""}`}
-                  onClick={()=>toggleArr("delivery",o.id)}
-                >{o.label}</button>
+                <button key={o.id} className={`pm-chip${form.delivery.includes(o.id)?" on":""}${tried&&!valid.delivery&&!form.delivery.includes(o.id)?" err-chip":""}`} onClick={()=>toggleArr("delivery",o.id)}>{o.label}</button>
               ))}
             </div>
             {tried && !valid.delivery && <div className="pm-err">Select at least one delivery option.</div>}
           </div>
-
-          {/* ── Payment Methods (mandatory) ── */}
           <div>
             <label className="pm-label">Accepted Payment <span className="pm-req">*</span></label>
             <div className="pm-chips">
               {PAYMENT_OPTS.map(o=>(
-                <button
-                  key={o.id}
-                  className={`pm-chip${form.payment.includes(o.id)?" on":""}${tried&&!valid.payment&&!form.payment.includes(o.id)?" err-chip":""}`}
-                  onClick={()=>toggleArr("payment",o.id)}
-                >{o.label}</button>
+                <button key={o.id} className={`pm-chip${form.payment.includes(o.id)?" on":""}${tried&&!valid.payment&&!form.payment.includes(o.id)?" err-chip":""}`} onClick={()=>toggleArr("payment",o.id)}>{o.label}</button>
               ))}
             </div>
             {tried && !valid.payment && <div className="pm-err">Select at least one payment method.</div>}
           </div>
-
-          {/* ── Trade Offer (mandatory) ── */}
           <div>
             <label className="pm-label">Trade / Barter <span className="pm-req">*</span></label>
             <div className="pm-chips">
-              <button
-                className={`pm-chip${form.tradeOffer==="open"?" on":""}${tried&&!valid.tradeOffer?" err-chip":""}`}
-                onClick={()=>set("tradeOffer","open")}
-              >🔄 Open to Trade</button>
-              <button
-                className={`pm-chip${form.tradeOffer==="no"?" on":""}${tried&&!valid.tradeOffer?" err-chip":""}`}
-                onClick={()=>set("tradeOffer","no")}
-              >🚫 Not Accepting Trades</button>
+              <button className={`pm-chip${form.tradeOffer==="open"?" on":""}${tried&&!valid.tradeOffer?" err-chip":""}`} onClick={()=>set("tradeOffer","open")}> Open to Trade</button>
+              <button className={`pm-chip${form.tradeOffer==="no"?" on":""}${tried&&!valid.tradeOffer?" err-chip":""}`} onClick={()=>set("tradeOffer","no")}> Not Accepting Trades</button>
             </div>
             {tried && !valid.tradeOffer && <div className="pm-err">Please select a trade preference.</div>}
-            {form.tradeOffer==="open" && <div className="pm-note">💡 Buyers will see you're open to exchanging for other items.</div>}
+            {form.tradeOffer==="open" && <div className="pm-note"> Buyers will see you're open to exchanging for other items.</div>}
           </div>
-
-          {/* ── Tags (optional, up to 8) ── */}
           <div>
-            <label className="pm-label">Search Tags <span style={{fontSize:10,fontWeight:400,color:"rgba(255,255,255,.3)",textTransform:"none",letterSpacing:0}}>(optional · max 8)</span></label>
+            <label className="pm-label">Search Tags <span style={{fontSize:10,fontWeight:400,color:"rgba(255,255,255,.3)",textTransform:"none",letterSpacing:0}}>(optional  -  max 8)</span></label>
             <div style={{display:"flex",gap:8}}>
-              <input
-                className="pm-input"
-                placeholder="Add a tag, e.g. iphone, shimano…"
-                value={tagInput}
-                onChange={e=>setTagInput(e.target.value)}
-                onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag();}}}
-                style={{flex:1}}
-                maxLength={24}
-              />
-              <button
-                onClick={addTag}
-                style={{padding:"0 16px",borderRadius:11,border:"1.5px solid rgba(46,201,126,.35)",background:"rgba(46,201,126,.08)",color:"#2ec97e",fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}
-              >+ Add</button>
+              <input className="pm-input" placeholder="Add a tag, e.g. iphone, shimano..." value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag();}}} style={{flex:1}} maxLength={24}/>
+              <button onClick={addTag} style={{padding:"0 16px",borderRadius:11,border:"1.5px solid rgba(46,201,126,.35)",background:"rgba(46,201,126,.08)",color:"#2ec97e",fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>+ Add</button>
             </div>
             {form.tags.length > 0 && (
               <div className="pm-chips" style={{marginTop:8}}>
                 {form.tags.map(t=>(
-                  <button key={t} className="pm-chip on" onClick={()=>removeTag(t)} style={{display:"flex",alignItems:"center",gap:5}}>
-                    #{t} <span style={{fontSize:10,opacity:.7}}>✕</span>
-                  </button>
+                  <button key={t} className="pm-chip on" onClick={()=>removeTag(t)} style={{display:"flex",alignItems:"center",gap:5}}>#{t} <span style={{fontSize:10,opacity:.7}}></span></button>
                 ))}
               </div>
             )}
-            <div className="pm-note">Tags help buyers find your listing faster · press Enter or click Add</div>
+            <div className="pm-note">Tags help buyers find your listing faster  -  press Enter or click Add</div>
           </div>
-
           <div className="pm-divider"/>
-
-          {/* ── Description ── */}
           <div>
             <label className="pm-label">Description</label>
-            <textarea className="pm-input" rows={3} placeholder="Describe your item — condition details, brand, model, what's included…" value={form.description} onChange={e=>set("description",e.target.value)} style={{resize:"vertical"}} maxLength={800}/>
+            <textarea className="pm-input" rows={3} placeholder="Describe your item - condition details, brand, model, what's included..." value={form.description} onChange={e=>set("description",e.target.value)} style={{resize:"vertical"}} maxLength={800}/>
             <div className="pm-note">{form.description.length}/800 characters</div>
           </div>
-
-          <button className="pm-submit" disabled={tried && !canSubmit} onClick={submit}>✦ Post Item for Free</button>
+          <button className="pm-submit" disabled={tried && !canSubmit} onClick={submit}> Post Item for Free</button>
         </div>
       </div>
     </div>
   );
 };
 
-/* ══════════════════════════════════════════════
+/* 
+   OFFER TRADE MODAL
+ */
+const TRADE_CONDITIONS = ["New", "Like New", "Good", "Fair", "For Parts"];
+
+const OfferTradeModal = ({ item, onClose }) => {
+  const { token, user: authUser } = useAuth();
+  const isAuthenticated = !!token;
+  const fileRef = useRef(null);
+
+  const [dragging,  setDragging]  = useState(false);
+  const [tried,     setTried]     = useState(false);
+  const [loading,   setLoading]   = useState(false);
+  const [success,   setSuccess]   = useState(false);
+  const [apiError,  setApiError]  = useState("");
+
+  const [form, setForm] = useState({
+    photos: [], title: "", category: "", condition: "",
+    estimatedValue: "", description: "", message: "",
+  });
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleFiles = useCallback((files) => {
+    const arr = Array.from(files).filter(f => f.type.startsWith("image/")).slice(0, 5 - form.photos.length);
+    if (!arr.length) return;
+    const previews = arr.map(f => ({ file: f, preview: URL.createObjectURL(f) }));
+    setForm(p => ({ ...p, photos: [...p.photos, ...previews].slice(0, 5) }));
+  }, [form.photos.length]);
+
+  const removePhoto = (i) => {
+    setForm(p => {
+      const next = [...p.photos];
+      URL.revokeObjectURL(next[i].preview);
+      next.splice(i, 1);
+      return { ...p, photos: next };
+    });
+  };
+
+  const valid = {
+    photos:    form.photos.length > 0,
+    title:     form.title.trim().length >= 3,
+    condition: !!form.condition,
+  };
+  const canSubmit = valid.photos && valid.title && valid.condition;
+
+  const submit = async () => {
+    setTried(true);
+    if (!canSubmit) return;
+    setLoading(true);
+    setApiError("");
+    try {
+      addMockTradeRequest({ item, form, authUser });
+
+      /*
+      BACKEND CONNECTION (commented out for mock-data testing)
+      const payload = new FormData();
+      payload.append("requestedProductId",   item.id);
+      payload.append("offeredTitle",         form.title.trim());
+      payload.append("offeredCategory",      form.category.trim() || item.category);
+      payload.append("offeredCondition",     form.condition);
+      payload.append("offeredEstimatedValue",form.estimatedValue || "0");
+      payload.append("offeredDescription",   form.description.trim());
+      payload.append("message",              form.message.trim());
+      payload.append("buyerName",            authUser?.name  || "");
+      payload.append("buyerEmail",           authUser?.email || "");
+      payload.append("buyerId",              authUser?.id || authUser?._id || "");
+      form.photos.forEach((p, i) => payload.append("offeredImages", p.file, `trade_img_${i}`));
+
+      const res = await fetch(`${API_BASE_URL}/api/trades/request`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: payload,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Trade request failed.");
+      }
+      */
+      setSuccess(true);
+      pushNotification("trade", "Trade Request Sent!", `Your offer was sent to ${item.seller.name}.`);
+    } catch (e) {
+      setApiError(e.message || "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /*  Not logged in  */
+  if (!isAuthenticated) {
+    return (
+      <div className="ot-overlay" onClick={onClose}>
+        <div className="ot-panel" onClick={e => e.stopPropagation()}>
+          <div className="ot-header">
+            <div style={{ display:"flex", alignItems:"center", gap:13 }}>
+              <div className="ot-header-icon"></div>
+              <div>
+                <div className="ot-title">Offer a <em>Trade</em></div>
+                <div className="ot-subtitle">Barter your item for <strong style={{color:"rgba(255,255,255,.7)"}}>{item.title}</strong></div>
+              </div>
+            </div>
+            <button className="ot-close" onClick={onClose}></button>
+          </div>
+          <div className="ot-auth-gate">
+            <div style={{ width:68, height:68, borderRadius:20, marginBottom:22, background:"linear-gradient(135deg,rgba(245,158,11,.15),rgba(217,119,6,.25))", border:"1.5px solid rgba(245,158,11,.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:30 }}></div>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:7, background:"rgba(245,158,11,.1)", border:"1px solid rgba(245,158,11,.28)", borderRadius:100, padding:"5px 14px", marginBottom:18 }}>
+              <div style={{ width:7, height:7, borderRadius:"50%", background:"#f59e0b" }}/>
+              <span style={{ fontSize:11, fontWeight:600, color:"#f59e0b", letterSpacing:".06em" }}>Buyer Account Required</span>
+            </div>
+            <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:900, color:"#fff", lineHeight:1.2, marginBottom:10 }}>
+              Log in to <em style={{ fontStyle:"italic", color:"#f59e0b" }}>offer a trade</em>
+            </h2>
+            <p style={{ fontSize:13.5, color:"rgba(255,255,255,.4)", lineHeight:1.7, maxWidth:290, marginBottom:28 }}>
+              Please log in from your buyer account or register as a buyer to send a trade request.
+            </p>
+            <div style={{ width:"100%", display:"flex", flexDirection:"column", gap:10 }}>
+              <button onClick={() => { onClose(); window.location.href="/signin"; }} style={{ width:"100%", padding:"14px", borderRadius:13, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#f59e0b,#d97706)", color:"#fff", fontSize:15, fontWeight:700, fontFamily:"inherit", boxShadow:"0 6px 24px rgba(245,158,11,.35)", display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"opacity .2s" }} onMouseEnter={e=>e.currentTarget.style.opacity=".88"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{width:16,height:16}}><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                Log In as Buyer
+              </button>
+              <button onClick={() => { onClose(); window.location.href="/register"; }} style={{ width:"100%", padding:"13px", borderRadius:13, cursor:"pointer", background:"rgba(255,255,255,.05)", border:"1.5px solid rgba(255,255,255,.14)", color:"rgba(255,255,255,.6)", fontSize:14, fontWeight:600, fontFamily:"inherit", transition:"background .2s" }} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.1)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,.05)"}>
+                New here? Register as a Buyer {"->"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /*  Success  */
+  if (success) {
+    return (
+      <div className="ot-overlay" onClick={onClose}>
+        <div className="ot-panel" onClick={e => e.stopPropagation()}>
+          <div className="ot-header" style={{ justifyContent:"flex-end", borderBottom:"none", paddingBottom:0 }}>
+            <button className="ot-close" onClick={onClose}></button>
+          </div>
+          <div className="ot-success">
+            <div className="ot-success-ring"></div>
+            <h2 className="ot-success-title">Trade Request Sent!</h2>
+            <p className="ot-success-sub">Your offer has been sent to <strong style={{color:"rgba(255,255,255,.75)"}}>{item.seller.name}</strong>. They'll review your offer and respond soon.</p>
+            <button className="ot-success-btn" onClick={onClose}>Done</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /*  Main form  */
+  return (
+    <div className="ot-overlay" onClick={onClose}>
+      <div className="ot-panel" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="ot-header">
+          <div style={{ display:"flex", alignItems:"center", gap:13, flex:1, minWidth:0 }}>
+            <div className="ot-header-icon"></div>
+            <div>
+              <div className="ot-title">Offer a <em>Trade</em></div>
+              <div className="ot-subtitle">Propose your item in exchange</div>
+            </div>
+          </div>
+          <button className="ot-close" onClick={onClose}></button>
+        </div>
+
+        {/* Requested item strip */}
+        <div className="ot-requested">
+          <div className="ot-req-img">
+            {item.image ? <img src={item.image} alt={item.title}/> : <span>{item.emoji || ""}</span>}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div className="ot-req-label">You want</div>
+            <div className="ot-req-title">{item.title}</div>
+            <div className="ot-req-price">BDT {fmt(item.price)}  -  by {item.seller.name}</div>
+          </div>
+          <div className="ot-swap-icon"></div>
+        </div>
+
+        {/* Form */}
+        <div className="ot-body">
+
+          {/* Your offered item */}
+          <div>
+            <div className="ot-sec-label"><span></span> Your Offered Item</div>
+
+            {/* Photos */}
+            <div style={{ marginBottom:14 }}>
+              <label className="ot-field-label">Photos <span className="ot-req-star">*</span></label>
+              <div
+                className={`ot-photo-zone${dragging?" drag":""}${form.photos.length>0?" has-photo":""}${tried&&!valid.photos?" err-zone":""}`}
+                onClick={() => fileRef.current?.click()}
+                onDragOver={e=>{e.preventDefault();setDragging(true);}}
+                onDragLeave={()=>setDragging(false)}
+                onDrop={e=>{e.preventDefault();setDragging(false);handleFiles(e.dataTransfer.files);}}
+              >
+                <input ref={fileRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{handleFiles(e.target.files);e.target.value=null;}}/>
+                {form.photos.length === 0 && (
+                  <>
+                    <div style={{fontSize:26,marginBottom:6}}></div>
+                    <div style={{fontSize:13,fontWeight:600,color:"rgba(255,255,255,.75)"}}>Click or drag & drop photos</div>
+                    <div style={{fontSize:11,color:"rgba(255,255,255,.3)",marginTop:3}}>PNG, JPG up to 10MB  -  max 5 photos</div>
+                  </>
+                )}
+                {form.photos.length > 0 && (
+                  <div className="ot-photo-grid" onClick={e=>e.stopPropagation()}>
+                    {form.photos.map((p,i) => (
+                      <div key={i} className="ot-photo-thumb">
+                        <img src={p.preview} alt={`Photo ${i+1}`}/>
+                        {i===0 && <span className="ot-photo-cover">Cover</span>}
+                        <button className="ot-photo-del" onClick={()=>removePhoto(i)}></button>
+                      </div>
+                    ))}
+                    {form.photos.length < 5 && <button className="ot-photo-add" onClick={e=>{e.stopPropagation();fileRef.current?.click();}}>+</button>}
+                  </div>
+                )}
+              </div>
+              {tried && !valid.photos && <div className="ot-err-text">At least one photo is required.</div>}
+            </div>
+
+            {/* Title */}
+            <div style={{ marginBottom:12 }}>
+              <label className="ot-field-label">Item Title <span className="ot-req-star">*</span></label>
+              <input className={`ot-input${tried&&!valid.title?" err":form.title.trim().length>=3?" ok":""}`} placeholder="e.g. Samsung Galaxy S21 128GB Black" value={form.title} onChange={e=>set("title",e.target.value)} maxLength={100}/>
+              {tried && !valid.title && <div className="ot-err-text">Title is required (min 3 characters).</div>}
+            </div>
+
+            {/* Category + Value */}
+            <div className="ot-row" style={{ marginBottom:12 }}>
+              <div>
+                <label className="ot-field-label">Category</label>
+                <input className="ot-input" placeholder="e.g. Electronics, Books..." value={form.category} onChange={e=>set("category",e.target.value)} maxLength={60}/>
+              </div>
+              <div>
+                <label className="ot-field-label">Est. Value (BDT)</label>
+                <input className="ot-input" placeholder="Optional" type="number" min="0" value={form.estimatedValue} onChange={e=>set("estimatedValue",e.target.value)}/>
+              </div>
+            </div>
+
+            {/* Condition */}
+            <div style={{ marginBottom:12 }}>
+              <label className="ot-field-label">Condition <span className="ot-req-star">*</span></label>
+              <div className="ot-chips">
+                {TRADE_CONDITIONS.map(c => (
+                  <button key={c} className={`ot-chip${form.condition===c?" on":""}${tried&&!valid.condition?" err-chip":""}`} onClick={()=>set("condition",c)}>{c}</button>
+                ))}
+              </div>
+              {tried && !valid.condition && <div className="ot-err-text">Please select the condition.</div>}
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="ot-field-label">Description</label>
+              <textarea className="ot-input" rows={3} placeholder="Describe your item - specs, accessories, any defects..." value={form.description} onChange={e=>set("description",e.target.value)} maxLength={600}/>
+              <div className="ot-char-count">{form.description.length}/600</div>
+            </div>
+          </div>
+
+          <div className="ot-divider"/>
+
+          {/* Optional message */}
+          <div>
+            <div className="ot-sec-label">
+              <span></span> Message to Seller
+              <span style={{ color:"rgba(255,255,255,.3)", fontWeight:400, textTransform:"none", letterSpacing:0, fontSize:10 }}>Optional</span>
+            </div>
+            <textarea className="ot-input" rows={3} placeholder={`Hi ${item.seller.name.split(" ")[0]}! I'd like to trade my item for your ${item.title.split(" ").slice(0,3).join(" ")}...`} value={form.message} onChange={e=>set("message",e.target.value)} maxLength={400}/>
+            <div className="ot-char-count">{form.message.length}/400</div>
+          </div>
+
+          {/* Buyer strip */}
+          <div style={{ padding:"12px 16px", borderRadius:12, background:"rgba(46,201,126,.06)", border:"1px solid rgba(46,201,126,.15)", display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ width:36, height:36, borderRadius:"50%", flexShrink:0, background:"linear-gradient(135deg,#2ec97e,#1b7d52)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#fff" }}>
+              {(authUser?.name || "U")[0].toUpperCase()}
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:12.5, fontWeight:600, color:"rgba(255,255,255,.8)" }}>Sending as <strong style={{color:"#fff"}}>{authUser?.name || "You"}</strong></div>
+              <div style={{ fontSize:11, color:"rgba(255,255,255,.35)", marginTop:1 }}>{authUser?.email || ""}</div>
+            </div>
+            <div style={{ fontSize:11, color:"#2ec97e", fontWeight:600, flexShrink:0 }}> Verified</div>
+          </div>
+
+          {/* API error */}
+          {apiError && (
+            <div style={{ padding:"11px 14px", borderRadius:10, background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", fontSize:13, color:"#f87171" }}>
+               {apiError}
+            </div>
+          )}
+
+          {/* Submit */}
+          <button className="ot-submit" disabled={loading} onClick={submit}>
+            {loading ? (
+              <><div className="ot-spinner"/> Sending Trade Request...</>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" style={{width:17,height:17}}>
+                  <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/>
+                  <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+                </svg>
+                Send Trade Request
+              </>
+            )}
+          </button>
+
+          <p style={{ fontSize:11, color:"rgba(255,255,255,.25)", textAlign:"center", lineHeight:1.6 }}>
+            By sending, you agree to our trading terms. The seller can accept, counter, or decline.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* 
    ITEM CARD
-══════════════════════════════════════════════ */
-const ItemCard = ({ item, view, onOpen, saved, onSave }) => {
+ */
+const ItemCard = ({ item, view, onOpen, saved, onSave, onBuyNow, onOfferTrade }) => {
   const ci = cInfo(item.condition);
   const isList = view === "list";
   const bm = item.badge ? bMeta(item.badge) : null;
   const da = dAgo(item.postedDate);
 
   return (
-    <div
-      className={`ic fu${isList ? " lc" : ""}`}
-      onClick={() => onOpen(item, "details")}
-    >
+    <div className={`ic fu${isList ? " lc" : ""}`} onClick={() => onOpen(item, "details")}>
       <div className="cim" style={{ background:`linear-gradient(135deg,${item.accentColor}22,${item.accentColor}09)`, height:isList?"auto":undefined }}>
         {item.image ? (
           <img src={item.image} alt={item.title} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"cover",borderRadius:12,boxShadow:"0 4px 18px rgba(0,0,0,.18)"}} />
@@ -1008,12 +1379,18 @@ const ItemCard = ({ item, view, onOpen, saved, onSave }) => {
         <div className="cio" />
         {bm && <span className="cibg" style={{ background:bm.bg, boxShadow:`0 4px 14px ${bm.glow}` }}>{item.badge}</span>}
         <button className={`csv${saved?" sv":""}`} onClick={e=>{e.stopPropagation();onSave(item.id);}}>
-          {saved ? "❤️" : "🤍"}
+          {saved ? "" : ""}
         </button>
         <div className="cvw">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:10,height:10}}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           {item.views}
         </div>
+        {/* Trade badge on image */}
+        {item.tradeOffer && (
+          <div style={{ position:"absolute", top:10, left:10, display:"flex", alignItems:"center", gap:4, background:"rgba(46,201,126,.92)", border:"1px solid rgba(255,255,255,.22)", boxShadow:"0 6px 18px rgba(46,201,126,.28)", borderRadius:100, padding:"3px 9px", fontSize:10, fontWeight:800, color:"#08351f", letterSpacing:".04em", pointerEvents:"none", zIndex:4 }}>
+             Trade OK
+          </div>
+        )}
       </div>
 
       <div className="cib">
@@ -1032,13 +1409,11 @@ const ItemCard = ({ item, view, onOpen, saved, onSave }) => {
             <div className="ctags">{item.tags.slice(0,3).map(t=><span key={t} className="ctag">#{t}</span>)}</div>
             <div style={{display:"flex",gap:14,flexWrap:"wrap",marginTop:2}}>
               {[
-                {icon:"📍",val:item.seller.location},
-                {icon:"🚚",val:item.shipping},
-                {icon:"🕐",val:da===0?"Today":da===1?"Yesterday":`${da}d ago`},
+                {icon:"",val:item.seller.location},
+                {icon:"",val:item.shipping},
+                {icon:"",val:da===0?"Today":da===1?"Yesterday":`${da}d ago`},
               ].map(d=>(
-                <span key={d.icon} style={{fontSize:11,color:"rgba(255,255,255,.38)",display:"flex",alignItems:"center",gap:4}}>
-                  {d.icon} {d.val}
-                </span>
+                <span key={d.icon} style={{fontSize:11,color:"rgba(255,255,255,.38)",display:"flex",alignItems:"center",gap:4}}>{d.icon} {d.val}</span>
               ))}
             </div>
           </>
@@ -1046,33 +1421,45 @@ const ItemCard = ({ item, view, onOpen, saved, onSave }) => {
 
         <div className="cf">
           <div>
-            <span className="cpr">৳{fmt(item.price)}</span>
+            <span className="cpr">BDT {fmt(item.price)}</span>
             {item.negotiable && <span className="cng">Neg.</span>}
           </div>
           <div className="csl">
             <div className="cav" style={{background:`linear-gradient(135deg,${item.accentColor},${item.accentColor}88)`}}>{item.seller.avatar}</div>
             <div>
-              <div className="csn">{item.seller.name.split(" ")[0]}{item.seller.verified&&<span style={{color:"#2ec97e",fontSize:9,marginLeft:2}}>✓</span>}</div>
-              <div className="csr">{"★".repeat(Math.round(item.seller.rating))} {item.seller.rating}</div>
+              <div className="csn">{item.seller.name.split(" ")[0]}{item.seller.verified&&<span style={{color:"#2ec97e",fontSize:9,marginLeft:2}}></span>}</div>
+              <div className="csr">{"".repeat(Math.round(item.seller.rating))} {item.seller.rating}</div>
             </div>
           </div>
         </div>
 
         <div className="ca" onClick={e=>e.stopPropagation()}>
-          <button className="bcon" onClick={()=>onOpen(item, "contact")}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{width:12,height:12}}><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.81 19.79 19.79 0 01.04 2.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>
-            Contact
+          <button className="bcon" onClick={()=>onBuyNow(item)} style={{background:"linear-gradient(135deg,#f59e0b,#d97706)",boxShadow:"0 4px 16px rgba(245,158,11,.35)"}}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{width:12,height:12}}><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            Buy Now
           </button>
-          <button className="bdet" onClick={()=>onOpen(item, "details")}>View Details</button>
+
+          {/* Offer Trade - only when seller is open to trading */}
+          {item.tradeOffer && (
+            <button className="ot-card-btn" onClick={() => onOfferTrade(item)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" style={{width:12,height:12}}>
+                <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/>
+                <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+              </svg>
+              Offer Trade
+            </button>
+          )}
+
+          <button className="bdet" onClick={()=>onOpen(item, "contact")}>Contact</button>
         </div>
       </div>
     </div>
   );
 };
 
-/* ══════════════════════════════════════════════
+/* 
    DETAILS MODAL
-══════════════════════════════════════════════ */
+ */
 const DetailsModal = ({ item, onClose, saved, onSave }) => {
   const ci = cInfo(item.condition);
   const bm = item.badge ? bMeta(item.badge) : null;
@@ -1081,9 +1468,7 @@ const DetailsModal = ({ item, onClose, saved, onSave }) => {
   return (
     <div className="mo" onClick={onClose}>
       <div className="mb" onClick={e=>e.stopPropagation()}>
-        <button className="mc" onClick={onClose}>✕</button>
-
-        {/* Hero image area */}
+        <button className="mc" onClick={onClose}></button>
         <div className="mh" style={{background:`linear-gradient(135deg,${item.accentColor}28,${item.accentColor}0b)`}}>
           {item.image ? (
             <img src={item.image} alt={item.title} style={{maxWidth:"100%",maxHeight:220,objectFit:"contain",borderRadius:18,boxShadow:"0 8px 28px rgba(0,0,0,.18)"}} />
@@ -1092,16 +1477,14 @@ const DetailsModal = ({ item, onClose, saved, onSave }) => {
           )}
           {bm && <span className="mhb" style={{background:bm.bg,boxShadow:`0 4px 20px ${bm.glow}`}}>{item.badge}</span>}
           <div style={{position:"absolute",bottom:14,right:16,display:"flex",gap:14,fontSize:12,color:"rgba(255,255,255,.6)"}}>
-            <span>👁 {item.views}</span><span>❤️ {item.saves}</span>
+            <span> {item.views}</span><span> {item.saves}</span>
           </div>
         </div>
-
         <div className="mbody">
-          {/* Title + price */}
           <h2 className="mtit">{item.title}</h2>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:16}}>
             <div>
-              <span className="mpr">৳{fmt(item.price)}</span>
+              <span className="mpr">BDT {fmt(item.price)}</span>
               {item.negotiable && <span style={{marginLeft:10,fontSize:12,padding:"3px 10px",borderRadius:100,background:"rgba(46,201,126,.1)",color:"rgba(46,201,126,.8)",border:"1px solid rgba(46,201,126,.2)"}}>Negotiable</span>}
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
@@ -1113,25 +1496,19 @@ const DetailsModal = ({ item, onClose, saved, onSave }) => {
               </span>
             </div>
           </div>
-
-          {/* Condition score */}
           <div style={{marginBottom:18}}>
             <div style={{fontSize:10,color:"rgba(255,255,255,.3)",textTransform:"uppercase",letterSpacing:".1em",marginBottom:7}}>Condition Score</div>
             <CondBar score={item.conditionScore} color={ci.color} />
           </div>
-
-          {/* Description */}
           <p className="mdsc">{item.description}</p>
-
-          {/* Detail grid */}
           <div className="mgrid">
             {[
-              {label:"Category",    val:item.category},
-              {label:"Brand / Model", val:`${item.brand} — ${item.model}`},
-              {label:"Location",    val:item.seller.location},
-              {label:"Shipping",    val:item.shipping},
-              {label:"Payment",     val:item.payment.join(", ")},
-              {label:"Trade Offer", val:item.tradeOffer?"✅ Open to trade":"Not accepting"},
+              {label:"Category",      val:item.category},
+              {label:"Brand / Model", val:`${item.brand} - ${item.model}`},
+              {label:"Location",      val:item.seller.location},
+              {label:"Shipping",      val:item.shipping},
+              {label:"Payment",       val:item.payment.join(", ")},
+              {label:"Trade Offer",   val:item.tradeOffer?" Open to trade":"Not accepting"},
             ].map(d=>(
               <div key={d.label} className="mch">
                 <div className="mchl">{d.label}</div>
@@ -1139,23 +1516,16 @@ const DetailsModal = ({ item, onClose, saved, onSave }) => {
               </div>
             ))}
           </div>
-
-          {/* Tags */}
           <div className="mtags">{item.tags.map(t=><span key={t} className="mtag">#{t}</span>)}</div>
-
-          {/* Seller strip */}
           <div className="sp">
             <div className="sav" style={{background:`linear-gradient(135deg,${item.accentColor},${item.accentColor}88)`}}>{item.seller.avatar}</div>
             <div className="sinfo">
-              <div className="sname">
-                {item.seller.name}
-                {item.seller.verified && <span style={{fontSize:13}}>✅</span>}
-              </div>
-              <div className="smeta">📍 {item.seller.location} · ⚡ Responds {item.seller.responseTime}</div>
+              <div className="sname">{item.seller.name}{item.seller.verified && <span style={{fontSize:13}}></span>}</div>
+              <div className="smeta"> {item.seller.location}  -   Responds {item.seller.responseTime}</div>
             </div>
             <div className="sstats">
               <div style={{textAlign:"center"}}>
-                <div className="sstatv" style={{color:"#F59E0B"}}>{"★".repeat(Math.round(item.seller.rating))}</div>
+                <div className="sstatv" style={{color:"#F59E0B"}}>{"".repeat(Math.round(item.seller.rating))}</div>
                 <div className="sstatl">{item.seller.rating} Rating</div>
               </div>
               <div style={{textAlign:"center"}}>
@@ -1164,11 +1534,9 @@ const DetailsModal = ({ item, onClose, saved, onSave }) => {
               </div>
             </div>
           </div>
-
-          {/* Save only */}
           <div style={{marginTop:4,display:"flex",justifyContent:"flex-end"}}>
             <button className="mbg" onClick={()=>onSave(item.id)} style={{borderColor:saved?"rgba(239,68,68,.4)":"",color:saved?"#EF4444":""}}>
-              {saved?"❤️ Saved":"🤍 Save Item"}
+              {saved?" Saved":" Save Item"}
             </button>
           </div>
         </div>
@@ -1177,12 +1545,12 @@ const DetailsModal = ({ item, onClose, saved, onSave }) => {
   );
 };
 
-/* ══════════════════════════════════════════════
+/* 
    CONTACT MODAL
-══════════════════════════════════════════════ */
+ */
 const ContactModal = ({ item, onClose }) => {
   const [tab, setTab] = useState("phone");
-  const [msgText, setMsgText]   = useState("");
+  const [msgText,   setMsgText]   = useState("");
   const [emailSubj, setEmailSubj] = useState(`Re: ${item.title}`);
   const [emailBody, setEmailBody] = useState("");
   const sellerPhone = "+880 1711-234567";
@@ -1199,15 +1567,13 @@ const ContactModal = ({ item, onClose }) => {
     setEmailBody("");
   };
   const callSeller = () => {
-    pushNotification("phone","Call Initiated",`Connecting you to ${item.seller.name} at ${sellerPhone}…`);
+    pushNotification("phone","Call Initiated",`Connecting you to ${item.seller.name} at ${sellerPhone}...`);
   };
 
   return (
     <div className="mo" onClick={onClose}>
       <div className="mb" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
-        <button className="mc" onClick={onClose}>✕</button>
-
-        {/* Compact seller header */}
+        <button className="mc" onClick={onClose}></button>
         <div style={{padding:"28px 28px 20px",borderBottom:"1px solid var(--b1)"}}>
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
             <div style={{width:54,height:54,borderRadius:"50%",background:`linear-gradient(135deg,${item.accentColor},${item.accentColor}88)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>
@@ -1215,19 +1581,15 @@ const ContactModal = ({ item, onClose }) => {
             </div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:16,fontWeight:700,color:"var(--t)",display:"flex",alignItems:"center",gap:6}}>
-                {item.seller.name}
-                {item.seller.verified && <span style={{fontSize:13}}>✅</span>}
+                {item.seller.name}{item.seller.verified && <span style={{fontSize:13}}></span>}
               </div>
-              <div style={{fontSize:12,color:"var(--tm)",marginTop:2}}>
-                📍 {item.seller.location} · ⚡ Responds {item.seller.responseTime}
-              </div>
+              <div style={{fontSize:12,color:"var(--tm)",marginTop:2}}> {item.seller.location}  -   Responds {item.seller.responseTime}</div>
             </div>
             <div style={{textAlign:"center",flexShrink:0}}>
-              <div style={{fontSize:16,color:"#F59E0B",fontWeight:700}}>★ {item.seller.rating}</div>
+              <div style={{fontSize:16,color:"#F59E0B",fontWeight:700}}> {item.seller.rating}</div>
               <div style={{fontSize:10,color:"var(--td)"}}>{item.seller.reviews} reviews</div>
             </div>
           </div>
-          {/* Item reference pill */}
           <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 13px",borderRadius:10,background:"rgba(255,255,255,.04)",border:"1px solid var(--b2)"}}>
             {item.image ? (
               <img src={item.image} alt={item.title} style={{width:38,height:38,objectFit:"cover",borderRadius:8,boxShadow:"0 2px 8px rgba(0,0,0,.10)"}} />
@@ -1236,75 +1598,53 @@ const ContactModal = ({ item, onClose }) => {
             )}
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,color:"var(--t)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.title}</div>
-              <div style={{fontSize:12,color:"var(--g)",fontWeight:700,fontFamily:"'Playfair Display',serif"}}>৳{fmt(item.price)}</div>
+              <div style={{fontSize:12,color:"var(--g)",fontWeight:700,fontFamily:"'Playfair Display',serif"}}>BDT {fmt(item.price)}</div>
             </div>
           </div>
         </div>
-
-        {/* Tab switcher */}
         <div style={{display:"flex",borderBottom:"1px solid var(--b1)"}}>
           {[
-            {key:"phone",   icon:"📞", label:"Call"},
-            {key:"message", icon:"💬", label:"Message"},
-            {key:"email",   icon:"✉️", label:"Email"},
+            {key:"phone",   icon:"", label:"Call"},
+            {key:"message", icon:"", label:"Message"},
+            {key:"email",   icon:"", label:"Email"},
           ].map(t=>(
             <button key={t.key} className={`cp-tab${tab===t.key?" act":""}`} onClick={()=>setTab(t.key)}>
               {t.icon} {t.label}
             </button>
           ))}
         </div>
-
-        {/* Tab content */}
         <div className="cp-body" style={{padding:"20px 28px 28px"}}>
           {tab==="phone" && (
             <div style={{display:"flex",flexDirection:"column",gap:14}}>
               <div style={{fontSize:13,color:"var(--tm)"}}>Call {item.seller.name.split(" ")[0]} directly to discuss the item and arrange a meeting.</div>
               <div className="cp-phone-info">
-                <div style={{fontSize:28}}>📞</div>
+                <div style={{fontSize:28}}></div>
                 <div style={{flex:1}}>
                   <div className="cp-phone-num">{sellerPhone}</div>
-                  <div className="cp-phone-sub">Available · Responds {item.seller.responseTime}</div>
+                  <div className="cp-phone-sub">Available  -  Responds {item.seller.responseTime}</div>
                 </div>
                 <button className="cp-call-btn" onClick={callSeller}>Call Now</button>
               </div>
               <div style={{fontSize:11.5,color:"var(--td)",textAlign:"center",padding:"8px 0"}}>
-                💡 Tip: Mention the item title when you call for faster service
+                 Tip: Mention the item title when you call for faster service
               </div>
             </div>
           )}
-
           {tab==="message" && (
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              <div style={{fontSize:13,color:"var(--tm)"}}>
-                Send a message to <strong style={{color:"var(--t)"}}>{item.seller.name}</strong> — they'll reply {item.seller.responseTime}.
-              </div>
-              <textarea
-                className="cp-field"
-                rows={5}
-                placeholder={`Hi ${item.seller.name.split(" ")[0]}, I'm interested in "${item.title}". Is it still available?`}
-                value={msgText}
-                onChange={e=>setMsgText(e.target.value)}
-              />
+              <div style={{fontSize:13,color:"var(--tm)"}}>Send a message to <strong style={{color:"var(--t)"}}>{item.seller.name}</strong> - they'll reply {item.seller.responseTime}.</div>
+              <textarea className="cp-field" rows={5} placeholder={`Hi ${item.seller.name.split(" ")[0]}, I'm interested in "${item.title}". Is it still available?`} value={msgText} onChange={e=>setMsgText(e.target.value)}/>
               <button className="cp-send msg" onClick={sendMessage} style={{opacity:msgText.trim()?1:0.5}}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{width:14,height:14}}><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 Send Message
               </button>
             </div>
           )}
-
           {tab==="email" && (
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              <div style={{fontSize:11.5,color:"var(--td)"}}>
-                To: <span style={{color:"var(--tm)"}}>{sellerEmail}</span>
-              </div>
+              <div style={{fontSize:11.5,color:"var(--td)"}}>To: <span style={{color:"var(--tm)"}}>{sellerEmail}</span></div>
               <input className="cp-field" placeholder="Subject" value={emailSubj} onChange={e=>setEmailSubj(e.target.value)}/>
-              <textarea
-                className="cp-field"
-                rows={5}
-                placeholder="Write your message here…"
-                value={emailBody}
-                onChange={e=>setEmailBody(e.target.value)}
-              />
+              <textarea className="cp-field" rows={5} placeholder="Write your message here..." value={emailBody} onChange={e=>setEmailBody(e.target.value)}/>
               <button className="cp-send eml" onClick={sendEmail} style={{opacity:emailBody.trim()?1:0.5}}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{width:14,height:14}}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 Send Email
@@ -1317,11 +1657,11 @@ const ContactModal = ({ item, onClose }) => {
   );
 };
 
-/* ══════════════════════════════════════════════
+/* 
    MAIN PAGE
-══════════════════════════════════════════════ */
+ */
 export default function MarketplacePage() {
-  const { token } = useAuth();
+  const { token, user: authUser, logout } = useAuth();
   const [category,     setCategory]     = useState("All");
   const [conditions,   setConditions]   = useState([]);
   const [maxPrice,     setMaxPrice]     = useState(100000);
@@ -1341,6 +1681,8 @@ export default function MarketplacePage() {
   const [collapsed,    setCollapsed]    = useState({});
   const [filterOpen,   setFilterOpen]   = useState(true);
   const [authGate,     setAuthGate]     = useState(false);
+  const [buyerAuthGate,setBuyerAuthGate]= useState(false);
+  const [tradeTarget,  setTradeTarget]  = useState(null);   //  NEW
   const [listings,     setListings]     = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState("");
@@ -1351,6 +1693,14 @@ export default function MarketplacePage() {
     if (token) { navigate("/post-item"); }
     else       { setAuthGate(true);      }
   };
+  const handleBuyNow = (item) => {
+    if (!token || (authUser && authUser.role === "seller")) { setBuyerAuthGate(true); return; }
+    navigate("/checkout", { state: { item } });
+  };
+  const handleOfferTrade = (item) => {
+    if (!token || (authUser && authUser.role === "seller")) { setBuyerAuthGate(true); return; }
+    setTradeTarget(item);
+  };
   const toggleSection = (key) => setCollapsed(p => ({ ...p, [key]: !p[key] }));
   const sortRef = useRef(null);
 
@@ -1358,19 +1708,19 @@ export default function MarketplacePage() {
 
   const toggleCond = (l) => setConditions(p => p.includes(l) ? p.filter(c=>c!==l) : [...p,l]);
   const toggleSave = async (id) => {
-    if (!token) {
-      setAuthGate(true);
-      return;
-    }
-
+    if (!token) { setAuthGate(true); return; }
     try {
+      const nextSaved = toggleMockSavedListing(authUser, id);
+      setSaved(new Set(nextSaved));
+
+      /*
+      BACKEND CONNECTION (commented out for mock-data testing)
       const response = await fetch(`${API_BASE_URL}/api/listings/${id}/save`, {
         method: "POST",
         headers: { "x-auth-token": token },
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.msg || "Unable to update saved item.");
-
       setSaved(p => {
         const n = new Set(p);
         if (data.saved === true) n.add(id);
@@ -1378,6 +1728,7 @@ export default function MarketplacePage() {
         else n.has(id) ? n.delete(id) : n.add(id);
         return n;
       });
+      */
     } catch (err) {
       setError(err.message || "Unable to update saved item.");
     }
@@ -1386,51 +1737,50 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     let cancelled = false;
-
     const fetchListings = async () => {
-      setLoading(true);
-      setError("");
+      setLoading(true); setError("");
       try {
+        seedMockData();
+        const data = getMockListings();
+        if (!cancelled) setListings(data.map(mapListingToItem));
+
+        /*
+        BACKEND CONNECTION (commented out for mock-data testing)
         const response = await fetch(`${API_BASE_URL}/api/listings`);
         const data = await response.json().catch(() => []);
         if (!response.ok) throw new Error(data.msg || "Unable to load listings.");
         if (!cancelled) setListings(Array.isArray(data) ? data.map(mapListingToItem) : []);
+        */
       } catch (err) {
         if (!cancelled) setError(err.message || "Unable to load listings.");
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
-
     fetchListings();
     return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (!token) {
-      setSaved(new Set());
-      return;
-    }
-
+    if (!token) { setSaved(new Set()); return; }
     let cancelled = false;
     const fetchSaved = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/listings/saved`, {
-          headers: { "x-auth-token": token },
-        });
+        if (!cancelled) setSaved(new Set(getMockSavedListingIds(authUser)));
+
+        /*
+        BACKEND CONNECTION (commented out for mock-data testing)
+        const response = await fetch(`${API_BASE_URL}/api/listings/saved`, { headers: { "x-auth-token": token } });
         const data = await response.json().catch(() => []);
         if (!response.ok || !Array.isArray(data)) return;
         if (!cancelled) setSaved(new Set(data.map(listing => listing._id).filter(Boolean)));
-      } catch {
-        // Saved state is non-critical for browsing.
-      }
+        */
+      } catch { /* non-critical */ }
     };
-
     fetchSaved();
     return () => { cancelled = true; };
-  }, [token]);
+  }, [authUser, token]);
 
-  // Outside click for sort
   useEffect(() => {
     const h = e => { if (sortRef.current && !sortRef.current.contains(e.target)) setSortOpen(false); };
     document.addEventListener("mousedown", h);
@@ -1467,9 +1817,9 @@ export default function MarketplacePage() {
   const activeFilters = [
     category!=="All"       && {key:"cat",  label:category},
     ...conditions.map(c   => ({key:`c-${c}`,label:c})),
-    maxPrice<100000        && {key:"price", label:`≤ ৳${fmt(maxPrice)}`},
+    maxPrice<100000        && {key:"price", label:`<= BDT ${fmt(maxPrice)}`},
     location!=="All Areas" && {key:"loc",  label:location},
-    minRating>0            && {key:"rat",  label:`★ ${minRating}+`},
+    minRating>0            && {key:"rat",  label:` ${minRating}+`},
     onlyNeg                && {key:"neg",  label:"Negotiable"},
     onlyVerified           && {key:"ver",  label:"Verified"},
     onlyTrade              && {key:"tra",  label:"Trade"},
@@ -1489,10 +1839,6 @@ export default function MarketplacePage() {
   const sortLabel = SORT_OPTIONS.find(o=>o.value===sort)?.label;
   const hasFilters = activeFilters.length > 0;
   const openItem = (item, mode) => {
-    if (mode === "details") {
-      navigate(`/listings/${item.id}`);
-      return;
-    }
     setSelected({ item, mode });
   };
 
@@ -1508,33 +1854,48 @@ export default function MarketplacePage() {
         </a>
         <div className="nls">
           {[
-            {label:"Home",          href:"/"},
-            {label:"Marketplace",   href:"/marketplace"},
-            {label:"About",         href:"/about"},
+            {label:"Home",        href:"/"},
+            {label:"Marketplace", href:"/marketplace"},
+            {label:"About",       href:"/about"},
           ].map(({label,href})=>(
             <a key={label} href={href} className={`nla${label==="Marketplace"?" active":""}`}>{label}</a>
           ))}
         </div>
         <div className="nr">
-          <a href="/signin" className="nb nbg" style={{textDecoration:"none",display:"inline-flex",alignItems:"center"}}>Sign In</a>
-          <button className="nb nbp" onClick={openPostItem}>+ Post Item</button>
+          {token && authUser ? (
+            <button onClick={() => navigate("/profile")} style={{ width:36, height:36, borderRadius:"50%", background:"linear-gradient(135deg,#2ec97e,#1b7d52)", border:"2px solid rgba(46,201,126,0.5)", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", flexShrink:0, cursor:"pointer", fontSize:14, fontWeight:700, color:"#fff", padding:0, outline:"none" }} title={authUser.name || "My Profile"}>
+              {authUser.avatar ? <img src={authUser.avatar} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"50%"}} /> : (authUser.name?.[0] || "?").toUpperCase()}
+            </button>
+          ) : (
+            <a href="/signin" className="nb nbg" style={{textDecoration:"none",display:"inline-flex",alignItems:"center"}}>Sign In</a>
+          )}
+          {(!token || (authUser && authUser.role === "seller")) && (
+            <button className="nb nbp" onClick={openPostItem}>+ Post Item</button>
+          )}
           <button className="hbg" onClick={()=>setMobileMenu(!mobileMenu)}><span/><span/><span/></button>
         </div>
       </nav>
       <div className={`mmenu${mobileMenu?" open":""}`}>
         {[
-          {label:"Home",          href:"/"},
-          {label:"Marketplace",   href:"/marketplace"},
-          {label:"About",         href:"/about"},
+          {label:"Home",        href:"/"},
+          {label:"Marketplace", href:"/marketplace"},
+          {label:"About",       href:"/about"},
         ].map(({label,href})=><a key={label} href={href} className="mml">{label}</a>)}
-        <button className="nb nbp" style={{marginTop:16,width:"100%",borderRadius:12,padding:14}} onClick={()=>{openPostItem();setMobileMenu(false);}}>+ Post an Item</button>
+        {token && authUser ? (
+          <>
+            <a href="/profile" className="mml" style={{color:"#2ec97e"}}>My Profile</a>
+            <button onClick={()=>{logout();setMobileMenu(false);}} className="mml" style={{background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",color:"#ef4444",fontWeight:600,fontSize:14,padding:"12px 0",borderBottom:"1px solid var(--b1)"}}>Sign Out</button>
+          </>
+        ) : (
+          <a href="/signin" className="mml">Sign In</a>
+        )}
+        <button className="nb nbp" style={{marginTop:16,width:"100%",borderRadius:12,padding:14,display: (!token || (authUser && authUser.role === "seller")) ? "block" : "none"}} onClick={()=>{openPostItem();setMobileMenu(false);}}>+ Post an Item</button>
       </div>
 
-      {/* Sidebar overlay on mobile */}
       {sidebarOpen && <div className="sbo open" onClick={()=>setSidebarOpen(false)}/>}
 
       <div className="pw">
-        {/* ════ SIDEBAR ════ */}
+        {/*  SIDEBAR  */}
         <aside className={`sb${sidebarOpen?" open":""}${!filterOpen?" collapsed":""}`} style={{display:"flex",flexDirection:"column"}}>
           <div style={{flex:1,overflowY:"auto"}}>
             <div className="sbh">
@@ -1545,26 +1906,19 @@ export default function MarketplacePage() {
               </span>
               <button className={`sbc${hasFilters?" vis":""}`} onClick={reset}>Reset all</button>
             </div>
-
-            {/* Active chips summary */}
             {hasFilters && (
               <div className="sac">
                 {activeFilters.map(f=>(
-                  <span key={f.key} className="sfc">
-                    {f.label}
-                    <span className="sfx" onClick={()=>removeFilter(f.key)}>✕</span>
-                  </span>
+                  <span key={f.key} className="sfc">{f.label}<span className="sfx" onClick={()=>removeFilter(f.key)}></span></span>
                 ))}
               </div>
             )}
 
             {/* CATEGORIES */}
             <div className="sbs">
-              <div className="sbs-header" onClick={()=>toggleSection("cat")}> 
+              <div className="sbs-header" onClick={()=>toggleSection("cat")}>
                 <div className="sbl" style={{margin:0}}>Category</div>
-                <span className={`sbs-chevron${!collapsed.cat?" open":""}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg>
-                </span>
+                <span className={`sbs-chevron${!collapsed.cat?" open":""}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg></span>
               </div>
               <div className="sbs-body" style={{maxHeight: collapsed.cat ? 0 : 320}} aria-hidden={!!collapsed.cat}>
                 <div className="cl" style={{marginTop:13}}>
@@ -1581,23 +1935,15 @@ export default function MarketplacePage() {
 
             {/* PRICE RANGE */}
             <div className="sbs">
-              <div className="sbs-header" onClick={()=>toggleSection("price")}> 
+              <div className="sbs-header" onClick={()=>toggleSection("price")}>
                 <div className="sbl" style={{margin:0}}>Price Range</div>
-                <span className={`sbs-chevron${!collapsed.price?" open":""}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg>
-                </span>
+                <span className={`sbs-chevron${!collapsed.price?" open":""}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg></span>
               </div>
               <div className="sbs-body" style={{maxHeight: collapsed.price ? 0 : 200}} aria-hidden={!!collapsed.price}>
                 <div style={{marginTop:13}}>
                   <div className="pd">
-                    <div>
-                      <div className="pl">Up to</div>
-                      <div className="pv">৳{fmt(maxPrice)}</div>
-                    </div>
-                    <div style={{textAlign:"right"}}>
-                      <div className="pl">Max</div>
-                      <div style={{fontSize:13,color:"rgba(255,255,255,.3)"}}>৳1,00,000</div>
-                    </div>
+                    <div><div className="pl">Up to</div><div className="pv">BDT {fmt(maxPrice)}</div></div>
+                    <div style={{textAlign:"right"}}><div className="pl">Max</div><div style={{fontSize:13,color:"rgba(255,255,255,.3)"}}>BDT 1,00,000</div></div>
                   </div>
                   <div className="rw">
                     <div className="rt"><div className="rf" style={{width:`${(maxPrice/100000)*100}%`}}/></div>
@@ -1614,11 +1960,9 @@ export default function MarketplacePage() {
 
             {/* CONDITION */}
             <div className="sbs">
-              <div className="sbs-header" onClick={()=>toggleSection("cond")}> 
+              <div className="sbs-header" onClick={()=>toggleSection("cond")}>
                 <div className="sbl" style={{margin:0}}>Condition</div>
-                <span className={`sbs-chevron${!collapsed.cond?" open":""}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg>
-                </span>
+                <span className={`sbs-chevron${!collapsed.cond?" open":""}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg></span>
               </div>
               <div className="sbs-body" style={{maxHeight: collapsed.cond ? 0 : 140}} aria-hidden={!!collapsed.cond}>
                 <div className="cg" style={{marginTop:13}}>
@@ -1627,7 +1971,7 @@ export default function MarketplacePage() {
                     return (
                       <button key={c.label} className={`cp${isA?" act":""}`} onClick={()=>toggleCond(c.label)}
                         style={{borderColor:isA?c.color:"var(--b2)",background:isA?c.bg:"rgba(255,255,255,.04)",color:isA?c.color:"var(--tm)",boxShadow:isA?`0 4px 12px ${c.color}33`:"none"}}>
-                        {isA && <span style={{fontSize:10}}>✓</span>} {c.label}
+                        {isA && <span style={{fontSize:10}}></span>} {c.label}
                       </button>
                     );
                   })}
@@ -1637,11 +1981,9 @@ export default function MarketplacePage() {
 
             {/* LOCATION */}
             <div className="sbs">
-              <div className="sbs-header" onClick={()=>toggleSection("loc")}> 
+              <div className="sbs-header" onClick={()=>toggleSection("loc")}>
                 <div className="sbl" style={{margin:0}}>Location</div>
-                <span className={`sbs-chevron${!collapsed.loc?" open":""}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg>
-                </span>
+                <span className={`sbs-chevron${!collapsed.loc?" open":""}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg></span>
               </div>
               <div className="sbs-body" style={{maxHeight: collapsed.loc ? 0 : 70}} aria-hidden={!!collapsed.loc}>
                 <div style={{marginTop:13}}>
@@ -1654,11 +1996,9 @@ export default function MarketplacePage() {
 
             {/* MINIMUM RATING */}
             <div className="sbs">
-              <div className="sbs-header" onClick={()=>toggleSection("rat")}> 
+              <div className="sbs-header" onClick={()=>toggleSection("rat")}>
                 <div className="sbl" style={{margin:0}}>Min. Seller Rating</div>
-                <span className={`sbs-chevron${!collapsed.rat?" open":""}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg>
-                </span>
+                <span className={`sbs-chevron${!collapsed.rat?" open":""}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg></span>
               </div>
               <div className="sbs-body" style={{maxHeight: collapsed.rat ? 0 : 220}} aria-hidden={!!collapsed.rat}>
                 <div style={{marginTop:6}}>
@@ -1666,7 +2006,7 @@ export default function MarketplacePage() {
                     <label key={r} className="rr" onClick={()=>setMinRating(r)}>
                       {r===0
                         ? <span style={{fontSize:12,color:"var(--td)"}}>Any rating</span>
-                        : <div style={{display:"flex",gap:2}}>{[1,2,3,4,5].map(i=><span key={i} className={`rstar${i<=r?" on":" off"}`}>★</span>)}</div>
+                        : <div style={{display:"flex",gap:2}}>{[1,2,3,4,5].map(i=><span key={i} className={`rstar${i<=r?" on":" off"}`}></span>)}</div>
                       }
                       {r>0&&<span className="rlabel">{r}+ only</span>}
                       <input type="radio" className="rrad" checked={minRating===r} readOnly/>
@@ -1678,18 +2018,16 @@ export default function MarketplacePage() {
 
             {/* SMART TOGGLES */}
             <div className="sbs">
-              <div className="sbs-header" onClick={()=>toggleSection("smart")}> 
+              <div className="sbs-header" onClick={()=>toggleSection("smart")}>
                 <div className="sbl" style={{margin:0}}>Smart Filters</div>
-                <span className={`sbs-chevron${!collapsed.smart?" open":""}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg>
-                </span>
+                <span className={`sbs-chevron${!collapsed.smart?" open":""}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="13" height="13"><path d="M6 9l6 6 6-6"/></svg></span>
               </div>
               <div className="sbs-body" style={{maxHeight: collapsed.smart ? 0 : 160}} aria-hidden={!!collapsed.smart}>
                 <div style={{marginTop:4}}>
                   {[
-                    {label:"💰 Negotiable only",   v:onlyNeg,      s:setOnlyNeg},
-                    {label:"✅ Verified sellers",  v:onlyVerified,  s:setOnlyVerified},
-                    {label:"🔄 Open to trade",     v:onlyTrade,     s:setOnlyTrade},
+                    {label:" Negotiable only",  v:onlyNeg,      s:setOnlyNeg},
+                    {label:" Verified sellers", v:onlyVerified, s:setOnlyVerified},
+                    {label:" Open to trade",    v:onlyTrade,    s:setOnlyTrade},
                   ].map(t=>(
                     <div key={t.label} className="tr">
                       <span className="trl">{t.label}</span>
@@ -1705,12 +2043,12 @@ export default function MarketplacePage() {
           </div>
           <div style={{position:"sticky",bottom:0,background:"var(--d3)",zIndex:10,paddingTop:10}}>
             <button className="sba" onClick={()=>setSidebarOpen(false)}>
-              ✦ Apply Filters{hasFilters?` (${activeFilters.length})`:""}
+               Apply Filters{hasFilters?` (${activeFilters.length})`:""}
             </button>
           </div>
         </aside>
 
-        {/* ════ MAIN ════ */}
+        {/*  MAIN  */}
         <main className="main">
           {/* TOPBAR */}
           <div className="tb">
@@ -1718,25 +2056,20 @@ export default function MarketplacePage() {
               <svg className="sic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:16,height:16}}>
                 <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
               </svg>
-              <input className="si" placeholder="Search items, brands, categories…" value={search} onChange={e=>setSearch(e.target.value)}/>
-              {search && <button className="scl" onClick={()=>setSearch("")}>✕</button>}
+              <input className="si" placeholder="Search items, brands, categories..." value={search} onChange={e=>setSearch(e.target.value)}/>
+              {search && <button className="scl" onClick={()=>setSearch("")}></button>}
             </div>
             <div className="tc">
-              {/* Desktop filter toggle */}
               <button className={`dftb${filterOpen?" active":""}`} onClick={()=>setFilterOpen(v=>!v)}>
                 <svg className="dftb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:14,height:14}}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
                 Filters
                 {hasFilters && <span style={{background:"var(--g)",color:"#fff",borderRadius:"50%",width:17,height:17,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,flexShrink:0}}>{activeFilters.length}</span>}
               </button>
-
-              {/* Mobile filter */}
               <button className="fmb" onClick={()=>setSidebarOpen(true)}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:14,height:14}}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
                 Filters
                 {hasFilters&&<span style={{background:"var(--g)",color:"#fff",borderRadius:"50%",width:17,height:17,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{activeFilters.length}</span>}
               </button>
-
-              {/* Sort */}
               <div className="srtw" ref={sortRef}>
                 <button className={`srtb${sortOpen?" open":""}`} onClick={()=>setSortOpen(!sortOpen)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:13,height:13}}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
@@ -1749,14 +2082,12 @@ export default function MarketplacePage() {
                       <button key={o.value} className={`srto${sort===o.value?" act":""}`} onClick={()=>{setSort(o.value);setSortOpen(false);}}>
                         <span className="srti">{o.icon}</span>
                         {o.label}
-                        {sort===o.value&&<span style={{marginLeft:"auto",fontSize:13}}>✓</span>}
+                        {sort===o.value&&<span style={{marginLeft:"auto",fontSize:13}}></span>}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* View toggle */}
               <div className="vt">
                 <button className={`vb${view==="g3"?" act":""}`} onClick={()=>setView("g3")} title="Grid">
                   <svg viewBox="0 0 24 24" fill="currentColor" style={{width:14,height:14}}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -1777,10 +2108,7 @@ export default function MarketplacePage() {
             {(hasFilters||search)&&(
               <div className="ach">
                 {activeFilters.map(f=>(
-                  <span key={f.key} className="ac">
-                    {f.label}
-                    <span className="ax" onClick={()=>removeFilter(f.key)}>✕</span>
-                  </span>
+                  <span key={f.key} className="ac">{f.label}<span className="ax" onClick={()=>removeFilter(f.key)}></span></span>
                 ))}
                 <button className="cab" onClick={reset}>Clear all</button>
               </div>
@@ -1798,19 +2126,19 @@ export default function MarketplacePage() {
                   onOpen={openItem}
                   saved={saved.has(item.id)}
                   onSave={toggleSave}
+                  onBuyNow={handleBuyNow}
+                  onOfferTrade={handleOfferTrade}
                 />
               ))}
             </div>
           ) : (
             <div className="es">
-              <div className="ei">🔍</div>
+              <div className="ei"></div>
               <h3 className="et">{loading ? "Loading listings..." : error ? "Unable to load listings" : "No items match"}</h3>
               <p className="esub">{loading ? "Fetching the latest marketplace listings." : error || `Try adjusting your filters or search. ${listings.length} items are available.`}</p>
               <button className="eb" onClick={reset}>Clear all filters</button>
             </div>
           )}
-
-          {/* FOOTER */}
         </main>
       </div>
 
@@ -1818,24 +2146,22 @@ export default function MarketplacePage() {
 
       {/* DETAILS MODAL */}
       {selected && selected.mode === "details" && (
-        <DetailsModal
-          item={selected.item}
-          onClose={()=>setSelected(null)}
-          saved={saved.has(selected.item.id)}
-          onSave={toggleSave}
-        />
+        <DetailsModal item={selected.item} onClose={()=>setSelected(null)} saved={saved.has(selected.item.id)} onSave={toggleSave}/>
       )}
 
       {/* CONTACT MODAL */}
       {selected && selected.mode === "contact" && (
-        <ContactModal
-          item={selected.item}
-          onClose={()=>setSelected(null)}
-        />
+        <ContactModal item={selected.item} onClose={()=>setSelected(null)}/>
       )}
 
-      {/* POST ITEM MODAL */}
-      {authGate  && <AuthGateModal  onClose={()=>setAuthGate(false)}/>}
+      {/* OFFER TRADE MODAL */}
+      {tradeTarget && (
+        <OfferTradeModal item={tradeTarget} onClose={()=>setTradeTarget(null)}/>
+      )}
+
+      {/* AUTH GATES */}
+      {authGate      && <AuthGateModal      onClose={()=>setAuthGate(false)}/>}
+      {buyerAuthGate && <BuyerAuthGateModal onClose={()=>setBuyerAuthGate(false)} isSeller={!!(token && authUser && authUser.role === "seller")}/>}
 
       {/* NOTIFICATION TOASTS */}
       <NotificationToasts/>

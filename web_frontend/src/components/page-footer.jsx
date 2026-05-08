@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-/* ─── Footer Modal Styles (self-contained) ─── */
+/*  Footer Modal Styles (self-contained)  */
 const FooterStyles = () => (
   <style>{`
     @keyframes pb-modalIn    { from{opacity:0;transform:translateY(24px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
@@ -75,7 +75,7 @@ const FooterStyles = () => (
   `}</style>
 );
 
-/* ─── Footer Modal ─── */
+/*  Footer Modal  */
 const FooterModal = ({ type, onClose }) => {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [sent, setSent] = useState(false);
@@ -89,9 +89,9 @@ const FooterModal = ({ type, onClose }) => {
 
   const CONTENT = {
     Privacy: {
-      emoji: "🔐", label: "Privacy Policy", updated: "Last updated: May 2026",
+      emoji: "", label: "Privacy Policy", updated: "Last updated: May 2026",
       sections: [
-        { title: "Information We Collect", body: "We collect information you provide directly — such as your name, email address, phone number, and profile details when you register. We also collect information about how you use our platform, including listings you view, items you save, and messages you send through our in-app system." },
+        { title: "Information We Collect", body: "We collect information you provide directly - such as your name, email address, phone number, and profile details when you register. We also collect information about how you use our platform, including listings you view, items you save, and messages you send through our in-app system." },
         { title: "How We Use Your Information", items: ["To create and manage your account", "To connect buyers and sellers safely", "To send important service notifications", "To improve platform features and user experience", "To detect and prevent fraud or misuse"] },
         { title: "Information Sharing", body: "We do not sell your personal data to third parties. Your contact information is only shared with other users when you choose to initiate a trade or exchange. We may share anonymised, aggregated data for analytics purposes." },
         { title: "Data Security", body: "All data is encrypted in transit using TLS. Passwords are hashed and never stored in plain text. We conduct regular security audits and follow industry best practices to keep your information safe." },
@@ -100,7 +100,7 @@ const FooterModal = ({ type, onClose }) => {
       ],
     },
     Terms: {
-      emoji: "📋", label: "Terms of Service", updated: "Last updated: January 2026",
+      emoji: "", label: "Terms of Service", updated: "Last updated: January 2026",
       sections: [
         { title: "Acceptance of Terms", body: "By accessing or using Proti-Binimoy, you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree, please do not use the platform." },
         { title: "Eligibility", body: "You must be at least 16 years old to use Proti-Binimoy. By creating an account, you confirm that you are of eligible age and that the information you provide is accurate and truthful." },
@@ -122,7 +122,7 @@ const FooterModal = ({ type, onClose }) => {
         <div className="pb-modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,rgba(46,201,126,0.15),rgba(27,125,82,0.25))", border: "1px solid rgba(46,201,126,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
-              {type === "Privacy" ? "🔐" : type === "Terms" ? "📋" : "✉️"}
+              {type === "Privacy" ? "" : type === "Terms" ? "" : ""}
             </div>
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, color: "#1b7d52", letterSpacing: "0.08em", textTransform: "uppercase" }}>Proti-Binimoy</p>
@@ -131,7 +131,7 @@ const FooterModal = ({ type, onClose }) => {
               </h2>
             </div>
           </div>
-          <button className="pb-modal-close" onClick={onClose}>✕</button>
+          <button className="pb-modal-close" onClick={onClose}></button>
         </div>
 
         {/* Body */}
@@ -158,15 +158,15 @@ const FooterModal = ({ type, onClose }) => {
           {type === "Contact" && (
             sent ? (
               <div className="pb-contact-success">
-                <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                <div style={{ fontSize: 48, marginBottom: 16 }}></div>
                 <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 700, color: "#0d1f16", marginBottom: 8 }}>Message Sent!</h3>
-                <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.7 }}>Thanks for reaching out, <strong>{form.name}</strong>. Our team will get back to you at <strong>{form.email}</strong> within 24–48 hours.</p>
+                <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.7 }}>Thanks for reaching out, <strong>{form.name}</strong>. Our team will get back to you at <strong>{form.email}</strong> within 24-48 hours.</p>
               </div>
             ) : (
               <>
                 <div style={{ marginBottom: 24, padding: "16px 18px", borderRadius: 14, background: "rgba(46,201,126,0.07)", border: "1px solid rgba(46,201,126,0.2)" }}>
                   <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.7 }}>
-                    Have a question, feedback, or need help with a trade? We're here for you. Fill out the form below and our team will respond within <strong>24–48 hours</strong>.
+                    Have a question, feedback, or need help with a trade? We're here for you. Fill out the form below and our team will respond within <strong>24-48 hours</strong>.
                   </p>
                 </div>
 
@@ -184,7 +184,7 @@ const FooterModal = ({ type, onClose }) => {
                 <div style={{ marginBottom: 14 }}>
                   <label className="pb-contact-label">Subject</label>
                   <select className="pb-contact-input" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} style={{ cursor: "pointer" }}>
-                    <option value="">Select a topic…</option>
+                    <option value="">Select a topic...</option>
                     <option>General Enquiry</option>
                     <option>Report a Problem</option>
                     <option>Account & Security</option>
@@ -196,18 +196,18 @@ const FooterModal = ({ type, onClose }) => {
 
                 <div style={{ marginBottom: 20 }}>
                   <label className="pb-contact-label">Message</label>
-                  <textarea className="pb-contact-input" rows={5} placeholder="Tell us how we can help…" value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} style={{ resize: "vertical", minHeight: 110 }} />
+                  <textarea className="pb-contact-input" rows={5} placeholder="Tell us how we can help..." value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} style={{ resize: "vertical", minHeight: 110 }} />
                 </div>
 
                 <button className="pb-contact-submit" onClick={handleSubmit} disabled={sending || !form.name || !form.email || !form.message}>
-                  {sending ? "Sending…" : "Send Message →"}
+                  {sending ? "Sending..." : "Send Message ->"}
                 </button>
 
                 <div style={{ marginTop: 20, display: "flex", gap: 20, flexWrap: "wrap" }}>
                   {[
-                    { icon: "📧", label: "Email", val: "hello@protibi.com" },
-                    { icon: "📍", label: "Location", val: "Dhanmondi, Dhaka" },
-                    { icon: "⏱️", label: "Response", val: "Within 48 hours" },
+                    { icon: "", label: "Email", val: "hello@protibi.com" },
+                    { icon: "", label: "Location", val: "Dhanmondi, Dhaka" },
+                    { icon: "", label: "Response", val: "Within 48 hours" },
                   ].map(({ icon, label, val }) => (
                     <div key={label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 16 }}>{icon}</span>
@@ -227,7 +227,7 @@ const FooterModal = ({ type, onClose }) => {
   );
 };
 
-/* ─── PageFooter — drop this into any page ─── */
+/*  PageFooter - drop this into any page  */
 const PageFooter = () => {
   const [modal, setModal] = useState(null); // "Privacy" | "Terms" | "Contact" | null
 
@@ -236,7 +236,7 @@ const PageFooter = () => {
       <FooterStyles />
       <footer style={{ background: "#08231a", padding: "40px 48px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="pb-footer-inner">
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.32)", letterSpacing: "0.04em" }}>© 2026 Proti-Binimoy. All rights reserved.</p>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.32)", letterSpacing: "0.04em" }}> 2026 Proti-Binimoy. All rights reserved.</p>
           <div style={{ display: "flex", gap: 28 }}>
             {["Privacy", "Terms", "Contact"].map((l) => (
               <button

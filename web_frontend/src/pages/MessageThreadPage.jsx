@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { API_BASE_URL } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -71,7 +71,6 @@ const GlobalStyles = () => (
 const MessageThreadPage = () => {
   const { offerId } = useParams();
   const { token, user } = useAuth();
-  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [offer, setOffer] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -240,7 +239,7 @@ const MessageThreadPage = () => {
               <div className="ms-fade ms-d1" style={{ marginBottom: 12, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: 20, padding: 6 }}>
                 <div style={{ background: "#fff", borderRadius: 14, padding: 14, color: "#111827" }}>
                   <Link to="/offers" style={{ textDecoration: "none", color: "#1b7d52", fontWeight: 600, fontSize: 13 }}>
-                    ← Back to Offers
+                     Back to Offers
                   </Link>
                   <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 30, lineHeight: 1.1, marginBottom: 6, marginTop: 8 }}>
                     {offer?.listing?.title || "Offer"}
@@ -251,7 +250,7 @@ const MessageThreadPage = () => {
                     </span>
                     {Number(offer?.cashAmount) > 0 && (
                       <span style={{ fontSize: 12, fontWeight: 600, borderRadius: 999, padding: "4px 10px", color: "#065f46", background: "rgba(16,185,129,0.16)" }}>
-                        ৳ {Number(offer.cashAmount).toLocaleString()}
+                        BDT  {Number(offer.cashAmount).toLocaleString()}
                       </span>
                     )}
                     {offer?.barterItem && (
@@ -303,7 +302,7 @@ const MessageThreadPage = () => {
                             }}
                           >
                             <p style={{ fontSize: 12, opacity: isMine ? 0.88 : 0.75, marginBottom: 4 }}>
-                              {message.sender?.name || (isMine ? "You" : "User")} · {formatDateTime(message.createdAt)}
+                              {message.sender?.name || (isMine ? "You" : "User")}  -  {formatDateTime(message.createdAt)}
                             </p>
                             <p style={{ fontSize: 14, lineHeight: 1.6 }}>{message.body}</p>
                           </div>

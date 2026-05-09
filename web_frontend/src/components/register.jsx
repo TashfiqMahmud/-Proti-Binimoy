@@ -3,38 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import websiteBackground from "../assets/web_bg.png";
 import { useAuth } from "../context/AuthContext";
 import PageFooter from "./page-footer";
-
-/* 
-   MOCK AUTH STORE  (localStorage-backed)
- */
-const MOCK_USERS_KEY    = "pb_mock_users";
-const MOCK_SESSION_KEY  = "pb_mock_session";
-
-const getMockUsers  = () => { try { return JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || "{}"); } catch { return {}; } };
-const saveMockUsers = (u) => localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(u));
-const saveSession   = (u) => localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(u));
-const createMockJwt = (user) => `mock_${btoa(JSON.stringify({ id: user.id, role: user.role }))}`;
-const persistAuth = (token, userRole) => {
-  localStorage.setItem("pb_jwt", token);
-  localStorage.setItem("pb_user_role", userRole);
-};
-
-/* Seed demo user */
-const seedDemoUsers = () => {
-  const users = getMockUsers();
-  if (!users["demo@protibi.com"]) {
-    users["demo@protibi.com"] = {
-      id: "u_demo", email: "demo@protibi.com", password: "Demo@1234",
-      name: "Rafiul Hasan", phone: "01712345678", role: "seller", joinDate: "2024-09-01",
-      location: "Dhanmondi, Dhaka", bio: "Passionate about sustainable commerce and zero-waste living.",
-      dob: "1990-05-15", idType: "nid", idValue: "1234567890", avatar: null,
-      rating: 4.8, reviews: 12, totalListings: 7, soldItems: 4, savedItems: 19,
-      verified: true, memberTier: "Gold",
-    };
-    saveMockUsers(users);
-  }
-};
-seedDemoUsers();
+import { API_BASE_URL } from "../config/api";
 
 /*  Global Styles  */
 const GlobalStyles = () => (
@@ -58,7 +27,6 @@ const GlobalStyles = () => (
     .rp-slide { opacity:0; animation:rp-slideIn 0.34s cubic-bezier(0.22,1,0.36,1) forwards; }
     .rp-pop   { animation:rp-pop 0.44s cubic-bezier(0.34,1.56,0.64,1) forwards; }
 
-    /* NAV */
     .rp-nav { position:fixed; top:0; left:0; right:0; z-index:200; display:flex; align-items:center; justify-content:space-between; padding:16px 48px; background:rgba(8,35,26,0.7); backdrop-filter:blur(20px); border-bottom:1px solid rgba(255,255,255,0.08); }
     .rp-nav-links { display:flex; align-items:center; gap:28px; }
     .rp-nav-link { text-decoration:none; color:rgba(255,255,255,0.7); font-size:14px; font-weight:500; transition:color 0.2s; }
@@ -72,21 +40,14 @@ const GlobalStyles = () => (
     .rp-mobile-link { text-decoration:none; color:rgba(255,255,255,0.8); font-size:17px; font-weight:500; padding:14px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
     .rp-mobile-cta  { text-decoration:none; display:block; text-align:center; margin-top:20px; background:linear-gradient(135deg,#2ec97e,#1b7d52); color:#fff; font-size:16px; font-weight:600; padding:15px; border-radius:14px; }
 
-    /* CARD */
     .rp-card-outer { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.13); border-radius:28px; padding:6px; box-shadow:0 32px 96px rgba(0,0,0,0.4); backdrop-filter:blur(24px); }
     .rp-card { background:#fff; border-radius:22px; padding:34px 38px; color:#0d1f16; }
 
-    /* DEMO HINT */
-    .rp-demo-box { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#15803d; line-height:1.6; }
-    .rp-demo-box strong { display:block; margin-bottom:3px; font-size:13px; }
-
-    /* PROGRESS */
     .rp-prog { display:flex; gap:5px; margin-bottom:22px; }
     .rp-prog-step { flex:1; }
     .rp-prog-bar { height:3px; border-radius:100px; margin-bottom:4px; transition:background 0.4s; }
     .rp-prog-lbl { font-size:9px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; transition:color 0.3s; }
 
-    /* INPUTS */
     .rp-label { display:block; font-size:12px; font-weight:700; color:#374151; margin-bottom:7px; letter-spacing:0.02em; text-transform:uppercase; }
     .rp-input { width:100%; border:1.5px solid #e5e7eb; background:#f9fafb; border-radius:13px; padding:13px 16px; font-size:15px; font-family:inherit; outline:none; transition:border-color 0.2s, box-shadow 0.2s, background 0.2s; color:#111827; }
     .rp-input::placeholder { color:#9ca3af; }
@@ -103,13 +64,11 @@ const GlobalStyles = () => (
     .rp-phl { padding-left:76px; }
     .rp-field-note { font-size:11px; color:#9ca3af; margin-top:5px; line-height:1.5; }
 
-    /* ID TABS */
     .rp-id-tabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
     .rp-id-tab { flex:1; min-width:80px; padding:9px 6px; border-radius:11px; border:1.5px solid #e5e7eb; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; background:#f9fafb; color:#6b7280; transition:all 0.22s; text-align:center; white-space:nowrap; }
     .rp-id-tab.active { border-color:#2ec97e; background:#f0fdf4; color:#1b7d52; box-shadow:0 0 0 3px rgba(46,201,126,0.1); }
     .rp-id-tab:hover:not(.active) { border-color:#9ca3af; color:#374151; }
 
-    /* PASSWORD STRENGTH */
     .rp-pw-bars { display:flex; gap:4px; margin-top:8px; }
     .rp-pw-bar  { flex:1; height:3px; border-radius:100px; transition:background 0.3s; }
     .rp-pw-hints { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
@@ -117,7 +76,6 @@ const GlobalStyles = () => (
     .rp-pw-hint.met   { background:#f0fdf4; color:#1b7d52; }
     .rp-pw-hint.unmet { background:#f3f4f6; color:#9ca3af; }
 
-    /* TERMS */
     .rp-terms-box { border:1.5px solid #e5e7eb; border-radius:13px; overflow:hidden; }
     .rp-terms-scroll { max-height:140px; overflow-y:auto; padding:14px 16px; font-size:12px; color:#374151; line-height:1.7; background:#f9fafb; scrollbar-width:thin; scrollbar-color:#d1d5db #f9fafb; }
     .rp-terms-scroll::-webkit-scrollbar { width:4px; }
@@ -127,24 +85,20 @@ const GlobalStyles = () => (
     .rp-checkbox.checked { background:linear-gradient(135deg,#2ec97e,#1b7d52); border-color:#1b7d52; }
     .rp-checkbox.checked svg { animation:rp-checkPop 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards; }
 
-    /* BUTTONS */
     .rp-btn-submit { width:100%; padding:14px; border-radius:13px; border:none; cursor:pointer; background:linear-gradient(135deg,#0d3322,#1b7d52); color:#fff; font-size:15px; font-weight:600; font-family:inherit; transition:opacity 0.2s, transform 0.15s, box-shadow 0.2s; box-shadow:0 5px 20px rgba(13,51,34,0.3); display:flex; align-items:center; justify-content:center; gap:8px; }
     .rp-btn-submit:hover:not(:disabled) { opacity:0.88; transform:translateY(-1px); box-shadow:0 9px 28px rgba(13,51,34,0.4); }
     .rp-btn-submit:disabled { opacity:0.52; cursor:not-allowed; transform:none; }
     .rp-btn-back { background:none; border:1.5px solid #e5e7eb; border-radius:100px; padding:9px 18px; font-family:inherit; font-size:12px; font-weight:600; color:#6b7280; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s; }
     .rp-btn-back:hover { border-color:#9ca3af; color:#374151; }
 
-    /* ALERTS */
     .rp-err     { background:#fef2f2; border:1px solid #fecaca; border-radius:11px; padding:10px 14px; font-size:12px; font-weight:500; color:#dc2626; display:flex; align-items:flex-start; gap:7px; }
     .rp-success { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:11px; padding:10px 14px; font-size:12px; font-weight:500; color:#15803d; display:flex; align-items:center; gap:7px; }
     .rp-info-box { background:rgba(46,201,126,0.07); border:1px solid rgba(46,201,126,0.2); border-radius:11px; padding:10px 14px; display:flex; gap:9px; align-items:flex-start; }
 
-    /* TRUST ROW */
     .rp-trust-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:24px; }
     .rp-trust-item { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); border-radius:14px; padding:11px 14px; backdrop-filter:blur(8px); flex:1; min-width:160px; }
     .rp-trust-icon { width:32px; height:32px; flex-shrink:0; border-radius:9px; background:linear-gradient(135deg,#2ec97e,#1b7d52); display:flex; align-items:center; justify-content:center; }
 
-    /* MISC */
     .rp-spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:rp-spin 0.7s linear infinite; }
     .rp-deco { position:absolute; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); }
 
@@ -161,7 +115,6 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-/*  Atoms  */
 const Sp = () => <div className="rp-spinner" />;
 const Arr = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width:15, height:15 }}>
@@ -199,7 +152,6 @@ const InfoSvg = () => (
   </svg>
 );
 
-/*  Progress Bar  */
 const PBar = ({ steps, cur }) => (
   <div className="rp-prog">
     {steps.map((s, i) => (
@@ -211,7 +163,6 @@ const PBar = ({ steps, cur }) => (
   </div>
 );
 
-/*  Password Strength  */
 const pwChecks = [
   { key:"len",   label:"8+ chars",  test: p => p.length >= 8 },
   { key:"upper", label:"Uppercase", test: p => /[A-Z]/.test(p) },
@@ -236,7 +187,7 @@ const PwStrength = ({ password }) => {
         <div className="rp-pw-hints">
           {pwChecks.map(c => (
             <span key={c.key} className={`rp-pw-hint ${c.test(password) ? "met" : "unmet"}`}>
-              {c.test(password) ? "" : " - "} {c.label}
+              {c.test(password) ? "✓" : "·"} {c.label}
             </span>
           ))}
         </div>
@@ -246,7 +197,6 @@ const PwStrength = ({ password }) => {
   );
 };
 
-/*  Terms Text  */
 const TermsText = () => (
   <>
     <p style={{ fontWeight:700, marginBottom:8, color:"#0d1f16" }}>Terms & Conditions - Proti-Binimoy</p>
@@ -262,9 +212,6 @@ const TermsText = () => (
   </>
 );
 
-/* 
-   MAIN COMPONENT
- */
 const RegisterPage = () => {
   const navigate = useNavigate();
   const { login, token, user: authUser, logout } = useAuth();
@@ -275,20 +222,20 @@ const RegisterPage = () => {
   const [success, setSuccess]   = useState("");
 
   // Step 0 - Role
-  const [role, setRole] = useState(""); // "buyer" | "seller"
+  const [role, setRole] = useState("");
 
   // Step 1 - Personal
   const [name, setName]   = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  // Step 1 - Identity
+  // Step 2 - Identity
   const [idType, setIdType]     = useState("nid");
   const [nid, setNid]           = useState("");
   const [dob, setDob]           = useState("");
   const [passport, setPassport] = useState("");
 
-  // Step 2 - Security
+  // Step 3 - Security
   const [password, setPassword]     = useState("");
   const [confirm, setConfirm]       = useState("");
   const [showPw, setShowPw]         = useState(false);
@@ -301,29 +248,22 @@ const RegisterPage = () => {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) setTermsRead(true);
   };
 
-  /* Step 0 - Personal (client-side validation only, no API) */
-  const handlePersonal = (e) => {
+  /* Step 1 - Personal: validate then move to next step */
+  const handlePersonal = async (e) => {
     e.preventDefault(); setError("");
     if (!name.trim() || name.trim().length < 3) { setError("Enter your full name (at least 3 characters)."); return; }
     const d = phone.replace(/\D/g,"");
     if (d.length < 11) { setError("Enter a valid 11-digit Bangladeshi phone number."); return; }
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) { setError("Enter a valid email address."); return; }
-
-    // Check if email already exists in mock store
-    const users = getMockUsers();
-    if (users[email.trim().toLowerCase()]) {
-      setError("This email is already registered. Please sign in instead.");
-      return;
-    }
     setStep(2);
   };
+
+  /* Step 2 - Identity: client-side validation only */
   const handleIdentity = (e) => {
     e.preventDefault(); setError("");
-    // DOB is always required
     if (!dob) { setError("Please select your date of birth."); return; }
     const age = (new Date() - new Date(dob)) / (1000*60*60*24*365.25);
     if (age < 18) { setError("You must be at least 18 years old to register."); return; }
-    // NID or Passport - one must be provided
     if (idType === "nid") {
       const n = nid.replace(/\D/g,"");
       if (![10,13,17].includes(n.length)) { setError("NID must be 10, 13, or 17 digits."); return; }
@@ -333,56 +273,57 @@ const RegisterPage = () => {
     setStep(3);
   };
 
-  /* Step 3 - Security: save to mock store */
-  const handleSecurity = (e) => {
+  /* Step 3 - Security: call real backend register API */
+  const handleSecurity = async (e) => {
     e.preventDefault(); setError("");
     if (getPwStrength(password) < 4) { setError("Password must have 8+ characters, an uppercase letter, a number, and a symbol."); return; }
-    if (password !== confirm)        { setError("Passwords do not match."); return; }
-    if (!termsAgree)                 { setError("You must agree to the Terms & Conditions to continue."); return; }
+    if (password !== confirm) { setError("Passwords do not match."); return; }
+    if (!termsAgree) { setError("You must agree to the Terms & Conditions to continue."); return; }
 
     setLoading(true);
-    setTimeout(() => {
-      const users   = getMockUsers();
-      const emailKey = email.trim().toLowerCase();
+    try {
+      // Register
+      const registerRes = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          phone: phone.replace(/\D/g,""),
+          nid: idType === "nid" ? nid.replace(/\D/g,"") : undefined,
+          dateOfBirth: dob || undefined,
+          passportNumber: idType === "passport" ? passport.trim() : undefined,
+        }),
+      });
+      const registerData = await registerRes.json();
+      if (!registerRes.ok) {
+        setError(registerData.msg || "Registration failed. Please try again.");
+        return;
+      }
 
-      const identityValue =
-        idType === "nid" ? nid.replace(/\D/g,"") : passport.trim();
-
-      const newUser = {
-        id: `u_${Date.now()}`,
-        email: emailKey,
-        password,
-        name: name.trim(),
-        phone: phone.replace(/\D/g,""),
-        role,
-        joinDate: new Date().toISOString().split("T")[0],
-        location: "",
-        bio: "",
-        dob,
-        idType,
-        idValue: identityValue,
-        avatar: null,
-        rating: 0,
-        reviews: 0,
-        totalListings: 0,
-        soldItems: 0,
-        savedItems: 0,
-        verified: false,
-        memberTier: "Basic",
-      };
-
-      users[emailKey] = newUser;
-      const mockJwt = createMockJwt(newUser);
-      saveMockUsers(users);
-      saveSession(newUser);
-      persistAuth(mockJwt, newUser.role);
-      login(mockJwt, newUser);
+      // Auto login after register
+      const loginRes = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
+      const loginData = await loginRes.json();
+      if (loginRes.ok) {
+        login(loginData.token, loginData.user);
+      }
 
       setSuccess("Account created successfully!");
-      setLoading(false);
       setStep(4);
       setTimeout(() => navigate("/profile", { replace: true }), 2200);
-    }, 900);
+    } catch {
+      setError("Unable to connect. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const STEPS = ["Role","Personal","Identity","Security","Done"];
@@ -395,7 +336,7 @@ const RegisterPage = () => {
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width:30, height:30 }}><path d="M7 12.5l3.2 3.2L17.5 8.5"/></svg>
         </div>
         <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:700, color:"#0d1f16", marginBottom:10 }}>Welcome aboard!</h3>
-        <p style={{ fontSize:14, color:"#6b7280", lineHeight:1.65, marginBottom:20 }}>Your account has been created.<br/>Loading your {role} profile...</p>
+        <p style={{ fontSize:14, color:"#6b7280", lineHeight:1.65, marginBottom:20 }}>Your account has been created.<br/>Loading your profile...</p>
         <div style={{ height:4, borderRadius:100, background:"#f3f4f6", overflow:"hidden" }}>
           <div style={{ height:"100%", background:"linear-gradient(to right,#2ec97e,#1b7d52)", borderRadius:100, animation:"rp-bar 2s linear forwards" }} />
         </div>
@@ -412,8 +353,8 @@ const RegisterPage = () => {
 
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:20 }}>
           {[
-            { key:"buyer",  icon:"", title:"Buyer",  desc:"Browse listings, make offers, and discover sustainable deals." },
-            { key:"seller", icon:"", title:"Seller", desc:"List your items, manage inventory, and reach verified buyers." },
+            { key:"buyer",  icon:"🛍️", title:"Buyer",  desc:"Browse listings, make offers, and discover sustainable deals." },
+            { key:"seller", icon:"🏪", title:"Seller", desc:"List your items, manage inventory, and reach verified buyers." },
           ].map(r => (
             <button key={r.key} type="button"
               onClick={() => { setRole(r.key); setError(""); }}
@@ -460,10 +401,6 @@ const RegisterPage = () => {
     if (step === 1) return (
       <div className="rp-slide" key="s0">
         <PBar steps={STEPS} cur={1} />
-        <div className="rp-demo-box">
-          <strong> Demo Mode</strong>
-          A demo account already exists: <code>demo@protibi.com</code>. You can also create your own account here and it will be saved locally.
-        </div>
         <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.3em", textTransform:"uppercase", color:"#2ec97e", marginBottom:6 }}>Step 2 of 4</p>
         <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(20px,2.3vw,27px)", fontWeight:700, color:"#0d1f16", marginBottom:6 }}>Personal Information</h2>
         <p style={{ fontSize:13, color:"#6b7280", lineHeight:1.6, marginBottom:20, fontWeight:300 }}>Let's start with your basic details. All fields are required.</p>
@@ -484,7 +421,7 @@ const RegisterPage = () => {
           <div>
             <label className="rp-label">Phone Number</label>
             <div className="rp-input-wrap">
-              <div className="rp-phone-pre"> +88</div>
+              <div className="rp-phone-pre">🇧🇩 +88</div>
               <input type="tel" inputMode="numeric" placeholder="01XXXXXXXXX" value={phone}
                 onChange={e => setPhone(e.target.value.replace(/\D/g,"").slice(0,11))} autoComplete="tel"
                 className={`rp-input rp-phl ${phone.replace(/\D/g,"").length === 11 ? "valid" : ""}`} />
@@ -508,15 +445,9 @@ const RegisterPage = () => {
           <button type="submit" className="rp-btn-submit">Continue <Arr /></button>
         </form>
 
-        <div style={{ display:"flex", alignItems:"center", gap:12, margin:"20px 0 0" }}>
-          <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
-          <span style={{ fontSize:10, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", color:"#9ca3af" }}>Have an account</span>
-          <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
-        </div>
-        <p style={{ textAlign:"center", fontSize:13, color:"#6b7280", marginTop:14 }}>
-          Already registered?{" "}
-          <Link to="/signin" style={{ fontWeight:700, color:"#1b7d52", textDecoration:"none" }}>Sign in here</Link>
-        </p>
+        <button className="rp-btn-back" style={{ marginTop:14 }} onClick={() => { setStep(0); setError(""); }}>
+          <ArrL /> Back
+        </button>
       </div>
     );
 
@@ -531,12 +462,8 @@ const RegisterPage = () => {
         </p>
 
         <form onSubmit={handleIdentity} style={{ display:"flex", flexDirection:"column", gap:16 }}>
-
-          {/* DOB - always required */}
           <div>
-            <label className="rp-label">
-              Date of Birth <span style={{ color:"#ef4444" }}>*</span>
-            </label>
+            <label className="rp-label">Date of Birth <span style={{ color:"#ef4444" }}>*</span></label>
             <div className="rp-input-wrap">
               <div className="rp-icon-left">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width:15, height:15 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -548,7 +475,6 @@ const RegisterPage = () => {
             <p className="rp-field-note">You must be at least 18 years old to register.</p>
           </div>
 
-          {/* Divider */}
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
             <span style={{ fontSize:11, fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", color:"#9ca3af", whiteSpace:"nowrap" }}>
@@ -557,11 +483,10 @@ const RegisterPage = () => {
             <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
           </div>
 
-          {/* NID or Passport tab selector */}
           <div className="rp-id-tabs">
             {[
-              { key:"nid",      icon:"", label:"NID Number" },
-              { key:"passport", icon:"", label:"Passport No." },
+              { key:"nid",      icon:"🪪", label:"NID Number" },
+              { key:"passport", icon:"🛂", label:"Passport No." },
             ].map(t => (
               <button key={t.key} type="button"
                 className={`rp-id-tab ${idType === t.key ? "active" : ""}`}
@@ -572,7 +497,7 @@ const RegisterPage = () => {
           </div>
 
           {idType === "nid" && (
-            <div style={{ animation:"rp-slideIn 0.28s ease forwards" }}>
+            <div>
               <label className="rp-label">National ID Number <span style={{ color:"#ef4444" }}>*</span></label>
               <div className="rp-input-wrap">
                 <div className="rp-icon-left">
@@ -586,7 +511,7 @@ const RegisterPage = () => {
             </div>
           )}
           {idType === "passport" && (
-            <div style={{ animation:"rp-slideIn 0.28s ease forwards" }}>
+            <div>
               <label className="rp-label">Passport Number <span style={{ color:"#ef4444" }}>*</span></label>
               <div className="rp-input-wrap">
                 <div className="rp-icon-left">
@@ -642,7 +567,7 @@ const RegisterPage = () => {
           </div>
 
           {password.length > 0 && (
-            <div style={{ animation:"rp-slideIn 0.28s ease forwards" }}>
+            <div>
               <label className="rp-label">Confirm Password</label>
               <div className="rp-input-wrap">
                 <div className="rp-icon-left">
@@ -656,7 +581,7 @@ const RegisterPage = () => {
                 </button>
               </div>
               {confirm && confirm !== password && <p style={{ fontSize:11, color:"#ef4444", marginTop:5, fontWeight:600 }}>Passwords don't match.</p>}
-              {confirm && confirm === password  && <p style={{ fontSize:11, color:"#1b7d52", marginTop:5, fontWeight:600 }}> Passwords match!</p>}
+              {confirm && confirm === password  && <p style={{ fontSize:11, color:"#1b7d52", marginTop:5, fontWeight:600 }}>✓ Passwords match!</p>}
             </div>
           )}
 
@@ -678,7 +603,7 @@ const RegisterPage = () => {
                 </span>
               </div>
             </div>
-            {!termsRead && <p style={{ fontSize:11, color:"#9ca3af", marginTop:5 }}>up Scroll through the terms above before agreeing.</p>}
+            {!termsRead && <p style={{ fontSize:11, color:"#9ca3af", marginTop:5 }}>↑ Scroll through the terms above before agreeing.</p>}
           </div>
 
           {error   && <div className="rp-err"><ErrIcon />{error}</div>}
@@ -699,7 +624,6 @@ const RegisterPage = () => {
     <div style={{ fontFamily:"'DM Sans',sans-serif", overflowX:"hidden", minHeight:"100vh" }}>
       <GlobalStyles />
 
-      {/* NAV */}
       <nav className="rp-nav">
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <div style={{ width:42, height:42, flexShrink:0, background:"linear-gradient(135deg,#2ec97e,#1b7d52)", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Playfair Display',serif", fontWeight:900, fontSize:19, color:"#fff" }}>P</div>
@@ -713,21 +637,11 @@ const RegisterPage = () => {
           <Link to="/about" className="rp-nav-link">About</Link>
           {token && authUser ? (
             <>
-              <button
-                onClick={() => logout()}
-                style={{background:"none",border:"none",cursor:"pointer",color:"rgba(255,255,255,0.7)",fontSize:14,fontWeight:500,fontFamily:"inherit"}}
-              >Sign Out</button>
+              <button onClick={() => logout()} style={{background:"none",border:"none",cursor:"pointer",color:"rgba(255,255,255,0.7)",fontSize:14,fontWeight:500,fontFamily:"inherit"}}>Sign Out</button>
               <Link to="/profile" style={{textDecoration:"none"}}>
-                <div style={{
-                  width:36, height:36, borderRadius:"50%",
-                  background:"linear-gradient(135deg,#2ec97e,#1b7d52)",
-                  border:"2px solid rgba(46,201,126,0.5)",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  overflow:"hidden", flexShrink:0, cursor:"pointer",
-                  fontSize:14, fontWeight:700, color:"#fff"
-                }}>
-                  {authUser.avatar
-                    ? <img src={authUser.avatar} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                <div style={{ width:36, height:36, borderRadius:"50%", background:"linear-gradient(135deg,#2ec97e,#1b7d52)", border:"2px solid rgba(46,201,126,0.5)", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", flexShrink:0, cursor:"pointer", fontSize:14, fontWeight:700, color:"#fff" }}>
+                  {authUser.profilePicture
+                    ? <img src={authUser.profilePicture} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
                     : (authUser.name?.[0] || "?").toUpperCase()
                   }
                 </div>
@@ -736,7 +650,7 @@ const RegisterPage = () => {
           ) : (
             <>
               <Link to="/signin"   className="rp-nav-link">Sign In</Link>
-              <Link to="/register" className="rp-nav-cta">Register {"->"}</Link>
+              <Link to="/register" className="rp-nav-cta">Register →</Link>
             </>
           )}
         </div>
@@ -759,17 +673,16 @@ const RegisterPage = () => {
         )}
       </div>
 
-      {/* PAGE */}
       <section style={{ position:"relative", minHeight:"100vh", backgroundImage:`url(${websiteBackground})`, backgroundSize:"cover", backgroundPosition:"center" }}>
         <div style={{ position:"absolute", inset:0, background:"linear-gradient(115deg,rgba(2,6,23,0.92) 0%,rgba(2,6,23,0.78) 42%,rgba(8,35,26,0.6) 100%)" }} />
         <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)", backgroundSize:"56px 56px" }} />
         <div style={{ position:"absolute", top:-80, right:-60, width:420, height:420, background:"radial-gradient(circle,rgba(46,201,126,0.15) 0%,transparent 65%)", borderRadius:"50%" }} />
         <div style={{ position:"absolute", bottom:-80, left:-60, width:360, height:360, background:"radial-gradient(circle,rgba(27,125,82,0.12) 0%,transparent 65%)", borderRadius:"50%" }} />
 
-        <div className="rp-deco" style={{ width:82, height:82, top:"18%", left:"4%", animation:"rp-float 5.5s ease-in-out infinite" }}><span style={{ fontSize:30 }}></span></div>
-        <div className="rp-deco" style={{ width:66, height:66, top:"65%", left:"6%", animation:"rp-float 7s ease-in-out infinite 1.2s" }}><span style={{ fontSize:24 }}></span></div>
-        <div className="rp-deco" style={{ width:58, height:58, top:"38%", right:"4%", animation:"rp-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize:22 }}></span></div>
-        <div className="rp-deco" style={{ width:50, height:50, top:"74%", right:"7%", animation:"rp-float 8s ease-in-out infinite 2s" }}><span style={{ fontSize:18 }}></span></div>
+        <div className="rp-deco" style={{ width:82, height:82, top:"18%", left:"4%", animation:"rp-float 5.5s ease-in-out infinite" }}><span style={{ fontSize:30 }}>🌱</span></div>
+        <div className="rp-deco" style={{ width:66, height:66, top:"65%", left:"6%", animation:"rp-float 7s ease-in-out infinite 1.2s" }}><span style={{ fontSize:24 }}>📦</span></div>
+        <div className="rp-deco" style={{ width:58, height:58, top:"38%", right:"4%", animation:"rp-float 6s ease-in-out infinite 0.5s" }}><span style={{ fontSize:22 }}>🤝</span></div>
+        <div className="rp-deco" style={{ width:50, height:50, top:"74%", right:"7%", animation:"rp-float 8s ease-in-out infinite 2s" }}><span style={{ fontSize:18 }}>♻️</span></div>
 
         <div style={{ position:"relative", zIndex:10, maxWidth:640, margin:"0 auto", padding:"108px 24px 60px", width:"100%" }}>
           <div className="rp-fade rp-d1" style={{ display:"flex", justifyContent:"center", marginBottom:22 }}>
@@ -795,9 +708,9 @@ const RegisterPage = () => {
           {step < 4 && (
             <div className="rp-fade rp-d5 rp-trust-row">
               {[
-                { icon:"", title:"Secure & Private",   text:"End-to-end encryption"  },
-                { icon:"", title:"Verified Community", text:"Safe marketplace"        },
-                { icon:"", title:"Sustainable",        text:"Eco-friendly exchanges"  },
+                { icon:"🔒", title:"Secure & Private",   text:"End-to-end encryption"  },
+                { icon:"✅", title:"Verified Community", text:"Safe marketplace"        },
+                { icon:"♻️", title:"Sustainable",        text:"Eco-friendly exchanges"  },
               ].map((t, i) => (
                 <div key={i} className="rp-trust-item">
                   <div className="rp-trust-icon"><span style={{ fontSize:15 }}>{t.icon}</span></div>

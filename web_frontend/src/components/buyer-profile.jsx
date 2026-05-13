@@ -506,6 +506,10 @@ const BuyerProfileView = ({
 }) => {
   const { token } = useAuth();
   const [sentOffers, setSentOffers] = useState([]);
+  const [buyerOrders, setBuyerOrders] = useState([]);
+  const [buyerOrdersLoading, setBuyerOrdersLoading] = useState(true);
+  const [buyerOrdersError, setBuyerOrdersError] = useState("");
+  const orderCountValue = orderCount ?? buyerOrders.length;
   const {
     BuyerBrowseBanner,
     BuyerHubSidebar,
@@ -535,6 +539,85 @@ const BuyerProfileView = ({
     fetchSentOffers();
     return () => { cancelled = true; };
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !user) {
+      setBuyerOrders([]);
+      setBuyerOrdersLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchBuyerOrders = async () => {
+      setBuyerOrdersLoading(true);
+      setBuyerOrdersError("");
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/payments/my`, {
+          headers: { "x-auth-token": token },
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok) {
+          throw new Error(data.msg || "Unable to load your orders.");
+        }
+
+        const buyerId = user._id || user.id;
+        const nextOrders = Array.isArray(data)
+          ? data
+              .filter(payment => {
+                const paymentBuyerId = payment.buyer?._id || payment.buyer?.id || payment.buyer;
+                return buyerId && paymentBuyerId?.toString() === buyerId.toString();
+              })
+              .map(payment => {
+                const listing = payment.listing || {};
+                const seller = payment.seller || {};
+                const paymentStatus = payment.status || "pending";
+                return {
+                  id: payment.transactionId || payment._id || "",
+                  product: {
+                    title: listing.title || "Listing",
+                    image: Array.isArray(listing.images) ? listing.images[0] || "" : "",
+                    emoji: "",
+                    category: listing.category || "Marketplace",
+                    qty: 1,
+                  },
+                  seller: {
+                    name: seller.name || "Seller",
+                    avatar: seller.profilePicture || seller.avatar || "",
+                    location: seller.location?.city || seller.location || "",
+                    rating: Number(seller.rating) || 0,
+                    phone: seller.phone || "",
+                  },
+                  price: Number(payment.amount) || 0,
+                  payment: { method: "SSLCommerz", status: paymentStatus === "success" ? "paid" : paymentStatus },
+                  deliveryStatus: paymentStatus === "success" ? "processing" : paymentStatus === "failed" ? "pending" : paymentStatus,
+                  orderedAt: payment.createdAt || new Date().toISOString(),
+                  estimatedDelivery: payment.createdAt ? new Date(new Date(payment.createdAt).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() : "",
+                  trackingId: payment.transactionId || "",
+                  address: payment.buyer?.email || "",
+                  note: payment.transactionId || "",
+                };
+              })
+          : [];
+
+        if (!cancelled) {
+          setBuyerOrders(nextOrders);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setBuyerOrdersError(err.message || "Unable to load your orders.");
+          setBuyerOrders([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setBuyerOrdersLoading(false);
+        }
+      }
+    };
+
+    fetchBuyerOrders();
+    return () => { cancelled = true; };
+  }, [token, user]);
 
   const completeSentOffer = async (offerId) => {
     if (!token || !offerId) return;
@@ -570,7 +653,12 @@ const BuyerProfileView = ({
         <div>
           {buyerPanel === "orders" && (
             <div className="up-card up-fade up-d2">
-              <BuyerMyOrdersPage onBrowse={() => navigate("/marketplace")} />
+              <BuyerMyOrdersPage
+                onBrowse={() => navigate("/marketplace")}
+                orders={buyerOrders}
+                loading={buyerOrdersLoading}
+                error={buyerOrdersError}
+              />
             </div>
           )}
           {buyerPanel === "trade-requests" && (

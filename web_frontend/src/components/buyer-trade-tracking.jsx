@@ -56,48 +56,6 @@ const bangladeshCouriers = [
   "Bangladesh Post Office",
 ];
 
-const sampleTrackedTrades = (user) => [
-  {
-    id: "bt_track_001",
-    status: "accepted",
-    acceptedAt: "2026-05-01T11:20:00.000Z",
-    seller: { name: "Mitu Akter", phone: "01733445566", location: "Uttara, Dhaka", rating: 4.6 },
-    buyerItem: { title: "MacBook Air M1", category: "Electronics", value: 58000 },
-    sellerItem: { title: "Canon EOS 700D DSLR Camera", category: "Electronics", value: 28500 },
-    buyerShipment: { shipped: false, courier: "", tracking: "", shippedAt: "" },
-    sellerShipment: { shipped: false, courier: "", tracking: "", shippedAt: "" },
-    buyerReceived: false,
-    sellerReceived: false,
-    note: `${user?.name || "You"} offered a MacBook Air M1. Ship your item once you are ready.`,
-  },
-  {
-    id: "bt_track_002",
-    status: "shipping",
-    acceptedAt: "2026-04-27T15:05:00.000Z",
-    seller: { name: "Rafiul Hasan", phone: "01712345678", location: "Dhanmondi, Dhaka", rating: 4.8 },
-    buyerItem: { title: "Samsung Galaxy S23 Ultra", category: "Electronics", value: 74000 },
-    sellerItem: { title: "iPhone 14 Pro Max 256GB", category: "Electronics", value: 92000 },
-    buyerShipment: { shipped: true, courier: "Pathao Courier", tracking: "PTH-882104", shippedAt: "2026-04-28T10:00:00.000Z" },
-    sellerShipment: { shipped: true, courier: "Sundarban Courier Service", tracking: "SBC-440927", shippedAt: "2026-04-28T16:30:00.000Z" },
-    buyerReceived: false,
-    sellerReceived: true,
-    note: "Seller has shipped their iPhone. Confirm receipt after inspection.",
-  },
-  {
-    id: "bt_track_003",
-    status: "completed",
-    acceptedAt: "2026-04-18T09:35:00.000Z",
-    seller: { name: "Nabila Chowdhury", phone: "01666778899", location: "Banani, Dhaka", rating: 4.3 },
-    buyerItem: { title: "Xiaomi 13 Pro", category: "Electronics", value: 42000 },
-    sellerItem: { title: "Mountain Bike 26 inch", category: "Sports", value: 14000 },
-    buyerShipment: { shipped: true, courier: "RedX", tracking: "RDX-210771", shippedAt: "2026-04-19T12:15:00.000Z" },
-    sellerShipment: { shipped: true, courier: "SA Paribahan", tracking: "SAP-991402", shippedAt: "2026-04-19T14:10:00.000Z" },
-    buyerReceived: true,
-    sellerReceived: true,
-    note: "Trade completed successfully.",
-  },
-];
-
 const mapOfferToTrackedTrade = (offer) => {
   const listing = offer.listing || {};
   const seller = offer.toUser || {};
@@ -150,7 +108,7 @@ const BuyerTradeTrackingPage = ({ user, offers, onCompleteOffer }) => {
   const hasOfferProp = Array.isArray(offers);
   const initialTrades = hasOfferProp
     ? offers.filter(offer => ["accepted", "completed"].includes(offer.status)).map(mapOfferToTrackedTrade)
-    : sampleTrackedTrades(user);
+    : [];
   const [trades, setTrades] = useState(() => initialTrades);
   const [selectedId, setSelectedId] = useState(() => initialTrades[0]?.id);
   const [filter, setFilter] = useState("all");

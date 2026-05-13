@@ -137,7 +137,8 @@ const serializeUser = (user) => ({
     location: user.location,
     profilePicture: user.profilePicture,
     rating: user.rating,
-    isVerified: user.isVerified
+    isVerified: user.isVerified,
+    role: user.role || 'buyer'
 });
 
 const hasGoogleOAuthConfig = Boolean(
@@ -185,7 +186,8 @@ if (hasGoogleOAuthConfig) {
 // @route   POST api/auth/register
 router.post('/register', generalLimiter, async (req, res) => {
     try {
-        const { name, email, password, phone, nid, dateOfBirth, passportNumber } = req.body || {};
+        const { name, email, password, phone, nid, dateOfBirth, passportNumber, role } = req.body || {};
+        const normalizedRole = role === 'seller' ? 'seller' : 'buyer';
 
         if (!isNonEmptyString(name) || !isNonEmptyString(email) || !isNonEmptyString(password)) {
             return res.status(400).json({ msg: 'Name, email, and password are required.' });
@@ -216,7 +218,8 @@ router.post('/register', generalLimiter, async (req, res) => {
             phone: isNonEmptyString(phone) ? normalizePhone(phone) : '',
             nid: nid ? xss(String(nid).replace(/\D/g, '')) : undefined,
             dateOfBirth: dateOfBirth || undefined,
-            passportNumber: passportNumber ? xss(String(passportNumber).trim()) : undefined
+            passportNumber: passportNumber ? xss(String(passportNumber).trim()) : undefined,
+            role: normalizedRole
         });
 
         await user.save();

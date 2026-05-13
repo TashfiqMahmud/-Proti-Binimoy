@@ -51,6 +51,7 @@ async function seedUsers(User) {
             nid: '19901234567000123',
             dateOfBirth: new Date('1998-04-12'),
             bio: 'Buyer interested in sustainable second-hand deals around Dhaka.',
+            role: 'buyer',
             location: {
                 address: 'Mirpur DOHS, Dhaka',
                 city: 'Mirpur',
@@ -69,6 +70,7 @@ async function seedUsers(User) {
             nid: '19881234567000456',
             dateOfBirth: new Date('1995-09-20'),
             bio: 'Verified seller listing carefully used household, study, and tech items.',
+            role: 'seller',
             location: {
                 address: 'Road 7, Dhanmondi, Dhaka',
                 city: 'Dhanmondi',

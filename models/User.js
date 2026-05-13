@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema({
   nid: { type: String, trim: true },
   dateOfBirth: { type: Date },
   passportNumber: { type: String, trim: true },
+  role: { type: String, enum: ['buyer', 'seller'], default: 'buyer' },
   bio: { type: String, default: "" },
   location: {
     address: { type: String },

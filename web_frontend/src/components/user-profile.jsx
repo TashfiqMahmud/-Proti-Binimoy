@@ -1519,104 +1519,6 @@ const TradeRequestCard = ({ req, acting, onAction, resolved = false }) => {
 /* --------------------------------------
    BUYER MOCK ORDERS DATA
 -------------------------------------- */
-const BUYER_MOCK_ORDERS = [
-  {
-    id: "BYR-2025-001",
-    product: {
-      title: "Apple MacBook Air M2",
-      image: "",
-      emoji: "Laptop",
-      category: "Electronics",
-      qty: 1,
-    },
-    seller: { name: "Nasrin Electronics", avatar: "N", location: "Gulshan, Dhaka", rating: 4.8, phone: "01711-234567" },
-    price: 145000,
-    payment: { method: "bKash", status: "paid" },
-    deliveryStatus: "shipping",
-    orderedAt: "2025-05-01T10:22:00Z",
-    estimatedDelivery: "2025-05-10",
-    trackingId: "BD-SHIP-2025-88412",
-    address: "House 14, Road 5, Dhanmondi, Dhaka-1205",
-    note: "",
-  },
-  {
-    id: "BYR-2025-002",
-    product: {
-      title: "Sony WH-1000XM5 Headphones",
-      image: "",
-      emoji: "Headphones",
-      category: "Electronics",
-      qty: 1,
-    },
-    seller: { name: "Sound Zone BD", avatar: "S", location: "Banani, Dhaka", rating: 4.6, phone: "01812-345678" },
-    price: 32500,
-    payment: { method: "Card", status: "paid" },
-    deliveryStatus: "delivered",
-    orderedAt: "2025-04-20T09:00:00Z",
-    estimatedDelivery: "2025-04-28",
-    trackingId: "BD-SHIP-2025-77301",
-    address: "House 14, Road 5, Dhanmondi, Dhaka-1205",
-    note: "Leave at reception.",
-  },
-  {
-    id: "BYR-2025-003",
-    product: {
-      title: "Otobi Study Desk & Chair Set",
-      image: "",
-      emoji: "Chair",
-      category: "Furniture",
-      qty: 1,
-    },
-    seller: { name: "Home Decor Hub", avatar: "H", location: "Mirpur, Dhaka", rating: 4.3, phone: "01613-456789" },
-    price: 22000,
-    payment: { method: "Cash on Delivery", status: "unpaid" },
-    deliveryStatus: "processing",
-    orderedAt: "2025-05-05T14:30:00Z",
-    estimatedDelivery: "2025-05-12",
-    trackingId: null,
-    address: "House 14, Road 5, Dhanmondi, Dhaka-1205",
-    note: "Call before delivery.",
-  },
-  {
-    id: "BYR-2025-004",
-    product: {
-      title: "Canon EOS R10 Camera Kit",
-      image: "",
-      emoji: " - ",
-      category: "Electronics",
-      qty: 1,
-    },
-    seller: { name: "Camera World BD", avatar: "C", location: "Motijheel, Dhaka", rating: 4.9, phone: "01914-567890" },
-    price: 82000,
-    payment: { method: "Bank Transfer", status: "paid" },
-    deliveryStatus: "pending",
-    orderedAt: "2025-05-07T08:15:00Z",
-    estimatedDelivery: "2025-05-14",
-    trackingId: null,
-    address: "House 14, Road 5, Dhanmondi, Dhaka-1205",
-    note: "",
-  },
-  {
-    id: "BYR-2025-005",
-    product: {
-      title: "Nike Air Force 1 Sneakers",
-      image: "",
-      emoji: "Shoes",
-      category: "Clothing",
-      qty: 2,
-    },
-    seller: { name: "Kicks & Style", avatar: "K", location: "Uttara, Dhaka", rating: 4.5, phone: "01517-678901" },
-    price: 15600,
-    payment: { method: "Nagad", status: "paid" },
-    deliveryStatus: "delivered",
-    orderedAt: "2025-04-10T11:00:00Z",
-    estimatedDelivery: "2025-04-16",
-    trackingId: "BD-SHIP-2025-66102",
-    address: "House 14, Road 5, Dhanmondi, Dhaka-1205",
-    note: "Size 42 x2.",
-  },
-];
-
 const BUYER_DELIVERY_STATUSES = [
   { key: "pending",    label: "Pending",    color: "#f59e0b", bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.3)",  icon: "Pending", step: 0 },
   { key: "processing", label: "Processing", color: "#3b82f6", bg: "rgba(59,130,246,0.1)", border: "rgba(59,130,246,0.3)", icon: "Processing", step: 1 },
@@ -1732,13 +1634,36 @@ const BuyerHubSidebar = ({ activePanel, onSelect }) => {
 /* --------------------------------------
    BUYER MY ORDERS PAGE
 -------------------------------------- */
-const BuyerMyOrdersPage = ({ onBrowse }) => {
-  const [orders] = useState(BUYER_MOCK_ORDERS);
+const BuyerMyOrdersPage = ({ onBrowse, orders, loading, error }) => {
   const [filter, setFilter]     = useState("all");
   const [search, setSearch]     = useState("");
   const [selected, setSelected] = useState(null);
 
-  const filtered = orders.filter(o => {
+  useEffect(() => {
+    if (Array.isArray(orders) && orders.length > 0) {
+      setSelected(orders[0]);
+    } else {
+      setSelected(null);
+    }
+  }, [orders]);
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "60px 24px", color: "#7a8c82" }}>
+        <Spinner /> <span style={{ fontSize: 14, marginLeft: 12 }}>Loading your orders...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: "32px 24px" }}>
+        <div className="up-err">{error}</div>
+      </div>
+    );
+  }
+
+  const filtered = Array.isArray(orders) ? orders.filter(o => {
     const matchFilter = filter === "all" || o.deliveryStatus === filter;
     const q = search.toLowerCase();
     const matchSearch = !q ||
@@ -1746,13 +1671,13 @@ const BuyerMyOrdersPage = ({ onBrowse }) => {
       o.product.title.toLowerCase().includes(q) ||
       o.seller.name.toLowerCase().includes(q);
     return matchFilter && matchSearch;
-  });
+  }) : [];
 
   const kpi = {
-    total:    orders.length,
-    active:   orders.filter(o => ["pending","processing"].includes(o.deliveryStatus)).length,
-    transit:  orders.filter(o => o.deliveryStatus === "shipping").length,
-    done:     orders.filter(o => o.deliveryStatus === "delivered").length,
+    total:    Array.isArray(orders) ? orders.length : 0,
+    active:   Array.isArray(orders) ? orders.filter(o => ["pending","processing"].includes(o.deliveryStatus)).length : 0,
+    transit:  Array.isArray(orders) ? orders.filter(o => o.deliveryStatus === "shipping").length : 0,
+    done:     Array.isArray(orders) ? orders.filter(o => o.deliveryStatus === "delivered").length : 0,
   };
 
   const BordStatusBadge = ({ status }) => {
@@ -2057,75 +1982,6 @@ const BuyerMyOrdersPage = ({ onBrowse }) => {
     </div>
   );
 };
-
-const MOCK_ORDERS = [
-  {
-    id: "ORD-2024-001",
-    buyer: { name: "Rafiqul Islam", phone: "01711-234567", avatar: "" },
-    address: "House 14, Road 5, Dhanmondi, Dhaka-1205",
-    product: { title: "Sony WH-1000XM5 Headphones", image: "", category: "Electronics", qty: 1 },
-    price: 32500,
-    payment: { method: "bKash", status: "paid" },
-    deliveryStatus: "processing",
-    createdAt: "2024-12-18T09:22:00Z",
-    note: "Please pack carefully.",
-  },
-  {
-    id: "ORD-2024-002",
-    buyer: { name: "Sumaiya Akter", phone: "01812-345678", avatar: "" },
-    address: "Flat 3B, Green Tower, Gulshan-2, Dhaka-1212",
-    product: { title: "Samsung Galaxy Tab S9", image: "", category: "Electronics", qty: 1 },
-    price: 68000,
-    payment: { method: "Nagad", status: "paid" },
-    deliveryStatus: "shipping",
-    createdAt: "2024-12-17T14:05:00Z",
-    note: "",
-  },
-  {
-    id: "ORD-2024-003",
-    buyer: { name: "Md. Karim Uddin", phone: "01612-456789", avatar: "" },
-    address: "Village: Rajpara, Upazila: Savar, Dhaka",
-    product: { title: "Leather Office Chair", image: "", category: "Furniture", qty: 2 },
-    price: 18400,
-    payment: { method: "Cash on Delivery", status: "unpaid" },
-    deliveryStatus: "pending",
-    createdAt: "2024-12-19T08:10:00Z",
-    note: "Call before delivery.",
-  },
-  {
-    id: "ORD-2024-004",
-    buyer: { name: "Tania Begum", phone: "01914-567890", avatar: "" },
-    address: "Road 12, Block C, Mirpur-10, Dhaka-1216",
-    product: { title: "Canon EOS R10 Camera", image: "", category: "Electronics", qty: 1 },
-    price: 82000,
-    payment: { method: "Card", status: "paid" },
-    deliveryStatus: "delivered",
-    createdAt: "2024-12-14T11:30:00Z",
-    note: "",
-  },
-  {
-    id: "ORD-2024-005",
-    buyer: { name: "Jahangir Alam", phone: "01517-678901", avatar: "" },
-    address: "Holding 7, Agrabad C/A, Chattogram-4100",
-    product: { title: "Nike Air Force 1 Sneakers", image: "", category: "Clothing", qty: 1 },
-    price: 7800,
-    payment: { method: "bKash", status: "paid" },
-    deliveryStatus: "processing",
-    createdAt: "2024-12-19T06:55:00Z",
-    note: "Size 42.",
-  },
-  {
-    id: "ORD-2024-006",
-    buyer: { name: "Nasrin Sultana", phone: "01315-789012", avatar: "" },
-    address: "Bahir Para, Sylhet City, Sylhet-3100",
-    product: { title: "Apple MacBook Air M2", image: "", category: "Electronics", qty: 1 },
-    price: 145000,
-    payment: { method: "Bank Transfer", status: "paid" },
-    deliveryStatus: "pending",
-    createdAt: "2024-12-20T07:40:00Z",
-    note: "Urgent order.",
-  },
-];
 
 const DELIVERY_STATUSES = [
   { key: "pending",    label: "Pending",    color: "#f59e0b", bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.3)",  icon: "Pending", step: 0 },
@@ -3145,128 +3001,6 @@ const IncomingTradeRequestsPage = ({ token }) => {
 /* --------------------------------------
    TRADE TRACKING PAGE
 -------------------------------------- */
-const MOCK_TRACKED_TRADES = [
-  {
-    id: "TRK-001",
-    tradeId: "TR-003",
-    status: "seller_shipped",
-    acceptedAt: "2025-05-01T10:00:00Z",
-    estimatedCompletion: "2025-05-10T00:00:00Z",
-    buyer: {
-      name: "Rakibul Islam",
-      phone: "+880 1933 112233",
-      location: "Dhaka, Dhanmondi",
-      avatar: "",
-      rating: 4.9,
-    },
-    sellerItem: {
-      title: "iPhone 14 Pro Max 256GB",
-      category: "Smartphones",
-      condition: "Excellent",
-      value: 95000,
-      trackingNumber: "BD-SA-7821034",
-      courier: "Sundarban Courier",
-    },
-    buyerItem: {
-      title: "iPad Pro 11\" M2 128GB WiFi",
-      category: "Tablets",
-      condition: "Like New",
-      value: 78000,
-      trackingNumber: null,
-      courier: null,
-    },
-    cashAdjustment: 15000,
-    cashDirection: "buyer_pays",
-    timeline: [
-      { key: "accepted",        label: "Trade Accepted",           icon: "Accepted", done: true,  ts: "2025-05-01T10:00:00Z", note: "Both parties agreed to the barter." },
-      { key: "seller_shipped",  label: "Seller Shipped",           icon: "Item", done: true,  ts: "2025-05-02T14:30:00Z", note: "Sent via Sundarban Courier  -  TRK: BD-SA-7821034" },
-      { key: "buyer_shipped",   label: "Buyer Shipped",            icon: "Shipping", done: false, ts: null,                   note: "Waiting for buyer to dispatch their item." },
-      { key: "seller_received", label: "Seller Received",          icon: "Received", done: false, ts: null,                   note: "Confirm once buyer's item arrives." },
-      { key: "buyer_received",  label: "Buyer Received",           icon: "...", done: false, ts: null,                   note: "Buyer will confirm receipt of your item." },
-      { key: "completed",       label: "Trade Completed",          icon: "Done", done: false, ts: null,                   note: "Trade successfully closed." },
-    ],
-  },
-  {
-    id: "TRK-002",
-    tradeId: "TR-007",
-    status: "accepted",
-    acceptedAt: "2025-05-05T09:15:00Z",
-    estimatedCompletion: "2025-05-14T00:00:00Z",
-    buyer: {
-      name: "Arif Hossain",
-      phone: "+880 1712 345678",
-      location: "Dhaka, Gulshan",
-      avatar: "",
-      rating: 4.6,
-    },
-    sellerItem: {
-      title: "Sony WH-1000XM5 Headphones",
-      category: "Audio",
-      condition: "Like New",
-      value: 32000,
-      trackingNumber: null,
-      courier: null,
-    },
-    buyerItem: {
-      title: "Apple Watch Series 9 45mm",
-      category: "Wearables",
-      condition: "Excellent",
-      value: 38000,
-      trackingNumber: null,
-      courier: null,
-    },
-    cashAdjustment: 0,
-    cashDirection: null,
-    timeline: [
-      { key: "accepted",        label: "Trade Accepted",           icon: "Accepted", done: true,  ts: "2025-05-05T09:15:00Z", note: "Both parties agreed to the barter." },
-      { key: "seller_shipped",  label: "Seller Shipped",           icon: "Item", done: false, ts: null,                   note: "Ship your item to initiate the exchange." },
-      { key: "buyer_shipped",   label: "Buyer Shipped",            icon: "Shipping", done: false, ts: null,                   note: "Buyer will ship their item." },
-      { key: "seller_received", label: "Seller Received",          icon: "Received", done: false, ts: null,                   note: "Confirm once buyer's item arrives." },
-      { key: "buyer_received",  label: "Buyer Received",           icon: "...", done: false, ts: null,                   note: "Buyer will confirm receipt of your item." },
-      { key: "completed",       label: "Trade Completed",          icon: "Done", done: false, ts: null,                   note: "Trade successfully closed." },
-    ],
-  },
-  {
-    id: "TRK-003",
-    tradeId: "TR-002",
-    status: "completed",
-    acceptedAt: "2025-04-20T08:00:00Z",
-    estimatedCompletion: "2025-04-28T00:00:00Z",
-    buyer: {
-      name: "Mitu Akter",
-      phone: "+880 1855 987654",
-      location: "Chittagong, Nasirabad",
-      avatar: "",
-      rating: 4.2,
-    },
-    sellerItem: {
-      title: "Canon EOS R50 Camera Body",
-      category: "Cameras",
-      condition: "Good",
-      value: 55000,
-      trackingNumber: "BD-JX-4401928",
-      courier: "Janata Courier",
-    },
-    buyerItem: {
-      title: "DJI Mini 3 Pro Drone",
-      category: "Drones",
-      condition: "Excellent",
-      value: 58000,
-      trackingNumber: "BD-SC-9923011",
-      courier: "SA Paribahan",
-    },
-    cashAdjustment: 0,
-    cashDirection: null,
-    timeline: [
-      { key: "accepted",        label: "Trade Accepted",           icon: "Accepted", done: true, ts: "2025-04-20T08:00:00Z", note: "Both parties agreed to the barter." },
-      { key: "seller_shipped",  label: "Seller Shipped",           icon: "Item", done: true, ts: "2025-04-21T11:00:00Z", note: "Sent via Janata Courier  -  TRK: BD-JX-4401928" },
-      { key: "buyer_shipped",   label: "Buyer Shipped",            icon: "Shipping", done: true, ts: "2025-04-22T09:30:00Z", note: "Buyer sent via SA Paribahan  -  TRK: BD-SC-9923011" },
-      { key: "seller_received", label: "Seller Received",          icon: "Received", done: true, ts: "2025-04-25T15:00:00Z", note: "Drone received in perfect condition." },
-      { key: "buyer_received",  label: "Buyer Received",           icon: "...", done: true, ts: "2025-04-26T12:00:00Z", note: "Buyer confirmed receipt of camera." },
-      { key: "completed",       label: "Trade Completed",          icon: "Done", done: true, ts: "2025-04-26T12:05:00Z", note: "Trade successfully closed! Great exchange." },
-    ],
-  },
-];
 
 const TRACK_STATUS_ORDER = ["accepted", "seller_shipped", "buyer_shipped", "seller_received", "buyer_received", "completed"];
 
@@ -3288,13 +3022,16 @@ const TrkStatusBadge = ({ status }) => {
 };
 
 const TradeTrackingPage = () => {
-  const [trades, setTrades]       = useState(MOCK_TRACKED_TRADES);
-  const [selected, setSelected]   = useState(MOCK_TRACKED_TRADES[0]);
+  const { token } = useAuth();
+  const [trades, setTrades]       = useState([]);
+  const [selected, setSelected]   = useState(null);
   const [filter, setFilter]       = useState("all");
   const [shipModal, setShipModal] = useState(false);
   const [shipForm, setShipForm]   = useState({ courier: "", tracking: "" });
   const [toast, setToast]         = useState(null);
   const [confirmRecv, setConfirmRecv] = useState(false);
+  const [trackingLoading, setTrackingLoading] = useState(true);
+  const [trackingError, setTrackingError] = useState("");
 
   const fmtD  = (iso) => iso ? new Date(iso).toLocaleDateString("en-BD", { day:"numeric", month:"short", year:"numeric" }) : "-";
   const fmtDT = (iso) => iso ? new Date(iso).toLocaleString("en-BD",  { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }) : null;
@@ -3304,6 +3041,101 @@ const TradeTrackingPage = () => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3400);
   };
+
+  useEffect(() => {
+    if (!token) {
+      setTrades([]);
+      setSelected(null);
+      setTrackingLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchTracking = async () => {
+      setTrackingLoading(true);
+      setTrackingError("");
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/offers/received`, {
+          headers: { "x-auth-token": token },
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok) {
+          throw new Error(data.msg || "Unable to load trade tracking data.");
+        }
+
+        const nextTrades = Array.isArray(data)
+          ? data
+              .filter(offer => ["accepted", "completed"].includes(offer.status))
+              .map(offer => {
+                const listing = offer.listing || {};
+                const buyer = offer.fromUser || {};
+                const cashAmount = Number(offer.cashAmount) || 0;
+                const acceptedAt = offer.updatedAt || offer.createdAt || new Date().toISOString();
+                const completed = offer.status === "completed";
+                return {
+                  id: offer._id || offer.id,
+                  tradeId: offer._id || offer.id,
+                  status: completed ? "completed" : "accepted",
+                  acceptedAt,
+                  estimatedCompletion: completed ? acceptedAt : new Date(new Date(acceptedAt).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                  buyer: {
+                    name: buyer.name || "Buyer",
+                    phone: buyer.phone || buyer.email || "",
+                    location: buyer.location?.city || buyer.location || "",
+                    avatar: buyer.profilePicture || buyer.avatar || "",
+                    rating: Number(buyer.rating) || 0,
+                  },
+                  sellerItem: {
+                    title: listing.title || "Seller item",
+                    category: listing.category || "Marketplace",
+                    condition: listing.condition || "Used",
+                    value: Number(listing.price) || 0,
+                    trackingNumber: listing.trackingNumber || "",
+                    courier: listing.courier || "",
+                  },
+                  buyerItem: {
+                    title: offer.offerType === "cash" ? fmtBDT(cashAmount) : offer.barterItem || "Buyer offer",
+                    category: offer.offerType || "barter",
+                    condition: "Used",
+                    value: cashAmount,
+                    trackingNumber: offer.trackingNumber || "",
+                    courier: offer.courier || "",
+                  },
+                  cashAdjustment: cashAmount,
+                  cashDirection: offer.offerType === "cash" ? "buyer_pays" : null,
+                  timeline: [
+                    { key: "accepted", label: "Trade Accepted", icon: "Accepted", done: true, ts: acceptedAt, note: "Seller accepted the offer." },
+                    { key: "seller_shipped", label: "Seller Shipped", icon: "Item", done: completed, ts: completed ? acceptedAt : null, note: completed ? "Seller shipped item." : "Waiting for seller shipment." },
+                    { key: "buyer_shipped", label: "Buyer Shipped", icon: "Shipping", done: completed, ts: completed ? acceptedAt : null, note: completed ? "Buyer shipped item." : "Waiting for buyer shipment." },
+                    { key: "seller_received", label: "Seller Received", icon: "Received", done: completed, ts: completed ? acceptedAt : null, note: completed ? "Seller received item." : "Waiting for confirmation." },
+                    { key: "buyer_received", label: "Buyer Confirmed", icon: "...", done: completed, ts: completed ? acceptedAt : null, note: completed ? "Buyer confirmed receipt." : "Pending buyer confirmation." },
+                    { key: "completed", label: "Trade Completed", icon: "Done", done: completed, ts: completed ? acceptedAt : null, note: completed ? "Trade completed." : "Trade in progress." },
+                  ],
+                };
+              })
+          : [];
+
+        if (!cancelled) {
+          setTrades(nextTrades);
+          setSelected(nextTrades[0] || null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setTrackingError(err.message || "Unable to load trade tracking data.");
+          setTrades([]);
+          setSelected(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setTrackingLoading(false);
+        }
+      }
+    };
+
+    fetchTracking();
+    return () => { cancelled = true; };
+  }, [token]);
 
   const FILTERS = [
     { key: "all",       label: "All" },
@@ -4616,7 +4448,6 @@ const UserProfilePage = () => {
                   SecurityTab,
                 }}
                 navigate={navigate}
-                orderCount={BUYER_MOCK_ORDERS.length}
                 savedListings={savedListings}
                 setBuyerPanel={setBuyerPanel}
                 updateProfile={updateProfile}

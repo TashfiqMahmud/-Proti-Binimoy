@@ -294,6 +294,7 @@ const RegisterPage = () => {
           nid: idType === "nid" ? nid.replace(/\D/g,"") : undefined,
           dateOfBirth: dob || undefined,
           passportNumber: idType === "passport" ? passport.trim() : undefined,
+          role,
         }),
       });
       const registerData = await registerRes.json();

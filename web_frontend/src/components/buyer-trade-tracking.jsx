@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const fmtBDT = (value) => `BDT ${new Intl.NumberFormat("en-BD").format(Number(value) || 0)}`;
 const fmtDate = (value) => new Date(value).toLocaleDateString("en-BD", {
@@ -98,6 +98,44 @@ const sampleTrackedTrades = (user) => [
   },
 ];
 
+const mapOfferToTrackedTrade = (offer) => {
+  const listing = offer.listing || {};
+  const seller = offer.toUser || {};
+  const cashAmount = Number(offer.cashAmount) || 0;
+  const buyerItemTitle = offer.offerType === "cash"
+    ? `Cash offer ${fmtBDT(cashAmount)}`
+    : offer.barterItem || "Your barter item";
+  const isCompleted = offer.status === "completed";
+
+  return {
+    id: offer._id || offer.id,
+    offerId: offer._id || offer.id,
+    status: isCompleted ? "completed" : "accepted",
+    acceptedAt: offer.updatedAt || offer.createdAt || new Date().toISOString(),
+    seller: {
+      name: seller.name || "Seller",
+      phone: seller.phone || "",
+      location: seller.location?.city || seller.location || "Bangladesh",
+      rating: Number(seller.rating) || 0,
+    },
+    buyerItem: {
+      title: buyerItemTitle,
+      category: offer.offerType || "barter",
+      value: cashAmount,
+    },
+    sellerItem: {
+      title: listing.title || "Seller item",
+      category: listing.category || "Marketplace",
+      value: Number(listing.price) || 0,
+    },
+    buyerShipment: { shipped: true, courier: "Self coordinated", tracking: "Pending", shippedAt: offer.updatedAt || offer.createdAt || new Date().toISOString() },
+    sellerShipment: { shipped: true, courier: "Self coordinated", tracking: "Pending", shippedAt: offer.updatedAt || offer.createdAt || new Date().toISOString() },
+    buyerReceived: isCompleted,
+    sellerReceived: isCompleted,
+    note: offer.message || "Coordinate exchange details with the seller.",
+  };
+};
+
 const TrackingStatusPill = ({ status }) => {
   const meta = trackingStatusMeta[status] || trackingStatusMeta.accepted;
   return (
@@ -108,15 +146,33 @@ const TrackingStatusPill = ({ status }) => {
   );
 };
 
-const BuyerTradeTrackingPage = ({ user }) => {
-  const [trades, setTrades] = useState(() => sampleTrackedTrades(user));
-  const [selectedId, setSelectedId] = useState(() => sampleTrackedTrades(user)[0]?.id);
+const BuyerTradeTrackingPage = ({ user, offers, onCompleteOffer }) => {
+  const hasOfferProp = Array.isArray(offers);
+  const initialTrades = hasOfferProp
+    ? offers.filter(offer => ["accepted", "completed"].includes(offer.status)).map(mapOfferToTrackedTrade)
+    : sampleTrackedTrades(user);
+  const [trades, setTrades] = useState(() => initialTrades);
+  const [selectedId, setSelectedId] = useState(() => initialTrades[0]?.id);
   const [filter, setFilter] = useState("all");
   const [shipForm, setShipForm] = useState({ courier: "", tracking: "" });
   const [toast, setToast] = useState(null);
 
   const filtered = trades.filter(trade => filter === "all" || trade.status === filter);
   const selected = trades.find(trade => trade.id === selectedId) || filtered[0] || trades[0];
+
+  useEffect(() => {
+    if (!hasOfferProp) return;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      const nextTrades = offers
+        .filter(offer => ["accepted", "completed"].includes(offer.status))
+        .map(mapOfferToTrackedTrade);
+      setTrades(nextTrades);
+      setSelectedId(current => nextTrades.some(trade => trade.id === current) ? current : nextTrades[0]?.id);
+    });
+    return () => { cancelled = true; };
+  }, [hasOfferProp, offers]);
 
   const showToast = (message, ok = true) => {
     setToast({ message, ok });
@@ -161,6 +217,9 @@ const BuyerTradeTrackingPage = ({ user }) => {
     }
 
     syncTrade(selected.id, trade => ({ ...trade, buyerReceived: true }));
+    if (selected.offerId && typeof onCompleteOffer === "function") {
+      onCompleteOffer(selected.offerId);
+    }
     showToast("Product receipt confirmed.");
   };
 

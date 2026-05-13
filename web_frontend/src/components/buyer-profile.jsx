@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import BuyerTradeTrackingPage from "./buyer-trade-tracking";
-import { getMockTradeRequestsForBuyer } from "../utils/mockData";
+import { API_BASE_URL } from "../config/api";
+import { useAuth } from "../context/AuthContext";
 
 const fmtBDT = (value) => `BDT ${new Intl.NumberFormat("en-BD").format(Number(value) || 0)}`;
 const fmtDate = (value) => new Date(value).toLocaleDateString("en-BD", {
@@ -28,13 +30,22 @@ const statusMeta = {
     helper: "Seller accepted. Coordinate exchange.",
     step: 2,
   },
-  rejected: {
-    label: "Rejected",
+  declined: {
+    label: "Declined",
     color: "#dc2626",
     bg: "rgba(239,68,68,0.08)",
     border: "rgba(239,68,68,0.22)",
     dot: "#ef4444",
     helper: "Seller declined this offer",
+    step: 2,
+  },
+  cancelled: {
+    label: "Cancelled",
+    color: "#dc2626",
+    bg: "rgba(239,68,68,0.08)",
+    border: "rgba(239,68,68,0.22)",
+    dot: "#ef4444",
+    helper: "You cancelled this offer",
     step: 2,
   },
   completed: {
@@ -48,58 +59,31 @@ const statusMeta = {
   },
 };
 
-const sampleTradeRequests = (user) => [
-  {
-    _id: "buyer_trade_001",
-    status: "pending",
-    createdAt: "2026-05-04T10:30:00.000Z",
-    seller: { name: "Rafiul Hasan", location: "Dhanmondi, Dhaka", rating: 4.8, verified: true },
-    offeredItem: { title: "Samsung Galaxy S23 Ultra", category: "Electronics", condition: "Like New", value: 74000, image: "" },
-    requestedItem: { title: "iPhone 14 Pro Max 256GB", category: "Electronics", condition: "Like New", value: 92000, image: "" },
-    message: `Hi, I am ${user?.name || "interested"} and would like to trade my Samsung phone for your iPhone. I can discuss cash adjustment if needed.`,
-  },
-  {
-    _id: "buyer_trade_002",
-    status: "accepted",
-    createdAt: "2026-04-30T14:15:00.000Z",
-    seller: { name: "Mitu Akter", location: "Uttara, Dhaka", rating: 4.6, verified: true },
-    offeredItem: { title: "MacBook Air M1", category: "Electronics", condition: "Good", value: 58000, image: "" },
-    requestedItem: { title: "Canon EOS 700D DSLR Camera", category: "Electronics", condition: "Like New", value: 28500, image: "" },
-    message: "The MacBook is in good condition. I am open to adding accessories to make the trade fair.",
-  },
-  {
-    _id: "buyer_trade_003",
-    status: "rejected",
-    createdAt: "2026-04-22T09:45:00.000Z",
-    seller: { name: "Nabila Chowdhury", location: "Banani, Dhaka", rating: 4.3, verified: false },
-    offeredItem: { title: "Xiaomi 13 Pro", category: "Electronics", condition: "Used", value: 42000, image: "" },
-    requestedItem: { title: "Mountain Bike 26 inch", category: "Sports", condition: "Good", value: 14000, image: "" },
-    message: "Would you consider a phone-bike exchange? I can meet near your area.",
-  },
-];
-
 const normalizeTradeRequest = (request) => {
-  const requested = request.requestedProduct || request.listing || {};
-  const seller = request.seller || requested.seller || {};
+  const requested = request.listing || request.requestedProduct || {};
+  const seller = request.toUser || request.seller || requested.seller || {};
+  const barterTitle = request.barterItem || (request.offerType === "cash" ? "Cash offer" : "Offered item");
+  const cashAmount = Number(request.cashAmount) || 0;
 
   return {
     id: request._id || request.id,
     status: request.status || "pending",
     createdAt: request.createdAt || new Date().toISOString(),
+    rawOffer: request,
     seller: {
       name: seller.name || "Seller",
       location: seller.location?.city || seller.location || requested.location?.city || "Dhaka",
       rating: Number(seller.rating) || 0,
       verified: Boolean(seller.verified || seller.isVerified),
     },
-    offeredItem: request.offeredItem || {
-      title: request.offeredTitle || "Offered item",
-      category: request.offeredCategory || "Other",
+    offeredItem: {
+      title: request.offerType === "cash" ? fmtBDT(cashAmount) : barterTitle,
+      category: request.offerType || "barter",
       condition: request.offeredCondition || "Used",
-      value: request.offeredEstimatedValue || 0,
-      image: request.offeredImages?.[0] || "",
+      value: cashAmount,
+      image: "",
     },
-    requestedItem: request.requestedItem || {
+    requestedItem: {
       title: requested.title || "Requested item",
       category: requested.category || "Other",
       condition: requested.condition || "Used",
@@ -137,7 +121,7 @@ const TradeFlow = ({ status }) => {
   const steps = [
     { label: "Sent", sub: "Buyer sends offer" },
     { label: "Review", sub: "Seller reviews" },
-    { label: status === "rejected" ? "Rejected" : "Decision", sub: status === "rejected" ? "Offer declined" : "Accept / reject" },
+    { label: ["declined", "cancelled"].includes(status) ? "Closed" : "Decision", sub: ["declined", "cancelled"].includes(status) ? "Offer closed" : "Accept / reject" },
     { label: "Complete", sub: "Trade closed" },
   ];
 
@@ -177,14 +161,51 @@ const TradeItemCard = ({ item, tone, label }) => (
   </div>
 );
 
-const BuyerTradeRequestsPage = ({ user }) => {
-  const trades = useMemo(() => {
-    const stored = getMockTradeRequestsForBuyer(user).map(normalizeTradeRequest);
-    return stored.length > 0 ? stored : sampleTradeRequests(user).map(normalizeTradeRequest);
-  }, [user]);
-
+const BuyerTradeRequestsPage = () => {
+  const { token } = useAuth();
+  const navigate = useNavigate();
+  const [trades, setTrades] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [acting, setActing] = useState({});
   const [filter, setFilter] = useState("all");
-  const [selectedId, setSelectedId] = useState(trades[0]?.id || null);
+  const [selectedId, setSelectedId] = useState(null);
+
+  useEffect(() => {
+    if (!token) {
+      setTrades([]);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchOffers = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/offers/sent`, {
+          headers: { "x-auth-token": token },
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok) {
+          throw new Error(data.msg || "Unable to load sent offers.");
+        }
+        const nextTrades = Array.isArray(data) ? data.map(normalizeTradeRequest) : [];
+        if (!cancelled) {
+          setTrades(nextTrades);
+          setSelectedId(nextTrades[0]?.id || null);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message || "Unable to load sent offers.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchOffers();
+    return () => { cancelled = true; };
+  }, [token]);
+
   const selected = trades.find(trade => trade.id === selectedId) || trades[0];
 
   const filtered = trades.filter(trade => filter === "all" || trade.status === filter);
@@ -192,8 +213,50 @@ const BuyerTradeRequestsPage = ({ user }) => {
     total: trades.length,
     pending: trades.filter(trade => trade.status === "pending").length,
     accepted: trades.filter(trade => trade.status === "accepted").length,
-    rejected: trades.filter(trade => trade.status === "rejected").length,
+    declined: trades.filter(trade => trade.status === "declined").length,
+    cancelled: trades.filter(trade => trade.status === "cancelled").length,
     completed: trades.filter(trade => trade.status === "completed").length,
+  };
+
+  const updateOfferStatus = async (trade, status) => {
+    const offerId = trade?.rawOffer?._id || trade?.id;
+    if (!token || !offerId) return;
+
+    setActing(prev => ({ ...prev, [trade.id]: status }));
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/offers/${offerId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token,
+        },
+        body: JSON.stringify({ status }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.msg || "Unable to update offer.");
+      }
+      setTrades(prev => prev.map(item => (
+        item.id === trade.id
+          ? normalizeTradeRequest({ ...item.rawOffer, ...(data.offer || {}), status })
+          : item
+      )));
+    } catch (err) {
+      setError(err.message || "Unable to update offer.");
+    } finally {
+      setActing(prev => {
+        const next = { ...prev };
+        delete next[trade.id];
+        return next;
+      });
+    }
+  };
+
+  const proceedToCheckout = (trade) => {
+    const offer = trade?.rawOffer;
+    if (!offer) return;
+    navigate("/checkout", { state: { offer, listing: offer.listing } });
   };
 
   const renderTradeDetail = (trade, className = "btr-detail") => (
@@ -222,6 +285,39 @@ const BuyerTradeRequestsPage = ({ user }) => {
         {trade.message && (
           <div className="btr-note">
             <strong>Message to seller:</strong> {trade.message}
+          </div>
+        )}
+
+        {trade.status === "pending" && (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => updateOfferStatus(trade, "cancelled")}
+              disabled={Boolean(acting[trade.id])}
+              style={{ border: "1.5px solid rgba(239,68,68,0.35)", background: "#fff", color: "#dc2626", borderRadius: 12, padding: "10px 16px", fontFamily: "inherit", fontSize: 13, fontWeight: 800, cursor: acting[trade.id] ? "not-allowed" : "pointer", opacity: acting[trade.id] ? 0.55 : 1 }}
+            >
+              {acting[trade.id] === "cancelled" ? "Cancelling..." : "Cancel offer"}
+            </button>
+          </div>
+        )}
+
+        {trade.status === "accepted" && (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => proceedToCheckout(trade)}
+              style={{ border: "none", background: "linear-gradient(135deg,#0d3322,#1b7d52)", color: "#fff", borderRadius: 12, padding: "10px 16px", fontFamily: "inherit", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
+            >
+              Proceed to Checkout
+            </button>
+            <button
+              type="button"
+              onClick={() => updateOfferStatus(trade, "completed")}
+              disabled={Boolean(acting[trade.id])}
+              style={{ border: "1.5px solid rgba(46,201,126,0.4)", background: "#fff", color: "#1b7d52", borderRadius: 12, padding: "10px 16px", fontFamily: "inherit", fontSize: 13, fontWeight: 800, cursor: acting[trade.id] ? "not-allowed" : "pointer", opacity: acting[trade.id] ? 0.55 : 1 }}
+            >
+              {acting[trade.id] === "completed" ? "Completing..." : "Mark as completed"}
+            </button>
           </div>
         )}
       </div>
@@ -319,7 +415,7 @@ const BuyerTradeRequestsPage = ({ user }) => {
         {[
           ["Pending", counts.pending, "#b45309"],
           ["Accepted", counts.accepted, "#1b7d52"],
-          ["Rejected", counts.rejected, "#dc2626"],
+          ["Declined", counts.declined, "#dc2626"],
           ["Completed", counts.completed, "#0f766e"],
         ].map(([label, value, color]) => (
           <div key={label} className="btr-stat">
@@ -330,14 +426,26 @@ const BuyerTradeRequestsPage = ({ user }) => {
       </div>
 
       <div className="btr-controls">
-        {["all", "pending", "accepted", "rejected", "completed"].map(key => (
+        {["all", "pending", "accepted", "declined", "cancelled", "completed"].map(key => (
           <button key={key} className={`btr-filter${filter === key ? " active" : ""}`} onClick={() => setFilter(key)}>
             {key === "all" ? "All Requests" : statusMeta[key].label}
           </button>
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="btr-empty">
+          <div></div>
+          <h3>Loading trade requests...</h3>
+          <p>Please wait while your sent offers are loaded.</p>
+        </div>
+      ) : error ? (
+        <div className="btr-empty">
+          <div></div>
+          <h3>Unable to load trade requests</h3>
+          <p>{error}</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="btr-empty">
           <div></div>
           <h3>No trade requests found</h3>
@@ -396,6 +504,8 @@ const BuyerProfileView = ({
   updateProfile,
   user,
 }) => {
+  const { token } = useAuth();
+  const [sentOffers, setSentOffers] = useState([]);
   const {
     BuyerBrowseBanner,
     BuyerHubSidebar,
@@ -404,6 +514,48 @@ const BuyerProfileView = ({
     ListingsTab,
     SecurityTab,
   } = components;
+
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+    const fetchSentOffers = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/offers/sent`, {
+          headers: { "x-auth-token": token },
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok || !Array.isArray(data)) return;
+        if (!cancelled) setSentOffers(data);
+      } catch {
+        if (!cancelled) setSentOffers([]);
+      }
+    };
+
+    fetchSentOffers();
+    return () => { cancelled = true; };
+  }, [token]);
+
+  const completeSentOffer = async (offerId) => {
+    if (!token || !offerId) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/offers/${offerId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token,
+        },
+        body: JSON.stringify({ status: "completed" }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+      setSentOffers(prev => prev.map(offer => (
+        (offer._id || offer.id) === offerId ? { ...offer, ...(data.offer || {}), status: "completed" } : offer
+      )));
+    } catch {
+      // Tracking remains display-only if completion update fails.
+    }
+  };
 
   return (
     <>
@@ -428,7 +580,7 @@ const BuyerProfileView = ({
           )}
           {buyerPanel === "trade-tracking" && (
             <div className="up-card up-fade up-d2">
-              <BuyerTradeTrackingPage user={user} />
+              <BuyerTradeTrackingPage user={user} offers={sentOffers} onCompleteOffer={completeSentOffer} />
             </div>
           )}
           {buyerPanel === "saved" && (

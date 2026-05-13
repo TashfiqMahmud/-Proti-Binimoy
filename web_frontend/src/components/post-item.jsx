@@ -4,10 +4,8 @@ import websiteBackground from "../assets/web_bg.png";
 import MouseEffects from "./mouse-effects";
 import PageFooter from "./page-footer";
 import { BD_LOCATIONS } from "../config/locations";
-// Backend connection is intentionally commented for mock-data testing.
-// import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL } from "../config/api";
 import { useAuth } from "../context/AuthContext";
-import { createMockListing } from "../utils/mockData";
 
 /* 
    GLOBAL STYLES
@@ -600,18 +598,6 @@ const PostItemPage = () => {
     };
 
     try {
-      const listing = createMockListing({
-        ...payload,
-        negotiable: form.negotiable,
-        tradeOffer: form.tradeOffer,
-        phone: form.phone,
-        tags: form.tags,
-        photos: form.photos,
-      }, authUser);
-      navigate("/marketplace", { state: { mockListingId: listing._id } });
-
-      /*
-      BACKEND CONNECTION (commented out for mock-data testing)
       const response = await fetch(`${API_BASE_URL}/api/listings`, {
         method: "POST",
         headers: {
@@ -625,7 +611,6 @@ const PostItemPage = () => {
 
       const listingId = data._id || data.listing?._id;
       navigate(listingId ? `/listings/${listingId}` : "/listings");
-      */
     } catch (err) {
       setError(err.message || "Unable to create listing.");
     } finally {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../config/api";
 import { useAuth } from "../context/AuthContext";
@@ -287,7 +287,17 @@ const CheckoutPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { token, user: authUser } = useAuth();
-  const item = location.state?.item;
+  const offer = location.state?.offer;
+  const listing = location.state?.listing || offer?.listing;
+  const routeItem = location.state?.item;
+  const item = useMemo(() => routeItem || (listing ? {
+    id: listing._id || listing.id,
+    title: listing.title || "Selected listing",
+    price: Number(offer?.cashAmount || listing.price) || 0,
+    category: listing.category || "Marketplace",
+    image: Array.isArray(listing.images) ? listing.images[0] || "" : "",
+    seller: offer?.toUser || listing.seller || {},
+  } : null), [listing, offer, routeItem]);
 
   const [form, setForm] = useState({
     name:    authUser?.name || "",
@@ -330,46 +340,39 @@ const CheckoutPage = () => {
     setLoading(true);
     setError("");
 
-    const orderPayload = {
-      itemId:       item.id,
-      itemTitle:    item.title,
-      itemPrice:    item.price,
-      buyerName:    form.name.trim(),
-      buyerPhone:   form.phone.trim(),
-      address:      form.address.trim(),
-      division:     form.division,
-      city:         form.city,
-      paymentMethod:form.payment,
-      totalAmount:  item.price,
-    };
+    const offerId = offer?._id || offer?.id;
+    if (!offerId) {
+      setError("Checkout requires an accepted offer. Please open checkout from an accepted offer.");
+      setLoading(false);
+      return;
+    }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/orders`, {
+      const response = await fetch(`${API_BASE_URL}/api/payments/init`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-auth-token": token,
         },
-        body: JSON.stringify(orderPayload),
+        body: JSON.stringify({ offerId }),
       });
 
       const data = await response.json().catch(() => ({}));
-      const paymentUrl = data?.paymentUrl || data?.payment_url;
 
       if (!response.ok) {
-        throw new Error(data?.msg || data?.message || "Failed to place order. Please try again.");
+        throw new Error(data?.msg || data?.message || "Failed to initialize payment. Please try again.");
       }
 
-      if (paymentUrl) {
-        window.location.href = paymentUrl;
-      } else {
-        // Successful order without redirect (e.g. cash on delivery)
-        navigate("/order-success", { state: { order: data } });
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
       }
+
+      throw new Error("Payment gateway URL was not returned.");
     } catch (err) {
       const msg =
         err?.message ||
-        "Failed to place order. Please try again.";
+        "Failed to initialize payment. Please try again.";
       setError(msg);
     } finally {
       setLoading(false);

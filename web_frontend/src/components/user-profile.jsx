@@ -5,18 +5,8 @@ import { BD_LOCATIONS } from "../config/locations";
 import PageFooter from "./page-footer";
 import BuyerProfileView from "./buyer-profile";
 import SellerProfileView from "./seller-profile";
-// Backend connection is intentionally commented for mock-data testing.
-// import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL } from "../config/api";
 import { useAuth } from "../context/AuthContext";
-import {
-  getMockListingsForUser,
-  getMockProfile,
-  getMockSavedListings,
-  getMockTradeRequestsForSeller,
-  seedMockData,
-  updateMockProfile,
-  updateMockTradeRequestStatus,
-} from "../utils/mockData";
 
 const getLocationText = (location) => {
   if (!location) return "";
@@ -36,10 +26,10 @@ const mapListingForProfile = (listing) => ({
   image: Array.isArray(listing.images) ? listing.images.find(Boolean) || "" : ""
 });
 
-const mapMockProfileUser = (profile = {}) => ({
-  id: profile.id || profile._id || "",
-  email: profile.email || "",
-  name: profile.name || "User",
+const mapProfileUser = (profile = {}, listings = [], fallback = {}) => ({
+  id: profile.id || profile._id || fallback.id || fallback._id || "",
+  email: profile.email || fallback.email || "",
+  name: profile.name || fallback.name || "User",
   phone: profile.phone || "",
   joinDate: profile.joinDate || profile.createdAt || "",
   location: getLocationText(profile.location),
@@ -52,12 +42,12 @@ const mapMockProfileUser = (profile = {}) => ({
   rating: Number(profile.rating) || 0,
   reviews: Number(profile.reviews || profile.totalReviews) || 0,
   totalReviews: Number(profile.totalReviews || profile.reviews) || 0,
-  totalListings: Number(profile.totalListings) || 0,
-  soldItems: Number(profile.soldItems) || 0,
+  totalListings: Number(profile.totalListings) || listings.length,
+  soldItems: Number(profile.soldItems) || listings.filter(listing => listing.status === "sold").length,
   savedItems: Number(profile.savedItems) || 0,
   verified: Boolean(profile.verified || profile.isVerified),
   memberTier: profile.memberTier || (profile.verified || profile.isVerified ? "Verified" : "Member"),
-  role: profile.role || "",
+  role: profile.role || fallback.role || "",
 });
 
 const GlobalStyles = () => (
@@ -1119,6 +1109,9 @@ const LegacyTradeStatusBadge = ({ status }) => {
     pending:  { bg: "rgba(245,158,11,0.12)",  color: "#b45309", border: "rgba(245,158,11,0.3)",  label: "Pending",  dot: "#f59e0b" },
     accepted: { bg: "rgba(46,201,126,0.12)",  color: "#1b7d52", border: "rgba(46,201,126,0.3)",  label: "Accepted", dot: "#2ec97e" },
     rejected: { bg: "rgba(239,68,68,0.1)",    color: "#dc2626", border: "rgba(239,68,68,0.25)",  label: "Rejected", dot: "#ef4444" },
+    declined: { bg: "rgba(239,68,68,0.1)",    color: "#dc2626", border: "rgba(239,68,68,0.25)",  label: "Declined", dot: "#ef4444" },
+    cancelled:{ bg: "rgba(239,68,68,0.1)",    color: "#dc2626", border: "rgba(239,68,68,0.25)",  label: "Cancelled", dot: "#ef4444" },
+    completed:{ bg: "rgba(15,118,110,0.1)",   color: "#0f766e", border: "rgba(15,118,110,0.26)", label: "Completed", dot: "#14b8a6" },
   };
   const c = map[status] || map.pending;
   return (
@@ -1131,6 +1124,75 @@ const LegacyTradeStatusBadge = ({ status }) => {
       {c.label}
     </span>
   );
+};
+
+const getEntityId = (entity) => {
+  if (!entity) return "";
+  if (typeof entity === "string") return entity;
+  return entity._id || entity.id || "";
+};
+
+const mapIncomingOfferToTrade = (offer) => {
+  const listing = offer.listing || {};
+  const buyer = offer.fromUser || {};
+  const cashAmount = Number(offer.cashAmount) || 0;
+  const offeredTitle = offer.offerType === "cash"
+    ? `Cash offer ${fmtBDT2(cashAmount)}`
+    : offer.barterItem || "Barter item";
+
+  return {
+    _id: offer._id,
+    id: offer._id,
+    rawOffer: offer,
+    status: offer.status || "pending",
+    createdAt: offer.createdAt || new Date().toISOString(),
+    buyer: {
+      name: buyer.name || "Buyer",
+      phone: buyer.phone || "",
+      location: buyer.location?.city || buyer.location || "Bangladesh",
+      avatar: buyer.profilePicture || "",
+      rating: Number(buyer.rating) || 0,
+      totalTrades: Number(buyer.totalReviews) || 0,
+    },
+    sellerItem: {
+      title: listing.title || "Your listed item",
+      category: listing.category || "Other",
+      condition: listing.condition || "Used",
+      value: Number(listing.price) || 0,
+      image: Array.isArray(listing.images) ? listing.images[0] || "" : "",
+    },
+    requestedItem: {
+      title: listing.title || "Your listed item",
+      category: listing.category || "Other",
+      condition: listing.condition || "Used",
+      value: Number(listing.price) || 0,
+      image: Array.isArray(listing.images) ? listing.images[0] || "" : "",
+    },
+    offeredItem: {
+      title: offeredTitle,
+      category: offer.offerType || "barter",
+      condition: "Used",
+      value: cashAmount,
+      image: "",
+    },
+    offeredProduct: {
+      title: offeredTitle,
+      category: offer.offerType || "barter",
+      condition: "Used",
+      price: cashAmount,
+      image: "",
+    },
+    requestedProduct: {
+      title: listing.title || "Your listed item",
+      category: listing.category || "Other",
+      condition: listing.condition || "Used",
+      price: Number(listing.price) || 0,
+      image: Array.isArray(listing.images) ? listing.images[0] || "" : "",
+    },
+    message: offer.message || "",
+    cashAdjustment: cashAmount,
+    cashDirection: cashAmount > 0 ? "buyer_pays" : null,
+  };
 };
 
 const TradeRequestsTab = ({ token, sellerUser }) => {
@@ -1149,53 +1211,43 @@ const TradeRequestsTab = ({ token, sellerUser }) => {
     if (!token) { setLoading(false); return; }
     setLoading(true);
     setError("");
-    try {
-      setRequests(getMockTradeRequestsForSeller(sellerUser));
-      setError("");
-    } catch {
-      setError("Could not load trade requests. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    let cancelled = false;
 
-    /*
-    BACKEND CONNECTION (commented out for mock-data testing)
-    fetch(`${API_BASE_URL}/api/trade-requests/seller`, {
+    fetch(`${API_BASE_URL}/api/offers/received`, {
       headers: { "x-auth-token": token },
     })
       .then(r => r.json())
       .then(data => {
+        if (cancelled) return;
         if (Array.isArray(data)) {
-          setRequests(data);
-        } else if (Array.isArray(data.tradeRequests)) {
-          setRequests(data.tradeRequests);
+          setRequests(data.map(mapIncomingOfferToTrade));
         } else {
           setRequests([]);
         }
       })
       .catch(() => setError("Could not load trade requests. Please try again."))
       .finally(() => setLoading(false));
-    */
+
+    return () => { cancelled = true; };
   }, [sellerUser, token]);
 
   const handleAction = async (tradeId, action) => {
     setActing(a => ({ ...a, [tradeId]: action === "accepted" ? "accepting" : "rejecting" }));
     try {
-      updateMockTradeRequestStatus(tradeId, action);
-
-      /*
-      BACKEND CONNECTION (commented out for mock-data testing)
-      const res = await fetch(`${API_BASE_URL}/api/trade-requests/${tradeId}/${action}`, {
+      const res = await fetch(`${API_BASE_URL}/api/offers/${tradeId}/status`, {
         method: "PUT",
-        headers: { "x-auth-token": token, "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token,
+        },
+        body: JSON.stringify({ status: action }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.msg || `Failed to ${action} trade.`);
-      */
       setRequests(prev =>
         prev.map(r => (r._id === tradeId || r.id === tradeId) ? { ...r, status: action } : r)
       );
-      showToast(action === "accepted" ? "Trade accepted! Done" : "Trade rejected.", action === "accepted");
+      showToast(action === "accepted" ? "Trade accepted! Done" : "Trade declined.", action === "accepted");
     } catch (err) {
       showToast(err.message || "Something went wrong.", false);
     } finally {
@@ -1249,23 +1301,11 @@ const TradeRequestsTab = ({ token, sellerUser }) => {
         <button
           onClick={() => {
             setLoading(true);
-            try {
-              setRequests(getMockTradeRequestsForSeller(sellerUser));
-              setError("");
-            } catch {
-              setError("Refresh failed.");
-            } finally {
-              setLoading(false);
-            }
-
-            /*
-            BACKEND CONNECTION (commented out for mock-data testing)
-            fetch(`${API_BASE_URL}/api/trade-requests/seller`, { headers: { "x-auth-token": token } })
+            fetch(`${API_BASE_URL}/api/offers/received`, { headers: { "x-auth-token": token } })
               .then(r => r.json())
-              .then(d => setRequests(Array.isArray(d) ? d : d.tradeRequests || []))
+              .then(d => setRequests(Array.isArray(d) ? d.map(mapIncomingOfferToTrade) : []))
               .catch(() => setError("Refresh failed."))
               .finally(() => setLoading(false));
-            */
           }}
           style={{ background: "none", border: "1.5px solid #e5e7eb", borderRadius: 10, padding: "6px 13px", fontSize: 12, fontWeight: 600, color: "#6b7280", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5, transition: "border-color 0.2s, color 0.2s" }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = "#2ec97e"; e.currentTarget.style.color = "#1b7d52"; }}
@@ -1450,7 +1490,7 @@ const TradeRequestCard = ({ req, acting, onAction, resolved = false }) => {
           </button>
           <button
             disabled={isActing}
-            onClick={() => onAction(id, "rejected")}
+            onClick={() => onAction(id, "declined")}
             style={{
               flex: 1, minWidth: 100, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7,
               background: isActing ? "#f9fafb" : "#fff", color: isActing ? "#9ca3af" : "#dc2626",
@@ -1463,7 +1503,7 @@ const TradeRequestCard = ({ req, acting, onAction, resolved = false }) => {
             onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.35)"; }}
           >
             {acting[id] === "rejecting"
-              ? <><Spinner /> Rejecting...</>
+              ? <><Spinner /> Declining...</>
               : <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Decline</>
             }
           </button>
@@ -2101,19 +2141,91 @@ const dsInfo = key => DELIVERY_STATUSES.find(s => s.key === key) || DELIVERY_STA
 /* --------------------------------------
    INCOMING ORDERS PAGE
 -------------------------------------- */
-const IncomingOrdersPage = () => {
-  const [orders, setOrders] = useState(MOCK_ORDERS);
+const IncomingOrdersPage = ({ token, authUser }) => {
+  const [orders, setOrders] = useState([]);
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState(null);
   const [mobileDetail, setMobileDetail] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const showToast = (msg, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 2800);
   };
+
+  useEffect(() => {
+    if (!token) {
+      setOrders([]);
+      setSelected(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const sellerId = getEntityId(authUser);
+
+    const mapPaymentToOrder = (payment) => {
+      const listing = payment.listing || {};
+      const buyer = payment.buyer || {};
+      const paymentStatus = payment.status || "pending";
+      const deliveryStatus = paymentStatus === "success" ? "processing" : "pending";
+
+      return {
+        id: payment.transactionId || payment._id,
+        buyer: {
+          name: buyer.name || "Buyer",
+          phone: buyer.phone || buyer.email || "",
+          avatar: buyer.profilePicture || "",
+        },
+        address: buyer.location?.address || "",
+        product: {
+          title: listing.title || "Listing",
+          image: Array.isArray(listing.images) ? listing.images[0] || "" : "",
+          category: listing.category || "Marketplace",
+          qty: 1,
+        },
+        price: Number(payment.amount) || 0,
+        payment: { method: "SSLCommerz", status: paymentStatus === "success" ? "paid" : paymentStatus },
+        deliveryStatus,
+        createdAt: payment.createdAt || new Date().toISOString(),
+        note: payment.transactionId || "",
+      };
+    };
+
+    const fetchPayments = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/payments/my`, {
+          headers: { "x-auth-token": token },
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok) {
+          throw new Error(data.msg || "Unable to load payments.");
+        }
+        const nextOrders = Array.isArray(data)
+          ? data
+              .filter(payment => !sellerId || getEntityId(payment.seller) === sellerId)
+              .map(mapPaymentToOrder)
+          : [];
+        if (!cancelled) {
+          setOrders(nextOrders);
+          setSelected(nextOrders[0] || null);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message || "Unable to load payments.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchPayments();
+    return () => { cancelled = true; };
+  }, [authUser, token]);
 
   const filtered = orders.filter(o => {
     const matchFilter = filter === "all" || o.deliveryStatus === filter;
@@ -2198,6 +2310,18 @@ const IncomingOrdersPage = () => {
         <p style={{ fontSize: 10, fontWeight: 700, color: "#b0b9b5", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>{label}</p>
         <p style={{ fontSize: 13, fontWeight: 600, color: "#0d1f16", lineHeight: 1.4, fontFamily: mono ? "monospace" : "inherit", wordBreak: "break-word" }}>{value || "-"}</p>
       </div>
+    </div>
+  );
+
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "60px 24px", gap: 10, color: "#7a8c82" }}>
+      <Spinner dark /> <span style={{ fontSize: 14 }}>Loading payments...</span>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ padding: "32px 0" }}>
+      <div className="up-err" style={{ marginBottom: 0 }}><ErrIcon /> {error}</div>
     </div>
   );
 
@@ -2508,6 +2632,9 @@ const TradeStatusBadge = ({ status }) => {
     pending:  { label: "Pending Review", color: "#b45309", bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.3)", dot: "#f59e0b" },
     accepted: { label: "Accepted",       color: "#1b7d52", bg: "rgba(46,201,126,0.1)", border: "rgba(46,201,126,0.3)", dot: "#2ec97e" },
     rejected: { label: "Rejected",       color: "#dc2626", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.22)", dot: "#ef4444" },
+    declined: { label: "Declined",       color: "#dc2626", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.22)", dot: "#ef4444" },
+    cancelled:{ label: "Cancelled",      color: "#dc2626", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.22)", dot: "#ef4444" },
+    completed:{ label: "Completed",      color: "#0f766e", bg: "rgba(15,118,110,0.1)", border: "rgba(15,118,110,0.28)", dot: "#14b8a6" },
   };
   const s = map[status] || map.pending;
   return (
@@ -2524,13 +2651,15 @@ const StarRating = ({ value }) => (
   </span>
 );
 
-const IncomingTradeRequestsPage = () => {
-  const [trades, setTrades] = useState(MOCK_TRADE_REQUESTS);
+const IncomingTradeRequestsPage = ({ token }) => {
+  const [trades, setTrades] = useState([]);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // { id, action }
   const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const showToast = (msg, ok = true) => {
     setToast({ msg, ok });
@@ -2541,20 +2670,76 @@ const IncomingTradeRequestsPage = () => {
     setConfirmAction({ id, action });
   };
 
-  const confirmDo = () => {
+  useEffect(() => {
+    if (!token) {
+      setTrades([]);
+      setSelected(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchReceivedOffers = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/offers/received`, {
+          headers: { "x-auth-token": token },
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok) {
+          throw new Error(data.msg || "Unable to load incoming trade requests.");
+        }
+        const nextTrades = Array.isArray(data) ? data.map(mapIncomingOfferToTrade) : [];
+        if (!cancelled) {
+          setTrades(nextTrades);
+          setSelected(nextTrades[0] || null);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message || "Unable to load incoming trade requests.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchReceivedOffers();
+    return () => { cancelled = true; };
+  }, [token]);
+
+  const confirmDo = async () => {
     if (!confirmAction) return;
     const { id, action } = confirmAction;
-    setTrades(prev => prev.map(t => t.id === id ? { ...t, status: action === "accept" ? "accepted" : "rejected" } : t));
-    if (selected?.id === id) setSelected(prev => ({ ...prev, status: action === "accept" ? "accepted" : "rejected" }));
-    setConfirmAction(null);
-    showToast(action === "accept" ? "Trade accepted! Buyer will be notified." : "Trade rejected. Buyer will be notified.", action === "accept");
+    const status = action === "accept" ? "accepted" : "declined";
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/offers/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token,
+        },
+        body: JSON.stringify({ status }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.msg || "Unable to update trade request.");
+      }
+      setTrades(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+      if (selected?.id === id) setSelected(prev => ({ ...prev, status }));
+      setConfirmAction(null);
+      showToast(action === "accept" ? "Trade accepted! Buyer will be notified." : "Trade declined. Buyer will be notified.", action === "accept");
+    } catch (err) {
+      showToast(err.message || "Unable to update trade request.", false);
+    }
   };
 
   const FILTERS = [
     { key: "all",      label: "All Trades" },
     { key: "pending",  label: "Pending" },
     { key: "accepted", label: "Accepted" },
-    { key: "rejected", label: "Rejected" },
+    { key: "declined", label: "Declined" },
+    { key: "cancelled", label: "Cancelled" },
+    { key: "completed", label: "Completed" },
   ];
 
   const filtered = trades.filter(t => {
@@ -2568,7 +2753,7 @@ const IncomingTradeRequestsPage = () => {
     total: trades.length,
     pending: trades.filter(t => t.status === "pending").length,
     accepted: trades.filter(t => t.status === "accepted").length,
-    rejected: trades.filter(t => t.status === "rejected").length,
+    declined: trades.filter(t => t.status === "declined").length,
   };
 
   const openDetail = (trade) => setSelected(trade);
@@ -2592,6 +2777,18 @@ const IncomingTradeRequestsPage = () => {
         </span>
         <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 700, color: "#0d1f16" }}>{fmtBDT2(item.value)}</p>
       </div>
+    </div>
+  );
+
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "60px 24px", gap: 10, color: "#7a8c82" }}>
+      <Spinner dark /> <span style={{ fontSize: 14 }}>Loading incoming trade requests...</span>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ padding: "32px 0" }}>
+      <div className="up-err" style={{ marginBottom: 0 }}><ErrIcon /> {error}</div>
     </div>
   );
 
@@ -2640,7 +2837,7 @@ const IncomingTradeRequestsPage = () => {
               {confirmAction.action === "accept" ? "..." : "X"}
             </div>
             <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 700, color: "#0d1f16", marginBottom: 10 }}>
-              {confirmAction.action === "accept" ? "Accept this trade?" : "Reject this trade?"}
+              {confirmAction.action === "accept" ? "Accept this trade?" : "Decline this trade?"}
             </h3>
             <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.65, marginBottom: 28 }}>
               {confirmAction.action === "accept"
@@ -2652,7 +2849,7 @@ const IncomingTradeRequestsPage = () => {
                 Cancel
               </button>
               <button onClick={confirmDo} style={{ flex: 1.5, padding: "12px", borderRadius: 12, border: "none", background: confirmAction.action === "accept" ? "linear-gradient(135deg,#0d3322,#1b7d52)" : "#dc2626", color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", boxShadow: confirmAction.action === "accept" ? "0 4px 16px rgba(13,51,34,0.28)" : "0 4px 16px rgba(220,38,38,0.28)" }}>
-                {confirmAction.action === "accept" ? "Yes, Accept Trade" : "Yes, Reject Trade"}
+                {confirmAction.action === "accept" ? "Yes, Accept Trade" : "Yes, Decline Trade"}
               </button>
             </div>
           </div>
@@ -2680,7 +2877,7 @@ const IncomingTradeRequestsPage = () => {
           { label: "Total",    val: kpi.total,    color: "#0d1f16", bg: "#f7f8f6",              border: "#e9eceb",             dot: "#6b7280" },
           { label: "Pending",  val: kpi.pending,  color: "#b45309", bg: "rgba(245,158,11,0.07)",border: "rgba(245,158,11,0.25)",dot: "#f59e0b" },
           { label: "Accepted", val: kpi.accepted, color: "#1b7d52", bg: "rgba(46,201,126,0.07)",border: "rgba(46,201,126,0.25)",dot: "#2ec97e" },
-          { label: "Rejected", val: kpi.rejected, color: "#dc2626", bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.2)", dot: "#ef4444" },
+          { label: "Declined", val: kpi.declined, color: "#dc2626", bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.2)", dot: "#ef4444" },
         ].map(k => (
           <div key={k.label} style={{ background: k.bg, border: `1px solid ${k.border}`, borderRadius: 14, padding: "14px 16px", textAlign: "center" }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: k.dot, margin: "0 auto 8px" }} />
@@ -2792,7 +2989,7 @@ const IncomingTradeRequestsPage = () => {
                   </div>
                   {trade.status === "pending" && (
                     <div style={{ display: "flex", gap: 7 }} onClick={e => e.stopPropagation()}>
-                      <button className="tr-reject-btn" style={{ padding: "7px 14px", fontSize: 12 }} onClick={() => handleAction(trade.id, "reject")}>X Reject</button>
+                      <button className="tr-reject-btn" style={{ padding: "7px 14px", fontSize: 12 }} onClick={() => handleAction(trade.id, "reject")}>X Decline</button>
                       <button className="tr-accept-btn" style={{ padding: "7px 16px", fontSize: 12 }} onClick={() => handleAction(trade.id, "accept")}>OK Accept</button>
                     </div>
                   )}
@@ -2915,7 +3112,7 @@ const IncomingTradeRequestsPage = () => {
                 <div style={{ display: "flex", gap: 10 }}>
                   <button className="tr-reject-btn" style={{ flex: 1, justifyContent: "center" }} onClick={() => handleAction(selected.id, "reject")}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width={14} height={14}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    Reject Trade
+                    Decline Trade
                   </button>
                   <button className="tr-accept-btn" style={{ flex: 1.4, justifyContent: "center" }} onClick={() => handleAction(selected.id, "accept")}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width={14} height={14}><polyline points="20 6 9 17 4 12"/></svg>
@@ -2929,7 +3126,7 @@ const IncomingTradeRequestsPage = () => {
                   <div style={{ fontSize: 24 }}>{selected.status === "accepted" ? "..." : "X"}</div>
                   <div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: selected.status === "accepted" ? "#1b7d52" : "#dc2626" }}>
-                      Trade {selected.status === "accepted" ? "Accepted" : "Rejected"}
+                      Trade {selected.status === "accepted" ? "Accepted" : "Declined"}
                     </p>
                     <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
                       {selected.status === "accepted" ? "Coordinate item exchange details with the buyer." : "This trade offer has been declined."}
@@ -4051,7 +4248,6 @@ const UserProfilePage = () => {
     logout();
     localStorage.removeItem("pb_jwt");
     localStorage.removeItem("pb_user_role");
-    localStorage.removeItem("pb_mock_session");
     setUser(null);
     navigate("/");
   };
@@ -4059,13 +4255,10 @@ const UserProfilePage = () => {
   const showLoginModal = () => { setLoginModal(true); };
 
   const updateProfile = async (payload) => {
-    const nextUser = mapMockProfileUser(updateMockProfile(authUser || user, payload));
-    setUser(nextUser);
-    login(token, nextUser);
-    return nextUser;
+    if (!token) {
+      throw new Error("You must be signed in to update your profile.");
+    }
 
-    /*
-    BACKEND CONNECTION (commented out for mock-data testing)
     const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
       method: "PUT",
       headers: {
@@ -4079,11 +4272,10 @@ const UserProfilePage = () => {
       throw new Error(data.msg || "Unable to update profile.");
     }
 
-    const nextUser = mapProfileUser(data.user, userListings, user);
+    const nextUser = mapProfileUser(data.user, userListings, user || authUser);
     setUser(nextUser);
     login(token, { ...data.user, id: data.user?._id || data.user?.id });
     return nextUser;
-    */
   };
 
   const handleAvatarChange = (e) => {
@@ -4106,30 +4298,6 @@ const UserProfilePage = () => {
       return;
     }
 
-    let cancelled = false;
-    const loadMockProfile = async () => {
-      setProfileLoading(false);
-      setProfileError("");
-      seedMockData();
-      const mockProfile = getMockProfile(authUser);
-      const mockListings = getMockListingsForUser(mockProfile || authUser);
-      const mockSavedListings = getMockSavedListings(mockProfile || authUser);
-      if (cancelled) return;
-      setUserListings(mockListings.map(mapListingForProfile));
-      setSavedListings(mockSavedListings.map(mapListingForProfile));
-      setUser(mockProfile ? mapMockProfileUser({
-        ...mockProfile,
-        totalListings: mockListings.length,
-        soldItems: mockListings.filter(listing => listing.status === "sold").length,
-        savedItems: mockSavedListings.length,
-      }) : null);
-    };
-
-    loadMockProfile();
-    return () => { cancelled = true; };
-
-    /*
-    BACKEND CONNECTION (commented out for mock-data testing)
     const getTokenUserId = (value) => {
       try {
         const payload = JSON.parse(atob(value.split(".")[1]));
@@ -4138,30 +4306,6 @@ const UserProfilePage = () => {
         return "";
       }
     };
-
-    const mapProfileUser = (profile, listings = [], fallback = {}) => ({
-      id: profile?._id || profile?.id || fallback?.id || "",
-      email: profile?.email || fallback?.email || "",
-      name: profile?.name || fallback?.name || "User",
-      phone: profile?.phone || "",
-      joinDate: profile?.createdAt || "",
-      location: getLocationText(profile?.location),
-      locationData: profile?.location || {},
-      bio: profile?.bio || "",
-      idType: profile?.nid ? "nid" : profile?.passportNumber ? "passport" : "",
-      idValue: profile?.nid || profile?.passportNumber || "",
-      avatar: profile?.profilePicture || "",
-      profilePicture: profile?.profilePicture || "",
-      rating: Number(profile?.rating) || 0,
-      reviews: Number(profile?.totalReviews) || 0,
-      totalReviews: Number(profile?.totalReviews) || 0,
-      totalListings: listings.length,
-      soldItems: listings.filter(listing => listing.status === "sold").length,
-      savedItems: 0,
-      verified: Boolean(profile?.isVerified),
-      memberTier: profile?.isVerified ? "Verified" : "Member",
-      role: profile?.role || fallback?.role || "",
-    });
 
     const userId = authUser?.id || authUser?._id || getTokenUserId(token);
     if (!userId) {
@@ -4176,26 +4320,38 @@ const UserProfilePage = () => {
       setProfileLoading(true);
       setProfileError("");
       try {
-        const [profileResponse, listingsResponse] = await Promise.all([
+        const [profileResponse, listingsResponse, savedResponse] = await Promise.all([
           fetch(`${API_BASE_URL}/api/users/${userId}`),
           fetch(`${API_BASE_URL}/api/listings/mine`, {
+            headers: { "x-auth-token": token },
+          }),
+          fetch(`${API_BASE_URL}/api/listings/saved`, {
             headers: { "x-auth-token": token },
           }),
         ]);
 
         const profileData = await profileResponse.json().catch(() => ({}));
         const listingsData = await listingsResponse.json().catch(() => []);
+        const savedData = await savedResponse.json().catch(() => []);
 
         if (!profileResponse.ok) throw new Error(profileData.msg || "Unable to load profile.");
         if (!listingsResponse.ok) throw new Error(listingsData.msg || "Unable to load listings.");
+        if (!savedResponse.ok) throw new Error(savedData.msg || "Unable to load saved listings.");
 
         const normalizedListings = Array.isArray(listingsData)
           ? listingsData.map(mapListingForProfile)
           : [];
-        const normalizedUser = mapProfileUser(profileData, normalizedListings, authUser);
+        const normalizedSavedListings = Array.isArray(savedData)
+          ? savedData.map(mapListingForProfile)
+          : [];
+        const normalizedUser = mapProfileUser({
+          ...profileData,
+          savedItems: normalizedSavedListings.length,
+        }, normalizedListings, authUser);
 
         if (!cancelled) {
           setUserListings(normalizedListings);
+          setSavedListings(normalizedSavedListings);
           setUser(normalizedUser);
         }
       } catch (err) {
@@ -4207,17 +4363,14 @@ const UserProfilePage = () => {
 
     fetchProfile();
     return () => { cancelled = true; };
-    */
   }, [authUser, navigate, token]);
 
   // Seller hub panel state (sidebar navigation)
   const [sellerPanel, setSellerPanel] = useState("orders");
   // Buyer hub panel state
   const [buyerPanel, setBuyerPanel]   = useState("orders");
-  const pendingOrderCount = MOCK_ORDERS.filter(o => o.deliveryStatus === "pending").length;
-  const pendingTradeCount = (() => {
-    try { return getMockTradeRequestsForSeller(user).filter(r => r.status === "pending").length; } catch { return 0; }
-  })();
+  const pendingOrderCount = 0;
+  const pendingTradeCount = 0;
 
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif" }}>
@@ -4434,8 +4587,8 @@ const UserProfilePage = () => {
                 components={{
                   AddProductBanner,
                   EditProfileTab,
-                  IncomingOrdersPage,
-                  IncomingTradeRequestsPage,
+                  IncomingOrdersPage: () => <IncomingOrdersPage token={token} authUser={authUser || user} />,
+                  IncomingTradeRequestsPage: () => <IncomingTradeRequestsPage token={token} />,
                   ListingsTab,
                   SecurityTab,
                   SellerHubSidebar,

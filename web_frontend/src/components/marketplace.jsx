@@ -2,16 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PageFooter from "./page-footer";
 import { BD_LOCATIONS, BD_LOCATIONS_ALL } from "../config/locations";
-// Backend connection is intentionally commented for mock-data testing.
-// import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL } from "../config/api";
 import { useAuth } from "../context/AuthContext";
-import {
-  addMockTradeRequest,
-  getMockListings,
-  getMockSavedListingIds,
-  seedMockData,
-  toggleMockSavedListing,
-} from "../utils/mockData";
 
 const CATEGORIES = [
   { label: "All",         icon: "", count: 8,  color: "#2ec97e" },
@@ -1098,33 +1090,30 @@ const OfferTradeModal = ({ item, onClose }) => {
     setLoading(true);
     setApiError("");
     try {
-      addMockTradeRequest({ item, form, authUser });
+      const barterDetails = [
+        form.title.trim(),
+        form.condition,
+        form.category.trim() || item.category,
+        form.estimatedValue ? `estimated BDT ${form.estimatedValue}` : "",
+      ].filter(Boolean).join(" - ");
 
-      /*
-      BACKEND CONNECTION (commented out for mock-data testing)
-      const payload = new FormData();
-      payload.append("requestedProductId",   item.id);
-      payload.append("offeredTitle",         form.title.trim());
-      payload.append("offeredCategory",      form.category.trim() || item.category);
-      payload.append("offeredCondition",     form.condition);
-      payload.append("offeredEstimatedValue",form.estimatedValue || "0");
-      payload.append("offeredDescription",   form.description.trim());
-      payload.append("message",              form.message.trim());
-      payload.append("buyerName",            authUser?.name  || "");
-      payload.append("buyerEmail",           authUser?.email || "");
-      payload.append("buyerId",              authUser?.id || authUser?._id || "");
-      form.photos.forEach((p, i) => payload.append("offeredImages", p.file, `trade_img_${i}`));
-
-      const res = await fetch(`${API_BASE_URL}/api/trades/request`, {
+      const res = await fetch(`${API_BASE_URL}/api/offers`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: payload,
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token,
+        },
+        body: JSON.stringify({
+          listingId: item.id,
+          offerType: "barter",
+          barterItem: barterDetails,
+          message: form.message.trim() || form.description.trim(),
+        }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Trade request failed.");
+        throw new Error(data.msg || data.message || "Trade request failed.");
       }
-      */
       setSuccess(true);
       pushNotification("trade", "Trade Request Sent!", `Your offer was sent to ${item.seller.name}.`);
     } catch (e) {
@@ -1710,11 +1699,6 @@ export default function MarketplacePage() {
   const toggleSave = async (id) => {
     if (!token) { setAuthGate(true); return; }
     try {
-      const nextSaved = toggleMockSavedListing(authUser, id);
-      setSaved(new Set(nextSaved));
-
-      /*
-      BACKEND CONNECTION (commented out for mock-data testing)
       const response = await fetch(`${API_BASE_URL}/api/listings/${id}/save`, {
         method: "POST",
         headers: { "x-auth-token": token },
@@ -1728,7 +1712,6 @@ export default function MarketplacePage() {
         else n.has(id) ? n.delete(id) : n.add(id);
         return n;
       });
-      */
     } catch (err) {
       setError(err.message || "Unable to update saved item.");
     }
@@ -1740,17 +1723,10 @@ export default function MarketplacePage() {
     const fetchListings = async () => {
       setLoading(true); setError("");
       try {
-        seedMockData();
-        const data = getMockListings();
-        if (!cancelled) setListings(data.map(mapListingToItem));
-
-        /*
-        BACKEND CONNECTION (commented out for mock-data testing)
         const response = await fetch(`${API_BASE_URL}/api/listings`);
         const data = await response.json().catch(() => []);
         if (!response.ok) throw new Error(data.msg || "Unable to load listings.");
         if (!cancelled) setListings(Array.isArray(data) ? data.map(mapListingToItem) : []);
-        */
       } catch (err) {
         if (!cancelled) setError(err.message || "Unable to load listings.");
       } finally {
@@ -1766,15 +1742,10 @@ export default function MarketplacePage() {
     let cancelled = false;
     const fetchSaved = async () => {
       try {
-        if (!cancelled) setSaved(new Set(getMockSavedListingIds(authUser)));
-
-        /*
-        BACKEND CONNECTION (commented out for mock-data testing)
         const response = await fetch(`${API_BASE_URL}/api/listings/saved`, { headers: { "x-auth-token": token } });
         const data = await response.json().catch(() => []);
         if (!response.ok || !Array.isArray(data)) return;
         if (!cancelled) setSaved(new Set(data.map(listing => listing._id).filter(Boolean)));
-        */
       } catch { /* non-critical */ }
     };
     fetchSaved();

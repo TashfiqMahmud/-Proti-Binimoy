@@ -325,6 +325,16 @@ const featureCards = [
     title: "Community First",
     description: "Build genuine local connections while discovering items that still hold real value - within your neighbourhood.",
   },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 26, height: 26 }}>
+        <path d="M5 6h14M5 12h14M5 18h14" />
+        <path d="M9 6v12" />
+      </svg>
+    ),
+    title: "Trade Offers",
+    description: "Send and manage offers directly in the app. Buyers and sellers can accept, decline, or chat around every trade request.",
+  },
 ];
 
 const marqueeItems = [
@@ -542,6 +552,7 @@ const HomePage = () => {
         <div className="pb-nav-links">
           <Link to="/"        className="pb-nav-link">Home</Link>
           <Link to="/marketplace"  className="pb-nav-link">Browse</Link>
+          <Link to="/offers" className="pb-nav-link">Offers</Link>
           <Link to="/about"   className="pb-nav-link">About</Link>
           {token && authUser ? (
             <Link
@@ -573,6 +584,7 @@ const HomePage = () => {
       <div className={`pb-mobile-menu ${menuOpen ? "open" : ""}`}>
         <Link to="/"        className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Home</Link>
         <Link to="/marketplace"  className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Browse</Link>
+        <Link to="/offers" className="pb-mobile-link" onClick={() => setMenuOpen(false)}>Offers</Link>
         <Link to="/about"   className="pb-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
         {token && authUser ? (
           <Link to="/profile" className="pb-mobile-cta" onClick={() => setMenuOpen(false)}>
@@ -638,6 +650,7 @@ const HomePage = () => {
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </Link>
+              <Link to="/offers" className="pb-btn-ghost">View Offers</Link>
               <a href="#how" className="pb-btn-ghost">How it works</a>
             </div>
 

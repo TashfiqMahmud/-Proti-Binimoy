@@ -133,6 +133,7 @@ const G = () => (
     @keyframes pI{0%{transform:scale(.88);opacity:0}65%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
     @keyframes bP{0%{transform:scale(0) rotate(-10deg)}70%{transform:scale(1.2) rotate(2deg)}100%{transform:scale(1) rotate(0)}}
     @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulseTrade{0%{box-shadow:0 0 0 0 rgba(46,201,126,.22)}70%{box-shadow:0 0 0 12px rgba(46,201,126,0)}100%{box-shadow:0 0 0 0 rgba(46,201,126,0)}}
 
     .fu{opacity:0;animation:fuA .5s cubic-bezier(.22,1,.36,1) forwards}
     .pi{animation:pI .38s cubic-bezier(.34,1.56,.64,1) forwards}
@@ -325,6 +326,11 @@ const G = () => (
     .pbb{padding:10px 22px;border-radius:100px;font-size:13px;font-weight:700;background:linear-gradient(135deg,#2ec97e,#1b7d52);color:#fff;border:none;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(46,201,126,.3);white-space:nowrap;font-family:inherit}
     .pbb:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(46,201,126,.45)}
 
+    /* FLOATING OFFER CTA */
+    .offer-float{position:fixed;right:22px;bottom:22px;z-index:900;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+    .offer-float .off-btn{padding:12px 18px;border-radius:999px;background:linear-gradient(135deg,#2ec97e,#1b7d52);color:#fff;border:none;box-shadow:0 10px 30px rgba(46,201,126,.18);font-weight:700;cursor:pointer}
+    .offer-float .off-btn.alt{background:transparent;border:1.5px solid rgba(255,255,255,.08);color:var(--t)}
+
     /* GRID */
     .ig{padding:0 28px 40px;display:grid;gap:18px}
     .ig.g3{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
@@ -339,6 +345,7 @@ const G = () => (
     .ic.lc .cib{padding:20px 24px}
 
     .cim{position:relative;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+    .cim.trade-ready::after{content:'';position:absolute;inset:-8px;border-radius:14px;pointer-events:none;animation:pulseTrade 2.6s ease-out infinite}
     .cie{font-size:58px;filter:drop-shadow(0 6px 18px rgba(0,0,0,.5));z-index:1;transition:transform .3s}
     .ic:hover .cie{transform:scale(1.09)}
     .cio{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 45%,rgba(0,0,0,.55));z-index:2}
@@ -595,6 +602,21 @@ const G = () => (
     .ot-success-btn:hover{background:rgba(46,201,126,.2)}
     .ot-card-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;border-radius:9px;border:1.5px solid rgba(46,201,126,.35);background:rgba(46,201,126,.08);color:#2ec97e;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;flex:1}
     .ot-card-btn:hover{background:rgba(46,201,126,.16);border-color:rgba(46,201,126,.55);transform:translateY(-1px);box-shadow:0 4px 14px rgba(46,201,126,.22)}
+    .compare-panel{margin:0 28px 18px;padding:18px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(46,201,126,.12);box-shadow:0 16px 40px rgba(0,0,0,.18)}
+    .compare-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+    .compare-list{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+    .compare-chip{padding:9px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(46,201,126,.08);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s}
+    .compare-chip:hover{background:rgba(46,201,126,.16)}
+    .compare-summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border-radius:14px;background:rgba(46,201,126,.08);border:1px solid rgba(46,201,126,.15);margin-bottom:14px}
+    .compare-summary div{font-size:13px;color:rgba(255,255,255,.82);line-height:1.4}
+    .compare-action{padding:10px 16px;border-radius:999px;border:none;background:linear-gradient(135deg,#2ec97e,#1b7d52);color:#fff;font-weight:700;cursor:pointer;transition:all .2s}
+    .compare-action:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(46,201,126,.35)}
+    .compare-grid{display:grid;grid-template-columns:1fr repeat(3,minmax(120px,1fr));gap:1px;background:rgba(255,255,255,.08);border-radius:14px;overflow:hidden}
+    .compare-row{display:grid;grid-template-columns:1fr repeat(3,minmax(120px,1fr));gap:1px;background:rgba(255,255,255,.03);padding:12px 14px;align-items:center}
+    .compare-row:nth-child(odd){background:rgba(255,255,255,.04)}
+    .compare-labels{background:rgba(255,255,255,.06);font-weight:700;color:var(--t)}
+    .compare-row div{font-size:13px;color:var(--tm)}
+    .compare-row.compare-labels div{color:var(--t)}
     @media(max-width:520px){
       .ot-panel{border-radius:20px}
       .ot-header{padding:20px 20px 16px}
@@ -1360,7 +1382,7 @@ const OfferTradeModal = ({ item, onClose }) => {
 /* 
    ITEM CARD
  */
-const ItemCard = ({ item, view, onOpen, saved, onSave, onBuyNow, onOfferTrade }) => {
+const ItemCard = ({ item, view, onOpen, saved, onSave, onBuyNow, onOfferTrade, onCompareToggle, comparing }) => {
   const ci = cInfo(item.condition);
   const isList = view === "list";
   const bm = item.badge ? bMeta(item.badge) : null;
@@ -1368,7 +1390,7 @@ const ItemCard = ({ item, view, onOpen, saved, onSave, onBuyNow, onOfferTrade })
 
   return (
     <div className={`ic fu${isList ? " lc" : ""}`} onClick={() => onOpen(item, "details")}>
-      <div className="cim" style={{ background:`linear-gradient(135deg,${item.accentColor}22,${item.accentColor}09)`, height:isList?"auto":undefined }}>
+      <div className={`cim ${item.tradeOffer?"trade-ready":""}`} style={{ background:`linear-gradient(135deg,${item.accentColor}22,${item.accentColor}09)`, height:isList?"auto":undefined }}>
         {item.image ? (
           <img src={item.image} alt={item.title} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"cover",borderRadius:12,boxShadow:"0 4px 18px rgba(0,0,0,.18)"}} />
         ) : (
@@ -1389,6 +1411,10 @@ const ItemCard = ({ item, view, onOpen, saved, onSave, onBuyNow, onOfferTrade })
              Trade OK
           </div>
         )}
+        <div style={{position:"absolute",top:10,right:10,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,zIndex:4}}>
+          <span className="live-chip" style={{padding:"4px 8px",borderRadius:100,fontSize:10,fontWeight:700,background:"rgba(46,201,126,.95)",color:"#072612"}}>{item.views} views</span>
+          {item.saves > 0 && <span className="live-chip" style={{padding:"4px 8px",borderRadius:100,fontSize:10,fontWeight:700,background:"rgba(255,255,255,.09)",color:"#fff"}}>{item.saves} saved</span>}
+        </div>
       </div>
 
       <div className="cib">
@@ -1448,6 +1474,10 @@ const ItemCard = ({ item, view, onOpen, saved, onSave, onBuyNow, onOfferTrade })
             </button>
           )}
 
+          <button className="ot-card-btn" onClick={e=>{e.stopPropagation();onCompareToggle(item);}} style={{background:comparing?"rgba(255,255,255,.08)":"rgba(255,255,255,.04)",color:"#fff"}}>
+            {comparing?"Remove compare":"Compare"}
+          </button>
+
           <button className="bdet" onClick={()=>onOpen(item, "contact")}>Contact</button>
         </div>
       </div>
@@ -1458,7 +1488,7 @@ const ItemCard = ({ item, view, onOpen, saved, onSave, onBuyNow, onOfferTrade })
 /* 
    DETAILS MODAL
  */
-const DetailsModal = ({ item, onClose, saved, onSave }) => {
+const DetailsModal = ({ item, onClose, saved, onSave, onSellerStore }) => {
   const ci = cInfo(item.condition);
   const bm = item.badge ? bMeta(item.badge) : null;
   const da = dAgo(item.postedDate);
@@ -1520,6 +1550,7 @@ const DetailsModal = ({ item, onClose, saved, onSave }) => {
             <div className="sinfo">
               <div className="sname">{item.seller.name}{item.seller.verified && <span style={{fontSize:13}}></span>}</div>
               <div className="smeta"> {item.seller.location}  -   Responds {item.seller.responseTime}</div>
+              <button onClick={()=>onSellerStore(item.seller.name)} style={{marginTop:8,padding:"8px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,.12)",background:"rgba(255,255,255,.04)",color:"var(--tm)",fontSize:12,cursor:"pointer"}}>View seller storefront</button>
             </div>
             <div className="sstats">
               <div style={{textAlign:"center"}}>
@@ -1546,7 +1577,7 @@ const DetailsModal = ({ item, onClose, saved, onSave }) => {
 /* 
    CONTACT MODAL
  */
-const ContactModal = ({ item, onClose }) => {
+const ContactModal = ({ item, onClose, onSellerStore }) => {
   const [tab, setTab] = useState("phone");
   const [msgText,   setMsgText]   = useState("");
   const [emailSubj, setEmailSubj] = useState(`Re: ${item.title}`);
@@ -1587,6 +1618,11 @@ const ContactModal = ({ item, onClose }) => {
               <div style={{fontSize:16,color:"#F59E0B",fontWeight:700}}> {item.seller.rating}</div>
               <div style={{fontSize:10,color:"var(--td)"}}>{item.seller.reviews} reviews</div>
             </div>
+          </div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:18}}>
+            <button className="mbg" onClick={()=>onSellerStore(item.seller.name)} style={{borderColor:"rgba(46,201,126,.35)",color:"#fff"}}>
+              View seller storefront
+            </button>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 13px",borderRadius:10,background:"rgba(255,255,255,.04)",border:"1px solid var(--b2)"}}>
             {item.image ? (
@@ -1680,7 +1716,9 @@ export default function MarketplacePage() {
   const [filterOpen,   setFilterOpen]   = useState(true);
   const [authGate,     setAuthGate]     = useState(false);
   const [buyerAuthGate,setBuyerAuthGate]= useState(false);
-  const [tradeTarget,  setTradeTarget]  = useState(null);   //  NEW
+  const [tradeTarget,  setTradeTarget]  = useState(null);
+  const [compareItems, setCompareItems] = useState([]);
+  const [sellerFilter, setSellerFilter] = useState("");
   const [listings,     setListings]     = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState("");
@@ -1725,7 +1763,34 @@ export default function MarketplacePage() {
       setError(err.message || "Unable to update saved item.");
     }
   };
-  const reset = () => { setCategory("All");setConditions([]);setMaxPrice(100000);setLocation("All Areas");setMinRating(0);setOnlyNeg(false);setOnlyVerified(false);setOnlyTrade(false);setSearch(""); };
+
+  const toggleCompare = (item) => {
+    setCompareItems(prev => {
+      const exists = prev.some(x => x.id === item.id);
+      if (exists) return prev.filter(x => x.id !== item.id);
+      const next = [...prev, item];
+      return next.length > 3 ? next.slice(next.length - 3) : next;
+    });
+  };
+
+  const clearCompare = () => setCompareItems([]);
+  const viewSellerStore = (sellerName) => {
+    setSellerFilter(sellerName);
+    setSidebarOpen(false);
+  };
+
+  const reset = () => {
+    setCategory("All");
+    setConditions([]);
+    setMaxPrice(100000);
+    setLocation("All Areas");
+    setMinRating(0);
+    setOnlyNeg(false);
+    setOnlyVerified(false);
+    setOnlyTrade(false);
+    setSellerFilter("");
+    setSearch("");
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -1780,9 +1845,10 @@ export default function MarketplacePage() {
     if (onlyNeg && !item.negotiable) return false;
     if (onlyVerified && !item.seller.verified) return false;
     if (onlyTrade && !item.tradeOffer) return false;
+    if (sellerFilter && item.seller.name !== sellerFilter) return false;
     if (search) {
       const q = search.toLowerCase();
-      if (![item.title,item.category,item.brand,...item.tags].join(" ").toLowerCase().includes(q)) return false;
+      if (![item.title,item.category,item.brand,...item.tags,item.seller.name].join(" ").toLowerCase().includes(q)) return false;
     }
     return true;
   }).sort((a,b) => {
@@ -1803,6 +1869,7 @@ export default function MarketplacePage() {
     onlyNeg                && {key:"neg",  label:"Negotiable"},
     onlyVerified           && {key:"ver",  label:"Verified"},
     onlyTrade              && {key:"tra",  label:"Trade"},
+    sellerFilter           && {key:"seller", label:`Seller: ${sellerFilter}`},
   ].filter(Boolean);
 
   const removeFilter = (key) => {
@@ -1814,6 +1881,7 @@ export default function MarketplacePage() {
     else if (key==="neg")   setOnlyNeg(false);
     else if (key==="ver")   setOnlyVerified(false);
     else if (key==="tra")   setOnlyTrade(false);
+    else if (key==="seller") setSellerFilter("");
   };
 
   const sortLabel = SORT_OPTIONS.find(o=>o.value===sort)?.label;
@@ -1821,6 +1889,26 @@ export default function MarketplacePage() {
   const openItem = (item, mode) => {
     setSelected({ item, mode });
   };
+
+  const tradeCount = listings.filter(l => l.tradeOffer).length;
+  const compareCount = compareItems.length;
+  const compareMinPrice = compareItems.length > 0 ? Math.min(...compareItems.map(i => i.price)) : 0;
+  const compareMaxRating = compareItems.length > 0 ? Math.max(...compareItems.map(i => i.seller.rating)) : 0;
+  const compareOpenTrade = compareItems.filter(i => i.tradeOffer).length;
+  const compareSummary = compareCount > 1
+    ? `${compareCount} items selected for side-by-side comparison. Best price BDT ${fmt(compareMinPrice)}, top seller rating ${compareMaxRating.toFixed(1)}⭐, ${compareOpenTrade} trade-ready.`
+    : "";
+  const compareFocusItem = compareItems[0] || null;
+  const trendingItems = listings
+    .slice()
+    .sort((a,b) => (b.views + b.saves * 2) - (a.views + a.saves * 2))
+    .slice(0, 6);
+  const recommendedItems = listings
+    .slice()
+    .filter(item => !compareItems.some(c => c.id === item.id))
+    .filter(item => category === "All" ? true : item.category === category)
+    .sort((a,b) => (b.views + b.saves * 2) - (a.views + a.saves * 2))
+    .slice(0, 4);
 
   return (
     <div style={{minHeight:"100vh",background:"var(--d2)"}}>
@@ -1836,10 +1924,20 @@ export default function MarketplacePage() {
           {[
             {label:"Home",        href:"/"},
             {label:"Marketplace", href:"/marketplace"},
+            {label:"Offers",      href:"/offers"},
             {label:"About",       href:"/about"},
-          ].map(({label,href})=>(
-            <a key={label} href={href} className={`nla${label==="Marketplace"?" active":""}`}>{label}</a>
-          ))}
+          ].map(({label,href})=>{
+            return (
+              <a key={label} href={href} className={`nla${label==="Marketplace"?" active":""}`}>
+                <span style={{position:"relative",display:"inline-block"}}>
+                  {label}
+                  {label==="Offers" && tradeCount>0 && (
+                    <span className="nbadge" style={{position:"absolute",top:-10,right:-18}}>{tradeCount}</span>
+                  )}
+                </span>
+              </a>
+            );
+          })}
         </div>
         <div className="nr">
           {token && authUser ? (
@@ -1859,6 +1957,7 @@ export default function MarketplacePage() {
         {[
           {label:"Home",        href:"/"},
           {label:"Marketplace", href:"/marketplace"},
+          {label:"Offers",      href:"/offers"},
           {label:"About",       href:"/about"},
         ].map(({label,href})=><a key={label} href={href} className="mml">{label}</a>)}
         {token && authUser ? (
@@ -2079,6 +2178,125 @@ export default function MarketplacePage() {
             </div>
           </div>
 
+          <div className="pb">
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".18em", textTransform: "uppercase", color: "#2ec97e", marginBottom: 8 }}>
+                Trade spotlight
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4, color: "#fff", maxWidth: 620 }}>
+                {filtered.filter(item => item.tradeOffer).length > 0
+                  ? `${filtered.filter(item => item.tradeOffer).length} items are currently open to trade — send offers instantly.`
+                  : "No trade-ready listings match the current filters yet. Keep browsing or open the offers inbox for more opportunities."}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="pbb" onClick={() => navigate("/offers")}>View Offers</button>
+              <button className="pbb" onClick={() => { setOnlyTrade(v => !v); setSidebarOpen(false); }}>
+                {onlyTrade ? "Show all listings" : "Show trade-ready items"}
+              </button>
+            </div>
+          </div>
+
+          {compareCount > 0 && (
+            <div className="compare-panel">
+              <div className="compare-head">
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:"var(--g)",textTransform:"uppercase",letterSpacing:"0.16em"}}>Compare items</div>
+                  <div style={{fontSize:15,fontWeight:700,color:"#fff",marginTop:4}}>{compareCount} item{compareCount===1?"":"s"} selected</div>
+                </div>
+                <button className="cab" onClick={clearCompare}>Clear compare</button>
+              </div>
+              {compareCount > 1 && (
+                <div className="compare-summary">
+                  <div>{compareSummary}</div>
+                  <button className="compare-action" onClick={()=>compareFocusItem && openItem(compareFocusItem, "details")}>View detailed item</button>
+                </div>
+              )}
+              <div className="compare-list">
+                {compareItems.map(item => (
+                  <button key={item.id} className="compare-chip" onClick={()=>openItem(item,"details")}>{item.title}</button>
+                ))}
+              </div>
+              {compareCount > 1 && (
+                <div className="compare-grid">
+                  <div className="compare-row compare-labels">
+                    <div>Feature</div>
+                    {compareItems.map(item => <div key={item.id}>{item.title}</div>)}
+                  </div>
+                  <div className="compare-row">
+                    <div>Price</div>
+                    {compareItems.map(item => <div key={item.id}>BDT {fmt(item.price)}</div>)}
+                  </div>
+                  <div className="compare-row">
+                    <div>Condition</div>
+                    {compareItems.map(item => <div key={item.id}>{item.condition}</div>)}
+                  </div>
+                  <div className="compare-row">
+                    <div>Seller</div>
+                    {compareItems.map(item => <div key={item.id}>{item.seller.name}</div>)}
+                  </div>
+                  <div className="compare-row">
+                    <div>Trade</div>
+                    {compareItems.map(item => <div key={item.id}>{item.tradeOffer?"Open":"No"}</div>)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {trendingItems.length > 0 && (
+            <div className="trending-row">
+              <div className="trending-head">
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"#2ec97e"}}>Trending Now</div>
+                  <div style={{fontSize:18,fontWeight:700,color:"#fff",marginTop:6}}>Hot picks that buyers are checking first.</div>
+                </div>
+              </div>
+              <div className="trending-list">
+                {trendingItems.map(item => (
+                  <button key={item.id} className="trending-card" onClick={()=>openItem(item,"details")}> 
+                    <div className="trending-thumb" style={{background:`linear-gradient(135deg,${item.accentColor}22,${item.accentColor}09)`}}>
+                      {item.image ? <img src={item.image} alt={item.title} /> : <span>{item.emoji}</span>}
+                    </div>
+                    <div className="trending-info">
+                      <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{item.title}</div>
+                      <div style={{fontSize:12,color:"rgba(255,255,255,.55)",marginTop:6}}>{item.category} · {item.seller.location}</div>
+                      <div style={{marginTop:9,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <span style={{fontSize:14,fontWeight:700,color:"var(--g)"}}>BDT {fmt(item.price)}</span>
+                        <span className="live-chip">{item.views} views</span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {recommendedItems.length > 0 && (
+            <div className="recommend-row">
+              <div className="trending-head">
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"#2ec97e"}}>Recommended</div>
+                  <div style={{fontSize:18,fontWeight:700,color:"#fff",marginTop:6}}>{category === "All" ? "Top marketplace picks" : `More in ${category}`}</div>
+                </div>
+              </div>
+              <div className="recommend-grid">
+                {recommendedItems.map(item => (
+                  <button key={item.id} className="recommend-card" onClick={()=>openItem(item,"details")}> 
+                    <div className="recommend-thumb" style={{background:`linear-gradient(135deg,${item.accentColor}22,${item.accentColor}09)`}}>
+                      {item.image ? <img src={item.image} alt={item.title} /> : <span>{item.emoji}</span>}
+                    </div>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{item.title}</div>
+                      <div style={{fontSize:12,color:"rgba(255,255,255,.55)",marginTop:5}}>{item.seller.name}</div>
+                      <div style={{marginTop:8,fontSize:13,fontWeight:700,color:"var(--g)"}}>BDT {fmt(item.price)}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* RESULTS + ACTIVE CHIPS */}
           <div className="hs">
             <div className="rc">
@@ -2108,6 +2326,8 @@ export default function MarketplacePage() {
                   onSave={toggleSave}
                   onBuyNow={handleBuyNow}
                   onOfferTrade={handleOfferTrade}
+                  onCompareToggle={toggleCompare}
+                  comparing={compareItems.some(c=>c.id===item.id)}
                 />
               ))}
             </div>
@@ -2122,16 +2342,21 @@ export default function MarketplacePage() {
         </main>
       </div>
 
+      <div className="offer-float">
+        <button className="off-btn" onClick={()=>navigate("/offers")}>Make an Offer</button>
+        <button className="off-btn alt" onClick={()=>{ setOnlyTrade(v=>!v); pushNotification('trade','Trade filter toggled', onlyTrade ? 'Showing all listings' : 'Showing trade-ready items'); }}>{onlyTrade?"Show all":"Show trade-ready"}</button>
+      </div>
+
       <PageFooter />
 
       {/* DETAILS MODAL */}
       {selected && selected.mode === "details" && (
-        <DetailsModal item={selected.item} onClose={()=>setSelected(null)} saved={saved.has(selected.item.id)} onSave={toggleSave}/>
+        <DetailsModal item={selected.item} onClose={()=>setSelected(null)} saved={saved.has(selected.item.id)} onSave={toggleSave} onSellerStore={viewSellerStore}/>
       )}
 
       {/* CONTACT MODAL */}
       {selected && selected.mode === "contact" && (
-        <ContactModal item={selected.item} onClose={()=>setSelected(null)}/>
+        <ContactModal item={selected.item} onClose={()=>setSelected(null)} onSellerStore={viewSellerStore}/>
       )}
 
       {/* OFFER TRADE MODAL */}

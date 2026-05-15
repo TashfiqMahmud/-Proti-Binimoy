@@ -32,6 +32,8 @@ const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const normalizePhone = (phone) => String(phone || '').replace(/\D/g, '');
 const isValidPhone = (phone) => /^\d{11}$/.test(phone);
 const isValidOtp = (otp) => /^\d{6}$/.test(String(otp || '').trim());
+const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+const OTP_EXPIRY_MS = 5 * 60 * 1000;
 const isDuplicateKeyError = (err) => Boolean(err && err.code === 11000);
 const FORGOT_PASSWORD_RESPONSE = { msg: 'If that email is registered, a reset link has been sent.' };
 
@@ -319,7 +321,12 @@ router.post('/phone/check', generalLimiter, async (req, res) => {
             return res.status(404).json({ msg: 'This number is not registered. Please create an account first.' });
         }
 
-        console.log(`OTP requested for: ${normalizedPhone}`);
+        const otp = generateOtp();
+        user.phoneOtp = otp;
+        user.phoneOtpExpires = new Date(Date.now() + OTP_EXPIRY_MS);
+        await user.save();
+
+        console.log(`OTP requested for: ${normalizedPhone} - ${otp}`);
         return res.status(200).json({ msg: 'OTP sent.' });
     } catch (err) {
         console.error('PHONE_CHECK_ERROR:', err);
@@ -346,6 +353,14 @@ router.post('/phone/verify', generalLimiter, async (req, res) => {
         if (!user) {
             return res.status(401).json({ msg: 'Invalid credentials.' });
         }
+
+        if (!user.phoneOtp || user.phoneOtp !== otpValue || !user.phoneOtpExpires || user.phoneOtpExpires < new Date()) {
+            return res.status(401).json({ msg: 'Invalid or expired OTP.' });
+        }
+
+        user.phoneOtp = undefined;
+        user.phoneOtpExpires = undefined;
+        await user.save();
 
         if (!process.env.JWT_SECRET) {
             return res.status(500).json({ msg: 'Server configuration error' });

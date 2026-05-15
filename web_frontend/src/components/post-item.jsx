@@ -595,6 +595,8 @@ const PostItemPage = () => {
         city: form.location,
         address: form.location,
       },
+      tradeOffer: form.tradeOffer === "open" ? "open" : "no",
+      phone: form.phone,
     };
 
     try {

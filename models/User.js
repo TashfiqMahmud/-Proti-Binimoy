@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema({
   resetPasswordToken: { type: String },
   resetPasswordExpires: { type: Date },
   phone: { type: String, trim: true },
+  phoneOtp: { type: String },
+  phoneOtpExpires: { type: Date },
   nid: { type: String, trim: true },
   dateOfBirth: { type: Date },
   passportNumber: { type: String, trim: true },

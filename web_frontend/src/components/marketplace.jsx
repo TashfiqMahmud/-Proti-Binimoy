@@ -48,6 +48,14 @@ const getInitials = (name = "") => {
   return (parts[0]?.[0] || "?").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
 };
 
+const formatPhoneNumber = (raw) => {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 11 && digits.startsWith('01')) return `+88 ${digits}`;
+  if (digits.length === 13 && digits.startsWith('880')) return `+${digits}`;
+  return raw;
+};
+
 const normalizeCategoryLabel = (category) => category === "Home" ? "Furniture" : category;
 const categoryColor = (category) => CATEGORIES.find(c => c.label === normalizeCategoryLabel(category))?.color || "#2ec97e";
 const categoryMatches = (itemCategory, selectedCategory) => {
@@ -81,7 +89,8 @@ const mapListingToItem = (listing) => {
       reviews: Number(listing.seller?.totalReviews) || 0,
       location: sellerLocation,
       verified: Boolean(listing.seller?.isVerified),
-      responseTime: "-"
+      responseTime: "-",
+      phone: listing.phone || listing.seller?.phone || ""
     },
     tags: [listing.category, listing.condition].filter(Boolean),
     shipping: "Contact seller",
@@ -1542,7 +1551,7 @@ const ContactModal = ({ item, onClose }) => {
   const [msgText,   setMsgText]   = useState("");
   const [emailSubj, setEmailSubj] = useState(`Re: ${item.title}`);
   const [emailBody, setEmailBody] = useState("");
-  const sellerPhone = "+880 1711-234567";
+  const sellerPhone = formatPhoneNumber(item.seller.phone || "") || "+880 1711-234567";
   const sellerEmail = `${item.seller.name.toLowerCase().replace(" ",".")}@gmail.com`;
 
   const sendMessage = () => {

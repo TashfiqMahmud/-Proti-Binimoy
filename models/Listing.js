@@ -19,6 +19,12 @@ const listingSchema = new mongoose.Schema({
         city: { type: String },
         address: { type: String }
     },
+    phone: { type: String, trim: true, default: '' },
+    tradeOffer: {
+        type: String,
+        enum: ['open', 'no'],
+        default: 'no'
+    },
     seller: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

@@ -466,12 +466,12 @@ const ListingDetailPage = () => {
                     <p style={{ fontSize: 14, color: "#111827", marginBottom: 5 }}>
                       <strong>Seller:</strong> {listing?.seller?.name || "Unknown"}
                     </p>
-                    <p style={{ fontSize: 13, color: "#4b5563", marginBottom: token && listing?.seller?.phone ? 5 : 0 }}>
+                    <p style={{ fontSize: 13, color: "#4b5563", marginBottom: token && (listing?.phone || listing?.seller?.phone) ? 5 : 0 }}>
                       <strong>City:</strong> {listing?.seller?.location?.city || "Not specified"}
                     </p>
-                    {token && listing?.seller?.phone && (
+                    {token && (listing?.phone || listing?.seller?.phone) && (
                       <p style={{ fontSize: 13, color: "#4b5563" }}>
-                        <strong>Phone:</strong> {listing.seller.phone}
+                        <strong>Phone:</strong> {listing.phone || listing.seller.phone}
                       </p>
                     )}
                   </div>

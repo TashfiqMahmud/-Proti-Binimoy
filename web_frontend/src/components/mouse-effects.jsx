@@ -111,10 +111,10 @@ const MouseEffects = () => {
       current.x += (target.x - current.x) * 0.15;
       current.y += (target.y - current.y) * 0.15;
 
-      const largeX = current.x - 170;
-      const largeY = current.y - 170;
-      const smallX = current.x - 70;
-      const smallY = current.y - 70;
+      const largeX = current.x - 90;
+      const largeY = current.y - 90;
+      const smallX = current.x - 40;
+      const smallY = current.y - 40;
 
       if (largeGlowRef.current) {
         largeGlowRef.current.style.transform = `translate3d(${largeX}px, ${largeY}px, 0)`;
@@ -150,11 +150,11 @@ const MouseEffects = () => {
     <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
       <div
         ref={largeGlowRef}
-        className="absolute h-[340px] w-[340px] rounded-full bg-emerald-300/14 blur-3xl"
+        className="absolute h-[180px] w-[180px] rounded-full bg-emerald-300/10 blur-2xl"
       />
       <div
         ref={smallGlowRef}
-        className="absolute h-[140px] w-[140px] rounded-full bg-teal-300/18 blur-2xl"
+        className="absolute h-[80px] w-[80px] rounded-full bg-teal-300/14 blur-xl"
       />
     </div>
   );

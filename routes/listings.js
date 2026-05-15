@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
         const pageSize = Math.min(parsePositiveInt(limit, DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
 
         const listings = await Listing.find(filter)
-            .populate('seller', 'name profilePicture rating totalReviews isVerified')
+            .populate('seller', 'name profilePicture rating totalReviews isVerified phone location')
             .sort({ createdAt: -1 })
             .skip((pageNumber - 1) * pageSize)
             .limit(pageSize);
@@ -58,7 +58,7 @@ router.get('/mine', auth, async (req, res) => {
             seller: req.user.id,
             status: { $ne: 'deleted' }
         })
-            .populate('seller', 'name email')
+            .populate('seller', 'name email phone location')
             .sort({ createdAt: -1 });
 
         res.json(listings);
@@ -140,7 +140,7 @@ router.get('/:id', async (req, res) => {
         }
 
         const listing = await Listing.findById(req.params.id)
-            .populate('seller', 'name profilePicture rating totalReviews isVerified');
+            .populate('seller', 'name profilePicture rating totalReviews isVerified phone location');
 
         if (!listing || listing.status === 'deleted') {
             return res.status(404).json({ msg: 'Listing not found' });
@@ -158,7 +158,7 @@ router.get('/:id', async (req, res) => {
 // @access  Private
 router.post('/', auth, async (req, res) => {
     try {
-        const { title, description, price, category, condition, images, location } = req.body || {};
+        const { title, description, price, category, condition, images, location, tradeOffer, phone } = req.body || {};
 
         if (
             !isNonEmptyString(title) ||
@@ -176,6 +176,11 @@ router.post('/', auth, async (req, res) => {
             return res.status(400).json({ msg: 'Price must be a valid non-negative number' });
         }
 
+        const normalizedPhone = typeof phone === 'string' ? phone.replace(/\D/g, '') : '';
+        if (normalizedPhone && normalizedPhone.length < 9) {
+            return res.status(400).json({ msg: 'Please provide a valid contact phone number.' });
+        }
+
         const listing = new Listing({
             title: title.trim(),
             description: description.trim(),
@@ -184,6 +189,8 @@ router.post('/', auth, async (req, res) => {
             condition,
             images: images || [],
             location: location || {},
+            phone: normalizedPhone || '',
+            tradeOffer: tradeOffer === 'open' ? 'open' : 'no',
             seller: req.user.id
         });
 
@@ -214,7 +221,7 @@ router.put('/:id', auth, async (req, res) => {
             return res.status(403).json({ msg: 'Not authorized to update this listing' });
         }
 
-        const { title, description, price, category, condition, images, location, status } = req.body;
+        const { title, description, price, category, condition, images, location, status, tradeOffer, phone } = req.body;
 
         if (title !== undefined) {
             if (!isNonEmptyString(title)) {
@@ -243,6 +250,21 @@ router.put('/:id', auth, async (req, res) => {
         if (images !== undefined) listing.images = images;
         if (location !== undefined) listing.location = location;
         if (status !== undefined) listing.status = status;
+
+        if (tradeOffer !== undefined) {
+            if (tradeOffer !== 'open' && tradeOffer !== 'no') {
+                return res.status(400).json({ msg: 'Invalid trade preference.' });
+            }
+            listing.tradeOffer = tradeOffer;
+        }
+
+        if (phone !== undefined) {
+            const normalizedPhone = typeof phone === 'string' ? phone.replace(/\D/g, '') : '';
+            if (normalizedPhone && normalizedPhone.length < 9) {
+                return res.status(400).json({ msg: 'Please provide a valid contact phone number.' });
+            }
+            listing.phone = normalizedPhone || '';
+        }
 
         await listing.save();
         res.json({ msg: 'Listing updated successfully!', listing });

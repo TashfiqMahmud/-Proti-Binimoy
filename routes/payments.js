@@ -53,6 +53,11 @@ router.post('/init', auth, async (req, res) => {
 
         await payment.save();
 
+        if (!store_id || !store_passwd) {
+            console.error('SSL payment gateway credentials are missing.');
+            return res.status(503).json({ msg: 'Payment gateway is not configured. Set SSL_STORE_ID and SSL_STORE_PASSWORD.' });
+        }
+
         const data = {
             total_amount: payment.amount,
             currency: 'BDT',

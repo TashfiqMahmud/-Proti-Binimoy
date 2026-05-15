@@ -603,8 +603,8 @@ const LoginPage = () => {
                       <span className="lp-div-txt">or</span>
                       <div className="lp-div-line" />
                     </div>
-                    <button type="button" onClick={handleGoogleLogin} disabled={loading} className="lp-btn-google">
-                      {loading ? <><SpDark /> Connecting...</> : <><GoogleIcon /> Continue with Google</>}
+                    <button type="button" onClick={handleGoogleLogin} disabled={loading} className="lp-btn-google" title="Continue with Google" aria-label="Continue with your Google account">
+                      {loading ? <><SpDark /> Connecting...</> : <><GoogleIcon /> Continue with your Google account</>}
                     </button>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18 }}>
                       <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />

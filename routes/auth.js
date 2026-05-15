@@ -8,7 +8,32 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const rateLimit = require('express-rate-limit');
 const xss = require('xss');
+const twilio = require('twilio');
 const User = require('../models/User');
+
+const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || '';
+const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || '';
+const twilioFromNumber = process.env.TWILIO_FROM_NUMBER || '';
+const isTwilioConfigured = Boolean(twilioAccountSid && twilioAuthToken && twilioFromNumber);
+const twilioClient = isTwilioConfigured ? twilio(twilioAccountSid, twilioAuthToken) : null;
+
+const sendSms = async (to, body) => {
+    if (!isTwilioConfigured || !twilioClient) {
+        return false;
+    }
+
+    try {
+        await twilioClient.messages.create({
+            body,
+            from: twilioFromNumber,
+            to
+        });
+        return true;
+    } catch (err) {
+        console.error('SMS_SEND_ERROR:', err);
+        return false;
+    }
+};
 
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -324,9 +349,24 @@ router.post('/phone/check', generalLimiter, async (req, res) => {
         const otp = generateOtp();
         user.phoneOtp = otp;
         user.phoneOtpExpires = new Date(Date.now() + OTP_EXPIRY_MS);
+
+        const smsBody = `Your ProtiBinimoy login code is ${otp}. It expires in 5 minutes.`;
+        const fullPhone = `+88${normalizedPhone}`;
+        const smsSent = isTwilioConfigured ? await sendSms(fullPhone, smsBody) : false;
+
         await user.save();
 
-        console.log(`OTP requested for: ${normalizedPhone} - ${otp}`);
+        if (isTwilioConfigured && !smsSent) {
+            console.error(`OTP SMS failed for ${fullPhone}`);
+            return res.status(500).json({ msg: 'Failed to send OTP SMS. Please try again later.' });
+        }
+
+        if (!isTwilioConfigured) {
+            console.log(`SMS provider not configured; OTP for ${normalizedPhone}: ${otp}`);
+        } else {
+            console.log(`OTP sent by SMS to ${normalizedPhone}`);
+        }
+
         return res.status(200).json({ msg: 'OTP sent.' });
     } catch (err) {
         console.error('PHONE_CHECK_ERROR:', err);

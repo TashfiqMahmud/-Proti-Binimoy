@@ -27,6 +27,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "sslcommerz-lts": "^1.2.0",
+    "twilio": "^6.0.2",
     "xss": "^1.0.15"
   }
 }

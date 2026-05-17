@@ -1,83 +1,110 @@
 # Proti-Binimoy
 
-Proti-Binimoy is a MERN marketplace for buying, selling, and bartering items in Bangladesh. Users can create listings, send barter or cash offers, chat around offers, manage incoming and sent trades, and start payments through SSLCommerz.
+Proti-Binimoy is a Bangladeshi marketplace platform built with the MERN stack. It enables buyers and sellers to post listings, negotiate offers, message each other, manage orders, and complete payments.
 
-## Tech Stack
+## What this project includes
 
-- MongoDB, Mongoose
-- Express.js, Node.js
-- React, Vite
-- JWT authentication
-- Google OAuth
-- SSLCommerz payment gateway
+- Backend API with Express and MongoDB
+- JWT-based authentication and optional Google OAuth
+- Buyer and seller marketplace workflows
+- Offer management, chat messaging, saved listings, and profile updates
+- Payment integration with SSLCommerz
+- Frontend built with React, Vite, and Tailwind-style UI
 
-## Features
+## Key improvements in this version
 
-- Email/password and Google OAuth authentication
-- Marketplace listings with categories, prices, images, and locations
-- Buyer sent-offer history and seller incoming-trade management
-- Offer status workflow: pending, accepted, declined, cancelled, completed
-- Offer-based message threads
-- Seller payment/order view
-- SSLCommerz payment initialization and callback pages
-- Optional database seed script for local demo data
+- Shared frontend API helper in `web_frontend/src/config/api.js`
+- Standardized auth header usage to `Authorization: Bearer <token>`
+- Added `/api/auth/me` for current-user profile hydration
+- Larger backend JSON payload limit for file previews and base64 image upload data
+- Request sanitization with `express-mongo-sanitize`
 
-## Project Structure
+## Repository layout
 
 ```text
 .
-|-- server.js                 # Express startup and MongoDB connection
-|-- package.json              # Backend dependencies and scripts
-|-- .env.example              # Backend environment variable template
-|-- models/                   # Mongoose models
-|   |-- User.js
-|   |-- Listing.js
-|   |-- Offer.js
-|   |-- Message.js
-|   `-- Payment.js
-|-- routes/                   # Express API routes
-|   |-- auth.js
-|   |-- listings.js
-|   |-- offers.js
-|   |-- messages.js
-|   |-- payments.js
-|   `-- users.js
-|-- scripts/
-|   `-- seed.js               # Local demo data seeder
-|-- tests/
-|   `-- run-tests.js
-`-- web_frontend/             # Vite React client
-    |-- package.json
-    |-- .env.example
-    `-- src/
+├── server.js                    # Express server entrypoint
+├── package.json                 # Backend dependencies and scripts
+├── .env.example                 # Backend environment template
+├── models/                      # MongoDB models
+│   ├── Listing.js
+│   ├── Message.js
+│   ├── Offer.js
+│   ├── Payment.js
+│   └── User.js
+├── routes/                      # API route handlers
+│   ├── auth.js
+│   ├── listings.js
+│   ├── offers.js
+│   ├── messages.js
+│   ├── payments.js
+│   └── users.js
+├── middleware/                  # Shared middleware
+│   └── auth.js
+├── scripts/
+│   └── seed.js                  # Demo data seeder
+├── tests/
+│   └── run-tests.js             # Backend test script
+└── web_frontend/                # React client application
+    ├── package.json
+    ├── .env.example
+    ├── vite.config.js
+    └── src/
+        ├── config/api.js
+        ├── context/AuthContext.jsx
+        ├── App.jsx
+        └── components/
 ```
 
-## Backend Setup
+## Backend setup
+
+1. Install dependencies:
 
 ```bash
-git clone https://github.com/TashfiqMahmud/-Proti-Binimoy.git proti-binimoy
-cd proti-binimoy
 npm install
-cp .env.example .env
+```
+
+2. Create `.env` from `.env.example`.
+
+3. Seed demo data locally (optional):
+
+```bash
 npm run seed
+```
+
+4. Start the backend in development mode:
+
+```bash
 npm run dev
 ```
 
-Before running `npm run seed` or `npm run dev`, set at least `MONGO_URI` and `JWT_SECRET` in `.env`.
+The backend defaults to `http://localhost:5000`.
 
-## Frontend Setup
+## Frontend setup
+
+1. Change to the frontend folder:
 
 ```bash
 cd web_frontend
+```
+
+2. Install frontend dependencies:
+
+```bash
 npm install
+```
+
+3. Start the Vite development server:
+
+```bash
 npm run dev
 ```
 
-The frontend runs on Vite, usually at `http://localhost:5173`. The backend default URL is `http://localhost:5000`.
+The frontend defaults to `http://localhost:5173`.
 
-## Environment Variables
+## Environment variables
 
-Create a backend `.env` file from `.env.example`:
+Create `backend/.env` from `.env.example` with values for:
 
 ```env
 MONGO_URI=
@@ -100,52 +127,31 @@ SSL_STORE_PASSWORD=
 SSL_IS_LIVE=false
 ```
 
-If the frontend has its own `.env.example`, copy it inside `web_frontend/` and set the API URL expected by `web_frontend/src/config/api.js`.
+> The frontend uses `web_frontend/src/config/api.js` to determine `API_BASE_URL`, so ensure the backend is reachable from the client URL.
 
-## Mock Data Setup
+## Authentication flow
 
-After setting backend environment variables, seed the database:
+- Normal login/signup uses JWT returned from `/api/auth/login` and stored in browser local storage.
+- Google OAuth redirects back to `/auth-success` and loads the authenticated user profile from `/api/auth/me`.
+- All authenticated frontend requests now use:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Running tests
 
 ```bash
-npm run seed
+npm test
 ```
 
-The seed script:
+## Core API endpoints
 
-- Connects to MongoDB using `MONGO_URI`
-- Refuses to run when `NODE_ENV=production`
-- Creates demo users, listings, offers, messages, and payments using existing Mongoose models
-- Uses realistic Bangladeshi marketplace data and valid project categories
-- Hashes demo passwords with `bcryptjs`
-- Avoids duplicate data when run multiple times
-- Disconnects from MongoDB after completion
-
-## Demo Login Credentials
-
-```text
-Buyer:
-buyer@example.com
-Password123!
-
-Seller:
-seller@example.com
-Password123!
-```
-
-## Important Notes
-
-- MongoDB Atlas: allow your current IP address in Atlas Network Access, then paste the Atlas connection string into `MONGO_URI`.
-- Google OAuth: create OAuth credentials in Google Cloud Console and set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL`.
-- SSLCommerz: use sandbox credentials for local development, set `SSL_IS_LIVE=false`, and configure success, fail, cancel, and IPN URLs to point to your backend.
-- Do not run the seed script against production data. The script exits when `NODE_ENV=production`.
-
-## Basic API Overview
-
-Health:
+### Health
 
 - `GET /`
 
-Auth:
+### Auth
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
@@ -155,10 +161,11 @@ Auth:
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/reset-password`
 - `POST /api/auth/refresh-token`
+- `GET /api/auth/me`
 - `GET /api/auth/google`
 - `GET /api/auth/google/callback`
 
-Listings:
+### Listings
 
 - `GET /api/listings`
 - `GET /api/listings/mine`
@@ -169,7 +176,7 @@ Listings:
 - `PUT /api/listings/:id`
 - `DELETE /api/listings/:id`
 
-Offers:
+### Offers
 
 - `GET /api/offers/received`
 - `GET /api/offers/sent`
@@ -177,18 +184,18 @@ Offers:
 - `POST /api/offers`
 - `PUT /api/offers/:id/status`
 
-Messages:
+### Messages
 
 - `GET /api/messages/unread-count`
 - `GET /api/messages/:offerId`
 - `POST /api/messages`
 
-Users:
+### Users
 
 - `GET /api/users/:id`
 - `PUT /api/users/profile`
 
-Payments:
+### Payments
 
 - `POST /api/payments/init`
 - `GET /api/payments/my`
@@ -197,14 +204,20 @@ Payments:
 - `POST /api/payments/cancel`
 - `POST /api/payments/ipn`
 
-Protected endpoints require:
+## Notes
+
+- Use MongoDB Atlas or local MongoDB with a valid connection string in `MONGO_URI`.
+- For Google OAuth, set callback URL in Google Cloud and match `GOOGLE_CALLBACK_URL`.
+- For SSLCommerz, use sandbox credentials for development and route notifications to the backend.
+
+## Demo user credentials
 
 ```text
-x-auth-token: <jwt>
-```
+Buyer:
+  buyer@example.com
+  Password123!
 
-Some routes may also accept:
-
-```text
-Authorization: Bearer <jwt>
+Seller:
+  seller@example.com
+  Password123!
 ```

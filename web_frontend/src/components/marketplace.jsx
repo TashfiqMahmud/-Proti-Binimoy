@@ -355,20 +355,21 @@ const G = () => (
     .csv.sv{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.45)}
     .cvw{position:absolute;bottom:9px;left:11px;z-index:3;font-size:10.5px;color:rgba(255,255,255,.65);display:flex;align-items:center;gap:4px}
 
-    .cib{padding:15px;display:flex;flex-direction:column;gap:8px;flex:1}
+    .cib{padding:18px;display:flex;flex-direction:column;gap:12px;flex:1}
     .cm{display:flex;align-items:center;justify-content:space-between}
     .ccat{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
     .ccnd{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px}
     .ccd{width:5px;height:5px;border-radius:50%;flex-shrink:0}
     .ctit{font-family:'Playfair Display',serif;font-size:15.5px;font-weight:700;color:var(--t);line-height:1.3}
     .cdsc{font-size:12.5px;color:var(--tm);line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-    .ctags{display:flex;flex-wrap:wrap;gap:5px}
-    .ctag{padding:3px 8px;border-radius:100px;background:rgba(255,255,255,.05);border:1px solid var(--b2);font-size:10.5px;color:var(--td)}
+    .ctags{display:flex;flex-wrap:wrap;gap:10px}
+    .ctag{padding:4px 10px;border-radius:100px;background:rgba(255,255,255,.05);border:1px solid var(--b2);font-size:11px;color:var(--td)}
 
-    .cf{display:flex;align-items:flex-end;justify-content:space-between;padding-top:9px;border-top:1px solid var(--b1);margin-top:auto}
-    .cpr{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--g)}
+    .cf{display:flex;align-items:flex-end;justify-content:space-between;padding-top:12px;border-top:1px solid var(--b1);margin-top:auto;gap:12px}
+    .cpr{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--g);margin-right:10px}
     .cng{font-size:10px;color:rgba(46,201,126,.6);margin-left:3px;font-family:'Sora',sans-serif}
-    .csl{display:flex;align-items:center;gap:6px}
+    .csl{display:flex;align-items:center;gap:10px}
+    .live-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700}
     .cav{width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#fff;flex-shrink:0}
     .csn{font-size:11.5px;font-weight:500;color:var(--tm)}
     .csr{font-size:10px;color:#F59E0B}
@@ -1504,8 +1505,9 @@ const DetailsModal = ({ item, onClose, saved, onSave, onSellerStore }) => {
             <span style={{fontSize:110,filter:"drop-shadow(0 8px 28px rgba(0,0,0,.5))"}}>{item.emoji}</span>
           )}
           {bm && <span className="mhb" style={{background:bm.bg,boxShadow:`0 4px 20px ${bm.glow}`}}>{item.badge}</span>}
-          <div style={{position:"absolute",bottom:14,right:16,display:"flex",gap:14,fontSize:12,color:"rgba(255,255,255,.6)"}}>
-            <span> {item.views}</span><span> {item.saves}</span>
+          <div style={{position:"absolute",bottom:14,right:16,display:"flex",gap:14,fontSize:12,color:"rgba(255,255,255,.75)",alignItems:"center"}}>
+            <span>{item.views} views</span>
+            <span>{item.saves} saved</span>
           </div>
         </div>
         <div className="mbody">

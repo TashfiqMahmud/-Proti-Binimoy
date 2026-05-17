@@ -15,6 +15,7 @@ const passport = require('passport');
 require('dotenv').config();
 
 const app = express();
+app.set('trust proxy', 1); // Needed for Railway / proxy headers with express-rate-limit
 
 const defaultDevOrigins = ['http://localhost:5173'];
 const envOrigins = (process.env.FRONTEND_URL || 'https://proti-binimoy.vercel.app')

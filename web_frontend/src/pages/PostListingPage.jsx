@@ -144,7 +144,7 @@ const PostListingPage = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -540,3 +540,4 @@ const PostListingPage = () => {
 };
 
 export default PostListingPage;
+

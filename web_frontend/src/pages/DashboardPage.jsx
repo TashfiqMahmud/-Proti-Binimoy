@@ -93,7 +93,7 @@ const DashboardPage = () => {
       setError("");
       try {
         const response = await fetch(`${API_BASE_URL}/api/listings/mine`, {
-          headers: { "x-auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json().catch(() => []);
         if (!response.ok) {
@@ -124,7 +124,7 @@ const DashboardPage = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/listings/${id}`, {
         method: "DELETE",
-        headers: { "x-auth-token": token },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -384,3 +384,4 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
+

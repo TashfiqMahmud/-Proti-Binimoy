@@ -352,7 +352,7 @@ const CheckoutPage = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ offerId }),
       });
@@ -691,3 +691,4 @@ const CheckoutPage = () => {
 };
 
 export default CheckoutPage;
+

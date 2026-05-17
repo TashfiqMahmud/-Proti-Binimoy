@@ -90,10 +90,10 @@ const MessageThreadPage = () => {
     try {
       const [messagesRes, offerRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/messages/${offerId}`, {
-          headers: { "x-auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${API_BASE_URL}/api/offers/${offerId}`, {
-          headers: { "x-auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
 
@@ -140,7 +140,7 @@ const MessageThreadPage = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ offerId, body: text }),
       });
@@ -174,7 +174,7 @@ const MessageThreadPage = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ status: "completed" }),
       });
@@ -364,4 +364,5 @@ const MessageThreadPage = () => {
 };
 
 export default MessageThreadPage;
+
 

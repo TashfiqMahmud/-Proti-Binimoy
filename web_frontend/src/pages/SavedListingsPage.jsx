@@ -97,7 +97,7 @@ const SavedListingsPage = () => {
       setError("");
       try {
         const response = await fetch(`${API_BASE_URL}/api/listings/saved`, {
-          headers: { "x-auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json().catch(() => []);
         if (!response.ok) {
@@ -118,7 +118,7 @@ const SavedListingsPage = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/listings/${listingId}/save`, {
         method: "POST",
-        headers: { "x-auth-token": token },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -273,4 +273,5 @@ const SavedListingsPage = () => {
 };
 
 export default SavedListingsPage;
+
 

@@ -111,7 +111,7 @@ const OffersPage = () => {
     try {
       const endpoint = targetTab === "received" ? "received" : "sent";
       const response = await fetch(`${API_BASE_URL}/api/offers/${endpoint}`, {
-        headers: { "x-auth-token": token },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json().catch(() => []);
       if (!response.ok) {
@@ -151,7 +151,7 @@ const OffersPage = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ status }),
       });
@@ -399,3 +399,4 @@ const OffersPage = () => {
 };
 
 export default OffersPage;
+

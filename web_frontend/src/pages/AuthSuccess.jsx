@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../config/api";
 
 function AuthSuccess() {
   const navigate = useNavigate();
@@ -13,12 +14,27 @@ function AuthSuccess() {
     const name = params.get("name") || "Google User";
     const email = params.get("email") || "googleuser@gmail.com";
 
-    if (token) {
+    const finishLogin = async () => {
+      if (!token) {
+        navigate("/signin", { replace: true });
+        return;
+      }
+
       login(token, { name, email });
+
+      try {
+        const { response, data } = await apiFetch(`/api/auth/me`);
+        if (response.ok && data.user) {
+          login(token, data.user);
+        }
+      } catch (err) {
+        console.warn('Failed to load full user profile', err);
+      }
+
       navigate("/", { replace: true });
-    } else {
-      navigate("/signin", { replace: true });
-    }
+    };
+
+    finishLogin();
   }, [login, navigate]);
 
   return <p>Logging you in...</p>;

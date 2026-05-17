@@ -604,7 +604,7 @@ const PostItemPage = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -1198,3 +1198,4 @@ const PostItemPage = () => {
 };
 
 export default PostItemPage;
+

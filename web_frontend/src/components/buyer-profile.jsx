@@ -184,7 +184,7 @@ const BuyerTradeRequestsPage = () => {
       setError("");
       try {
         const response = await fetch(`${API_BASE_URL}/api/offers/sent`, {
-          headers: { "x-auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json().catch(() => []);
         if (!response.ok) {
@@ -229,7 +229,7 @@ const BuyerTradeRequestsPage = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ status }),
       });
@@ -526,7 +526,7 @@ const BuyerProfileView = ({
     const fetchSentOffers = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/offers/sent`, {
-          headers: { "x-auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json().catch(() => []);
         if (!response.ok || !Array.isArray(data)) return;
@@ -554,7 +554,7 @@ const BuyerProfileView = ({
 
       try {
         const response = await fetch(`${API_BASE_URL}/api/payments/my`, {
-          headers: { "x-auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json().catch(() => []);
         if (!response.ok) {
@@ -626,7 +626,7 @@ const BuyerProfileView = ({
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ status: "completed" }),
       });
@@ -693,4 +693,5 @@ const BuyerProfileView = ({
 };
 
 export default BuyerProfileView;
+
 

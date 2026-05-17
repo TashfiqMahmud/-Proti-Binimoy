@@ -1214,7 +1214,7 @@ const TradeRequestsTab = ({ token, sellerUser }) => {
     let cancelled = false;
 
     fetch(`${API_BASE_URL}/api/offers/received`, {
-      headers: { "x-auth-token": token },
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())
       .then(data => {
@@ -1238,7 +1238,7 @@ const TradeRequestsTab = ({ token, sellerUser }) => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ status: action }),
       });
@@ -1301,7 +1301,7 @@ const TradeRequestsTab = ({ token, sellerUser }) => {
         <button
           onClick={() => {
             setLoading(true);
-            fetch(`${API_BASE_URL}/api/offers/received`, { headers: { "x-auth-token": token } })
+            fetch(`${API_BASE_URL}/api/offers/received`, { headers: { Authorization: `Bearer ${token}` } })
               .then(r => r.json())
               .then(d => setRequests(Array.isArray(d) ? d.map(mapIncomingOfferToTrade) : []))
               .catch(() => setError("Refresh failed."))
@@ -2057,7 +2057,7 @@ const IncomingOrdersPage = ({ token, authUser }) => {
       setError("");
       try {
         const response = await fetch(`${API_BASE_URL}/api/payments/my`, {
-          headers: { "x-auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json().catch(() => []);
         if (!response.ok) {
@@ -2540,7 +2540,7 @@ const IncomingTradeRequestsPage = ({ token }) => {
       setError("");
       try {
         const response = await fetch(`${API_BASE_URL}/api/offers/received`, {
-          headers: { "x-auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json().catch(() => []);
         if (!response.ok) {
@@ -2572,7 +2572,7 @@ const IncomingTradeRequestsPage = ({ token }) => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ status }),
       });
@@ -3057,7 +3057,7 @@ const TradeTrackingPage = () => {
 
       try {
         const response = await fetch(`${API_BASE_URL}/api/offers/received`, {
-          headers: { "x-auth-token": token },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json().catch(() => []);
         if (!response.ok) {
@@ -4095,7 +4095,7 @@ const UserProfilePage = () => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "x-auth-token": token,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
     });
@@ -4155,10 +4155,10 @@ const UserProfilePage = () => {
         const [profileResponse, listingsResponse, savedResponse] = await Promise.all([
           fetch(`${API_BASE_URL}/api/users/${userId}`),
           fetch(`${API_BASE_URL}/api/listings/mine`, {
-            headers: { "x-auth-token": token },
+            headers: { Authorization: `Bearer ${token}` },
           }),
           fetch(`${API_BASE_URL}/api/listings/saved`, {
-            headers: { "x-auth-token": token },
+            headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
 
@@ -4464,4 +4464,5 @@ const UserProfilePage = () => {
 };
 
 export default UserProfilePage;
+
 

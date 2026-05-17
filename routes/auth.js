@@ -9,6 +9,7 @@ const nodemailer = require('nodemailer');
 const rateLimit = require('express-rate-limit');
 const xss = require('xss');
 const twilio = require('twilio');
+const auth = require('../middleware/auth');
 const User = require('../models/User');
 
 const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || '';
@@ -562,6 +563,20 @@ router.post('/refresh-token', async (req, res) => {
         return res.status(200).json({ token: newToken });
     } catch (err) {
         return res.status(401).json({ msg: 'Invalid or expired token.' });
+    }
+});
+
+// @route   GET api/auth/me
+router.get('/me', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('-password');
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found.' });
+        }
+        return res.status(200).json({ user: serializeUser(user) });
+    } catch (err) {
+        console.error('AUTH_ME_ERROR:', err);
+        return res.status(500).json({ msg: 'Server error' });
     }
 });
 

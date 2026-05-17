@@ -57,7 +57,7 @@ const MakeOfferModal = ({ listing, onClose, onSuccess }) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           listingId: listing._id,
@@ -308,4 +308,5 @@ const MakeOfferModal = ({ listing, onClose, onSuccess }) => {
 };
 
 export default MakeOfferModal;
+
 

@@ -1132,7 +1132,7 @@ const OfferTradeModal = ({ item, onClose }) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           listingId: item.id,
@@ -1748,7 +1748,7 @@ export default function MarketplacePage() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/listings/${id}/save`, {
         method: "POST",
-        headers: { "x-auth-token": token },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.msg || "Unable to update saved item.");
@@ -1816,7 +1816,7 @@ export default function MarketplacePage() {
     let cancelled = false;
     const fetchSaved = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/listings/saved`, { headers: { "x-auth-token": token } });
+        const response = await fetch(`${API_BASE_URL}/api/listings/saved`, { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json().catch(() => []);
         if (!response.ok || !Array.isArray(data)) return;
         if (!cancelled) setSaved(new Set(data.map(listing => listing._id).filter(Boolean)));
@@ -2373,3 +2373,4 @@ export default function MarketplacePage() {
     </div>
   );
 }
+

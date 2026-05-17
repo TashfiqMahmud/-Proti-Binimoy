@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "https://proti-binimoy-production.up.railway.app";
 
 const getStoredAuthToken = () => {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') {

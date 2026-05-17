@@ -12,19 +12,37 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const passport = require('passport');
-const mongoSanitize = require('express-mongo-sanitize');
 require('dotenv').config();
 
 const app = express();
 
+const defaultDevOrigins = ['http://localhost:5173'];
+const envOrigins = (process.env.FRONTEND_URL || 'https://proti-binimoy.vercel.app')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+const frontendOrigins = Array.from(new Set([...envOrigins, ...defaultDevOrigins]));
+
+console.log('CORS allowed origins:', frontendOrigins);
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (!origin || frontendOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS blocked: ${origin}`));
+        }
+    },
+    credentials: true,
+    methods: ['GET','HEAD','PUT','PATCH','POST','DELETE','OPTIONS'],
+    allowedHeaders: ['Origin','X-Requested-With','Content-Type','Accept','Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
+
 app.use(express.json({ limit: '12mb' }));
 app.use(express.urlencoded({ extended: true, limit: '12mb' }));
-app.use(mongoSanitize());
-
-app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true
-}));
 
 app.use(passport.initialize());
 
